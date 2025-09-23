@@ -5,8 +5,8 @@ import SearchableDropdown from '@/components/SearchableDropdown';
 import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { getCustomers, getPets, getVeterinarians, getAppointments, addAppointment, updateAppointment, deleteAppointment, getMedicalCategories, getMedicalForms, getMedicalRecords, addMedicalRecord, getFormFields } from '../lib/firebaseService';
-import { useTenant } from '../contexts/TenantContext';
+import { getCustomers, getPets, getVeterinarians, getAppointments, addAppointment, updateAppointment, deleteAppointment, getMedicalCategories, getMedicalForms, getMedicalRecords, addMedicalRecord, getFormFields } from '../../lib/services/firebaseService';
+import { useTenant } from '../../contexts/TenantContext';
 
 
 export default function AppointmentsScreen() {

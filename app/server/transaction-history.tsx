@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebaseConfig';
+import { db } from '../../lib/config/firebaseConfig';
 import SuperAdminSidebar from '@/components/SuperAdminSidebar';
 import SearchableDropdown from '@/components/SearchableDropdown';
-import { getAllTransactions, TransactionRecord } from '../lib/subscriptionService';
+import { getAllTransactions, TransactionRecord } from '../../lib/services/subscriptionService';
 
 interface TransactionWithPeriod extends TransactionRecord {
   periodStatus?: 'active' | 'queued' | 'expired' | 'cancelled';
@@ -20,7 +20,6 @@ export default function TransactionHistoryScreen() {
   const [filteredTransactions, setFilteredTransactions] = useState<TransactionWithPeriod[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
-  const [typeFilter, setTypeFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -97,14 +96,9 @@ export default function TransactionHistoryScreen() {
       filtered = filtered.filter(transaction => transaction.periodStatus === statusFilter.toLowerCase());
     }
 
-    // Type filter
-    if (typeFilter !== 'All') {
-      filtered = filtered.filter(transaction => transaction.type === typeFilter.toLowerCase());
-    }
-
     setFilteredTransactions(filtered);
     setCurrentPage(1); // Reset to first page when filters change
-  }, [transactions, searchTerm, statusFilter, typeFilter]);
+  }, [transactions, searchTerm, statusFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
@@ -172,27 +166,14 @@ export default function TransactionHistoryScreen() {
                   <SearchableDropdown
                     options={[
                       { id: 'all', label: 'All Status', value: 'All' },
+                      { id: 'unknown', label: 'Unknown', value: 'Unknown' },
                       { id: 'active', label: 'Active', value: 'Active' },
-                      { id: 'queued', label: 'Queued', value: 'Queued' },
-                      { id: 'expired', label: 'Expired', value: 'Expired' },
-                      { id: 'cancelled', label: 'Cancelled', value: 'Cancelled' }
+                      { id: 'queued', label: 'Queue', value: 'Queued' }
                     ]}
                     selectedValue={statusFilter}
                     onSelect={(option) => setStatusFilter(option.value)}
-                    style={{ minWidth: 120, marginRight: 10 }}
-                    zIndex={200}
-                  />
-                  <SearchableDropdown
-                    options={[
-                      { id: 'all', label: 'All Types', value: 'All' },
-                      { id: 'new', label: 'New', value: 'New' },
-                      { id: 'renewal', label: 'Renewal', value: 'Renewal' },
-                      { id: 'extension', label: 'Extension', value: 'Extension' }
-                    ]}
-                    selectedValue={typeFilter}
-                    onSelect={(option) => setTypeFilter(option.value)}
                     style={{ minWidth: 120 }}
-                    zIndex={100}
+                    zIndex={200}
                   />
                 </View>
               </View>
@@ -201,7 +182,6 @@ export default function TransactionHistoryScreen() {
             <View style={styles.tableHeader}>
               <Text style={[styles.headerCell, {flex: 1.5}]}>Date</Text>
               <Text style={[styles.headerCell, {flex: 2}]}>Email/Clinic</Text>
-              <Text style={[styles.headerCell, {flex: 1}]}>Type</Text>
               <Text style={[styles.headerCell, {flex: 1}]}>Period</Text>
               <Text style={[styles.headerCell, {flex: 1}]}>Amount</Text>
               <Text style={[styles.headerCell, {flex: 1}]}>Status</Text>
@@ -228,11 +208,6 @@ export default function TransactionHistoryScreen() {
                       <Text style={styles.cellText} numberOfLines={1}>{transaction.email}</Text>
                       <Text style={styles.cellSubText} numberOfLines={1}>{transaction.clinicName}</Text>
                     </View>
-                    <View style={[styles.cell, {flex: 1}]}>
-                      <View style={[styles.typeBadge, { backgroundColor: getTypeColor(transaction.type) }]}>
-                        <Text style={styles.typeText}>{transaction.type.toUpperCase()}</Text>
-                      </View>
-                    </View>
                     <Text style={[styles.cellText, {flex: 1}]}>{transaction.period}</Text>
                     <Text style={[styles.cellText, {flex: 1}]}>{transaction.amount}</Text>
                     <View style={[styles.statusCell, {flex: 1}]}>
@@ -247,10 +222,10 @@ export default function TransactionHistoryScreen() {
                         <Text style={styles.cellText}>
                           {transaction.daysRemaining} days
                         </Text>
-                      ) : transaction.periodStatus === 'queued' ? (
-                        <Text style={styles.cellText}>Queued</Text>
+                      ) : (transaction.periodStatus === 'queued' || !transaction.periodStatus || transaction.periodStatus === 'unknown') ? (
+                        <Text style={styles.cellText}>N/A</Text>
                       ) : (
-                        <Text style={styles.cellText}>-</Text>
+                        <Text style={styles.cellText}>N/A</Text>
                       )}
                     </View>
                   </View>

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { isStaffMember } from '../lib/staffService';
 
 export default function IndexScreen() {
   const router = useRouter();
@@ -23,33 +22,31 @@ export default function IndexScreen() {
       if (user) {
         // User is logged in, redirect based on role
         if (user.email?.includes('superadmin')) {
-          router.replace('/superadmin');
+          router.replace('/server/superadmin');
         } else {
-          // Check if user is staff
           checkUserRoleAndRedirect(user.email);
         }
       } else {
-        // User not logged in, redirect to login
-        router.replace('/login');
+        // User not logged in, redirect to mobile login
+        router.replace('/veterinarian/mobile-login');
       }
     }
   }, [user, loading, isReady]);
   
-  const checkUserRoleAndRedirect = async (email: string) => {
-    try {
-      const staffCheck = await isStaffMember(email, email);
-      if (staffCheck) {
-        router.replace('/staff-dashboard');
-      } else {
-        router.replace('/dashboard');
-      }
-    } catch (error) {
-      console.error('Error checking user role:', error);
-      router.replace('/dashboard'); // Default to admin dashboard
+  const checkUserRoleAndRedirect = (email: string) => {
+    // Check if user is a veterinarian (contains 'dr.' or 'vet' in email)
+    const isVeterinarian = email.toLowerCase().includes('dr.') || 
+                          email.toLowerCase().includes('vet') ||
+                          email.toLowerCase().includes('doctor');
+    
+    if (isVeterinarian) {
+      router.replace('/vet-mobile-dashboard');
+    } else {
+      router.replace('/client/dashboard');
     }
   };
 
-  if (loading) {
+  if (loading || !isReady) {
     return (
       <View style={styles.container}>
         <Text>Loading...</Text>

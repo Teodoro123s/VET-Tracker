@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { loginUser } from '../lib/firebaseService';
+import { loginUser } from '../lib/services/firebaseService';
 import { Ionicons } from '@expo/vector-icons';
 
 

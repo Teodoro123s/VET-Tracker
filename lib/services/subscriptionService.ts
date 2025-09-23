@@ -1,5 +1,5 @@
 import { collection, doc, setDoc, getDocs, query, orderBy, where, updateDoc, addDoc, Timestamp } from 'firebase/firestore';
-import { db } from './firebaseConfig';
+import { db } from '../config/firebaseConfig';
 
 export interface SubscriptionPeriod {
   id: string;

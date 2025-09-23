@@ -2,10 +2,10 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image,
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import SuperAdminSidebar from '@/components/SuperAdminSidebar';
-import { subscribeToTenants, Subscriber } from '../lib/superAdminService';
-import { addSubscriptionPeriod } from '../lib/subscriptionService';
+import { subscribeToTenants, Subscriber } from '../../lib/services/superAdminService';
+import { addSubscriptionPeriod } from '../../lib/services/subscriptionService';
 import { collection, onSnapshot, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebaseConfig';
+import { db } from '../../lib/config/firebaseConfig';
 
 
 export default function SubscriptionsScreen() {
@@ -228,11 +228,11 @@ export default function SubscriptionsScreen() {
             </View>
             
             <View style={styles.tableHeader}>
-              <Text style={styles.headerCell}>Email</Text>
-              <Text style={styles.headerCell}>Current Period</Text>
-              <Text style={styles.headerCell}>End Date</Text>
-              <Text style={styles.headerCell}>Days Left</Text>
-              <Text style={styles.headerCell}>Status</Text>
+              <Text style={[styles.headerCell, {flex: 2}]}>Email</Text>
+              <Text style={[styles.headerCell, {flex: 1.5}]}>Current Period</Text>
+              <Text style={[styles.headerCell, {flex: 1.5}]}>End Date</Text>
+              <Text style={[styles.headerCell, {flex: 1}]}>Days Left</Text>
+              <Text style={[styles.headerCell, {flex: 1}]}>Status</Text>
             </View>
             
             <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={false}>
@@ -274,14 +274,14 @@ export default function SubscriptionsScreen() {
                           setShowTenantDetails(true);
                         }}
                       >
-                        <Text style={styles.cell}>{subscription.email}</Text>
-                        <Text style={styles.cell}>{subscription.period}</Text>
-                        <Text style={styles.cell}>{subscription.endDate.toLocaleDateString()}</Text>
-                        <Text style={[styles.cell, 
+                        <Text style={[styles.cell, {flex: 2}]}>{subscription.email}</Text>
+                        <Text style={[styles.cell, {flex: 1.5}]}>{subscription.period}</Text>
+                        <Text style={[styles.cell, {flex: 1.5}]}>{subscription.endDate.toLocaleDateString()}</Text>
+                        <Text style={[styles.cell, {flex: 1},
                           daysLeft < 0 && styles.overdueText,
                           daysLeft <= 7 && daysLeft >= 0 && styles.dueSoonText
                         ]}>{daysLeft < 0 ? `${Math.abs(daysLeft)} overdue` : `${daysLeft} days`}</Text>
-                        <View style={styles.statusContainer}>
+                        <View style={[styles.statusContainer, {flex: 1}]}>
                           <View style={[styles.statusBadge, 
                             status === 'Active' && styles.activeBadge,
                             status === 'Expiring Soon' && styles.expiringSoonBadge,
@@ -306,11 +306,11 @@ export default function SubscriptionsScreen() {
                           setShowTenantDetails(true);
                         }}
                       >
-                        <Text style={styles.cell}>{subscription.email}</Text>
-                        <Text style={styles.cell}>{subscription.period}</Text>
-                        <Text style={styles.cell}>{subscription.startDate.toLocaleDateString()}</Text>
-                        <Text style={styles.cell}>Queued</Text>
-                        <View style={styles.statusContainer}>
+                        <Text style={[styles.cell, {flex: 2}]}>{subscription.email}</Text>
+                        <Text style={[styles.cell, {flex: 1.5}]}>{subscription.period}</Text>
+                        <Text style={[styles.cell, {flex: 1.5}]}>{subscription.startDate.toLocaleDateString()}</Text>
+                        <Text style={[styles.cell, {flex: 1}]}>Queued</Text>
+                        <View style={[styles.statusContainer, {flex: 1}]}>
                           <View style={[styles.statusBadge, styles.queuedBadge]}>
                             <Text style={[styles.statusText, styles.queuedText]}>Pending</Text>
                           </View>

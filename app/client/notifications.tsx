@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput } from 'react-native';
 import { useState, useEffect } from 'react';
-import { useNotifications } from '../contexts/NotificationContext';
-import { getAppointments } from '../lib/firebaseService';
+import { useNotifications } from '../../contexts/NotificationContext';
+import { getAppointments } from '../../lib/services/firebaseService';
 
 export default function NotificationsScreen() {
   const { notifications, markAsRead, markAllAsRead } = useNotifications();

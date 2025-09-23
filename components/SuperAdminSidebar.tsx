@@ -8,12 +8,12 @@ export default function SuperAdminSidebar() {
   const [ownerEmail] = useState('owner@vetclinic.com');
 
   const menuItems = [
-    { name: 'Dashboard', icon: require('@/assets/dashboard.png'), route: '/superadmin-dashboard' },
-    { name: 'Tenants', icon: require('@/assets/customers.png'), route: '/superadmin' },
-    { name: 'Subscriptions', icon: require('@/assets/notifications.png'), route: '/subscriptions' },
-    { name: 'Subscription Periods', icon: require('@/assets/appointments.png'), route: '/subscription-periods' },
-    { name: 'Transaction History', icon: require('@/assets/dashboard.png'), route: '/transaction-history' },
-    { name: 'Logout', icon: require('@/assets/logout.png'), route: '/logout' },
+    { name: 'Dashboard', icon: require('@/assets/dashboard.png'), route: '/server/superadmin-dashboard' },
+    { name: 'Tenants', icon: require('@/assets/customers.png'), route: '/server/superadmin' },
+    { name: 'Subscriptions', icon: require('@/assets/notifications.png'), route: '/server/subscriptions' },
+    { name: 'Subscription Periods', icon: require('@/assets/appointments.png'), route: '/server/subscription-periods' },
+    { name: 'Transaction History', icon: require('@/assets/dashboard.png'), route: '/server/transaction-history' },
+    { name: 'Logout', icon: require('@/assets/logout.png'), route: '/shared/logout' },
   ];
 
   return (

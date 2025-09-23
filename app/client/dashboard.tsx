@@ -1,8 +1,8 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { getCustomers, getPets, getVeterinarians, getAppointments } from '../lib/firebaseService';
-import { useTenant } from '../contexts/TenantContext';
+import { getCustomers, getPets, getVeterinarians, getAppointments } from '../../lib/services/firebaseService';
+import { useTenant } from '../../contexts/TenantContext';
 
 
 export default function DashboardScreen() {

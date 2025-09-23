@@ -14,12 +14,12 @@ import { NotificationProvider } from '@/contexts/NotificationContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { TenantProvider } from '@/contexts/TenantContext';
 import Sidebar from '@/components/Sidebar';
-import { subscriptionScheduler } from '@/lib/subscriptionScheduler';
+import { subscriptionScheduler } from '@/lib/utils/subscriptionScheduler';
 
 function AppContent() {
   const pathname = usePathname();
-  const isSuperAdmin = pathname === '/superadmin' || pathname === '/subscriptions' || pathname === '/subscription-periods' || pathname === '/transaction-history' || pathname === '/superadmin-dashboard' || pathname === '/login';
-  const showSidebar = !isSuperAdmin;
+  const noSidebarRoutes = pathname === '/server/superadmin' || pathname === '/server/subscriptions' || pathname === '/server/subscription-periods' || pathname === '/server/transaction-history' || pathname === '/server/superadmin-dashboard' || pathname === '/auth/admin-login' || pathname === '/auth/superadmin-login' || pathname === '/veterinarian/mobile-login' || pathname === '/veterinarian/vet-mobile' || pathname === '/client/staff-dashboard' || pathname === '/veterinarian/mobile' || pathname === '/auth/login' || pathname === '/login' || pathname === '/';
+  const showSidebar = !noSidebarRoutes;
   
   return (
     <NavigationThemeProvider value={DefaultTheme}>
@@ -28,23 +28,32 @@ function AppContent() {
         <View style={(!showSidebar) ? styles.fullContent : styles.content}>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
-            <Stack.Screen name="dashboard" />
-            <Stack.Screen name="appointments" />
-            <Stack.Screen name="customers" />
-            <Stack.Screen name="veterinarians" />
-            <Stack.Screen name="staff" />
-
-            <Stack.Screen name="records" />
-            <Stack.Screen name="notifications" />
-            <Stack.Screen name="settings" />
-            <Stack.Screen name="logout" />
-            <Stack.Screen name="superadmin" />
-            <Stack.Screen name="subscriptions" />
-            <Stack.Screen name="subscription-periods" />
-            <Stack.Screen name="transaction-history" />
-            <Stack.Screen name="admin-details" />
-            <Stack.Screen name="vet-calendar" />
-            <Stack.Screen name="login" />
+            <Stack.Screen name="client/dashboard" />
+            <Stack.Screen name="client/appointments" />
+            <Stack.Screen name="client/customers" />
+            <Stack.Screen name="client/veterinarians" />
+            <Stack.Screen name="client/staff" />
+            <Stack.Screen name="client/records" />
+            <Stack.Screen name="client/notifications" />
+            <Stack.Screen name="client/settings" />
+            <Stack.Screen name="client/staff-dashboard" />
+            <Stack.Screen name="client/staff-profile" />
+            <Stack.Screen name="client/admin-details" />
+            <Stack.Screen name="client/dashboard-analytics" />
+            <Stack.Screen name="shared/logout" />
+            <Stack.Screen name="server/superadmin" />
+            <Stack.Screen name="server/subscriptions" />
+            <Stack.Screen name="server/subscription-periods" />
+            <Stack.Screen name="server/transaction-history" />
+            <Stack.Screen name="server/superadmin-dashboard" />
+            <Stack.Screen name="veterinarian/vet-calendar" />
+            <Stack.Screen name="veterinarian/vet-mobile" />
+            <Stack.Screen name="veterinarian/vet-appointments" />
+            <Stack.Screen name="veterinarian/vet-medical-record" />
+            <Stack.Screen name="veterinarian/mobile-login" />
+            <Stack.Screen name="veterinarian/mobile" />
+            <Stack.Screen name="auth/admin-login" />
+            <Stack.Screen name="auth/superadmin-login" />
 
             <Stack.Screen name="+not-found" />
           </Stack>

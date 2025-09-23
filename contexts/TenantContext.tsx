@@ -19,8 +19,8 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
   
   const userEmail = user?.email || null;
-  const isSuperAdmin = userEmail?.includes('superadmin') || false;
-  const tenantId = isSuperAdmin ? null : userEmail?.match(/^([^@]+)@/)?.[1] || null;
+  const isSuperAdmin = user?.role === 'superadmin' || userEmail?.includes('superadmin') || false;
+  const tenantId = isSuperAdmin ? null : (user?.tenantId || userEmail?.match(/^([^@]+)@/)?.[1] || null);
 
   return (
     <TenantContext.Provider value={{ userEmail, isSuperAdmin, tenantId }}>

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Modal, Image, Animated } from 'react-native';
 import SearchableDropdown from '@/components/SearchableDropdown';
-import { getCustomers, getPets, addCustomer, addPet, addMedicalRecord, deleteCustomerWithPets, getMedicalCategories, getMedicalForms, getMedicalRecords, getFormFields } from '../lib/firebaseService';
-import { useTenant } from '../contexts/TenantContext';
+import { getCustomers, getPets, addCustomer, addPet, addMedicalRecord, deleteCustomerWithPets, getMedicalCategories, getMedicalForms, getMedicalRecords, getFormFields } from '../../lib/services/firebaseService';
+import { useTenant } from '../../contexts/TenantContext';
 
 export default function CustomersScreen() {
   const { userEmail } = useTenant();

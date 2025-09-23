@@ -1,11 +1,11 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, Modal, Animated, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import SearchableDropdown from '@/components/SearchableDropdown';
-import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '../lib/firebaseService';
-import { generateSecurePassword } from '../lib/emailService';
-import { sendStaffCredentialsViaEmailJS } from '../lib/freeEmailService';
-import { registerUser } from '../lib/firebaseService';
-import { useTenant } from '../contexts/TenantContext';
+import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '../../lib/services/firebaseService';
+import { generateSecurePassword } from '../../lib/utils/emailService';
+import { sendStaffCredentialsViaEmailJS } from '../../lib/utils/freeEmailService';
+import { registerUser } from '../../lib/services/firebaseService';
+import { useTenant } from '../../contexts/TenantContext';
 
 export default function VeterinariansScreen() {
   const { userEmail } = useTenant();
@@ -168,6 +168,28 @@ export default function VeterinariansScreen() {
       } catch (authError) {
         console.error('Auth error:', authError);
         // Continue even if auth fails
+      }
+      
+      // Create tenant entry for login authentication
+      try {
+        const { useTenant } = require('../../contexts/TenantContext');
+        const { addDoc, collection } = require('firebase/firestore');
+        const { db } = require('../../lib/config/firebaseConfig');
+        
+        await addDoc(collection(db, 'tenants'), {
+          email: newVeterinarian.email,
+          password: generatedPassword,
+          role: 'veterinarian',
+          status: 'active',
+          tenantId: userEmail?.match(/^([^@]+)@/)?.[1] || 'default',
+          clinicName: 'Veterinary Clinic',
+          createdAt: new Date(),
+          createdBy: userEmail
+        });
+        console.log('Tenant entry created for veterinarian login');
+      } catch (tenantError) {
+        console.error('Error creating tenant entry:', tenantError);
+        // Continue even if tenant creation fails
       }
       
       // Send credentials via EmailJS
@@ -411,6 +433,25 @@ export default function VeterinariansScreen() {
                       const newPassword = generateSecurePassword();
                       
                       try {
+                        // Update tenant password in database
+                        const { query, where, getDocs, updateDoc, doc, collection } = require('firebase/firestore');
+                        const { db } = require('../../lib/config/firebaseConfig');
+                        
+                        const tenantQuery = query(
+                          collection(db, 'tenants'),
+                          where('email', '==', selectedVeterinarian.email)
+                        );
+                        const tenantSnapshot = await getDocs(tenantQuery);
+                        
+                        if (!tenantSnapshot.empty) {
+                          const tenantDoc = tenantSnapshot.docs[0];
+                          await updateDoc(doc(db, 'tenants', tenantDoc.id), {
+                            password: newPassword,
+                            updatedAt: new Date()
+                          });
+                          console.log('Tenant password updated successfully');
+                        }
+                        
                         // Send new credentials via EmailJS
                         const emailResult = await sendStaffCredentialsViaEmailJS(
                           selectedVeterinarian.email,

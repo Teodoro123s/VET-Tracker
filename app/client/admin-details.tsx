@@ -1,8 +1,8 @@
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated, TextInput, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
-import { useTenant } from '../contexts/TenantContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useTenant } from '../../contexts/TenantContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function AdminDetailsScreen() {
   const router = useRouter();

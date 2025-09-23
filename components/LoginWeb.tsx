@@ -1,34 +1,93 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import { loginUser } from '../lib/firebaseService';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../lib/config/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginWeb() {
   const router = useRouter();
+  const { checkAuthState } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleLogin = async () => {
-    if (!username || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
+    setErrorMessage('');
+    
+    // Validation
+    if (!username.trim()) {
+      setErrorMessage('Please enter your email address');
+      return;
+    }
+    
+    if (!password.trim()) {
+      setErrorMessage('Please enter your password');
+      return;
+    }
+    
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(username.trim())) {
+      setErrorMessage('Please enter a valid email address');
       return;
     }
 
     setIsLoading(true);
     try {
-      const result = await loginUser(username, password);
-      console.log('Login successful:', result);
+      // Check in tenants collection for user credentials
+      const q = query(collection(db, 'tenants'), where('email', '==', username.trim()));
+      const querySnapshot = await getDocs(q);
       
-      if (username.includes('superadmin')) {
+      if (querySnapshot.empty) {
+        setErrorMessage('No account found with this email address');
+        return;
+      }
+      
+      const userDoc = querySnapshot.docs[0];
+      const userData = userDoc.data();
+      
+      // Check password
+      if (userData.password !== password) {
+        setErrorMessage('Incorrect password. Please try again.');
+        return;
+      }
+      
+      // Check account status
+      if (userData.status === 'inactive' || userData.status === 'suspended') {
+        setErrorMessage('This account has been disabled. Contact support.');
+        return;
+      }
+      
+      console.log('Login successful:', userData);
+      
+      // Store user data in AsyncStorage
+      await AsyncStorage.setItem('currentUser', JSON.stringify({
+        email: userData.email,
+        role: userData.role,
+        tenantId: userData.tenantId,
+        clinicName: userData.clinicName
+      }));
+      
+      // Update auth context immediately
+      await checkAuthState();
+      
+      // Route based on role or email
+      if (username.includes('superadmin') || userData.role === 'superadmin') {
         router.replace('/superadmin');
+      } else if (userData.role === 'staff') {
+        router.replace('/staff-dashboard');
       } else {
         router.replace('/dashboard');
       }
+      
     } catch (error) {
-      Alert.alert('Error', 'Invalid email or password');
+      console.error('Login error:', error);
+      setErrorMessage('Login failed. Please check your internet connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -46,6 +105,12 @@ export default function LoginWeb() {
         </View>
 
         <View style={styles.formContainer}>
+          {errorMessage ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          ) : null}
+          
           <View style={styles.inputContainer}>
             <Ionicons name="mail-outline" size={18} color="#666" style={styles.inputIcon} />
             <TextInput
@@ -53,9 +118,13 @@ export default function LoginWeb() {
               placeholder="Email address (e.g., clinic@gmail.com)"
               placeholderTextColor="#bbb"
               value={username}
-              onChangeText={setUsername}
+              onChangeText={(text) => {
+                setUsername(text);
+                if (errorMessage) setErrorMessage('');
+              }}
               autoCapitalize="none"
               keyboardType="email-address"
+              editable={!isLoading}
             />
           </View>
 
@@ -66,12 +135,18 @@ export default function LoginWeb() {
               placeholder="Password"
               placeholderTextColor="#bbb"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (errorMessage) setErrorMessage('');
+              }}
               secureTextEntry={!showPassword}
+              editable={!isLoading}
+              onSubmitEditing={handleLogin}
             />
             <TouchableOpacity 
               style={styles.eyeIcon}
               onPress={() => setShowPassword(!showPassword)}
+              disabled={isLoading}
             >
               <Ionicons 
                 name={showPassword ? "eye-off-outline" : "eye-outline"} 
@@ -151,6 +226,19 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: '100%',
+  },
+  errorContainer: {
+    backgroundColor: '#fee',
+    borderColor: '#fcc',
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#c33',
+    fontSize: 14,
+    textAlign: 'center',
   },
   inputContainer: {
     flexDirection: 'row',

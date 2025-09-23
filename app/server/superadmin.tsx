@@ -3,18 +3,22 @@ import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import SuperAdminSidebar from '@/components/SuperAdminSidebar';
 import SearchableDropdown from '@/components/SearchableDropdown';
-import { createTenant, registerUser } from '../lib/firebaseService';
-import { createClinicUser } from '../lib/clientAuth';
-import { fetchAllTenants, deleteTenant, subscribeToTenants, updateSubscriber, Subscriber } from '../lib/superAdminService';
-import { sendCredentialsEmail, generateSecurePassword } from '../lib/emailService';
-import { deleteUserCompletely } from '../lib/completeUserDeletion';
-import { addSubscriptionPeriod } from '../lib/subscriptionService';
+import { createTenant, registerUser } from '../../lib/services/firebaseService';
+import { createClinicUser } from '../../lib/clientAuth';
+import { fetchAllTenants, deleteTenant, subscribeToTenants, updateSubscriber, createSubscriber, Subscriber } from '../../lib/services/superAdminService';
+import { sendCredentialsEmail, generateSecurePassword } from '../../lib/utils/emailService';
+import { deleteUserCompletely } from '../../lib/utils/completeUserDeletion';
+import { addSubscriptionPeriod } from '../../lib/services/subscriptionService';
 import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebaseConfig';
+import { db } from '../../lib/config/firebaseConfig';
 import { Typography, Spacing, ButtonSizes, ModalSizes } from '@/constants/Typography';
 
 function SubscriptionPeriodsTable({ selectedTenant }) {
   const [subscriberTransactions, setSubscriberTransactions] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [showDropdown, setShowDropdown] = useState(false);
   
   useEffect(() => {
     if (selectedTenant?.email) {
@@ -72,47 +76,109 @@ function SubscriptionPeriodsTable({ selectedTenant }) {
     }
   }, [selectedTenant?.email]);
   
+  const filteredTransactions = subscriberTransactions.filter(transaction => 
+    transaction.period.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    transaction.status.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
+
   return (
     <View style={[styles.tableContainer, { marginTop: 20 }]}>
       <View style={styles.tableTopRow}>
         <Text style={styles.detailTitle}>Subscription Periods</Text>
+        <View style={styles.searchContainer}>
+          <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+          <TextInput 
+            style={styles.searchInput}
+            placeholder="Search periods..."
+            placeholderTextColor="#bbb"
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+          />
+        </View>
       </View>
       
       <View style={styles.tableHeader}>
-        <Text style={styles.headerCell}>Period</Text>
-        <Text style={styles.headerCell}>Start Date</Text>
-        <Text style={styles.headerCell}>End Date</Text>
-        <Text style={styles.headerCell}>Status</Text>
+        <Text style={[styles.headerCell, {flex: 2}]}>Period</Text>
+        <Text style={[styles.headerCell, {flex: 2}]}>Start Date</Text>
+        <Text style={[styles.headerCell, {flex: 2}]}>End Date</Text>
+        <Text style={[styles.headerCell, {flex: 1}]}>Status</Text>
       </View>
       
       <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={false}>
-        {subscriberTransactions.length === 0 ? (
+        {paginatedTransactions.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No subscription periods found</Text>
+            <Text style={styles.emptyStateText}>
+              {subscriberTransactions.length === 0 ? 'No subscription periods found' : 'No matching periods found'}
+            </Text>
           </View>
         ) : (
-          subscriberTransactions.map((transaction) => (
+          paginatedTransactions.map((transaction) => (
             <View key={transaction.id} style={styles.tableRow}>
-              <Text style={styles.cell}>{transaction.period}</Text>
-              <Text style={styles.cell}>{transaction.startDate.toLocaleDateString()}</Text>
-              <Text style={styles.cell}>{transaction.endDate.toLocaleDateString()}</Text>
-              <View style={styles.statusContainer}>
-                <View style={[styles.statusBadge, 
-                  transaction.status === 'active' && styles.activeBadge,
-                  transaction.status === 'queued' && styles.pendingBadge,
-                  transaction.status === 'expired' && styles.expiredBadge
-                ]}>
-                  <Text style={[styles.statusText,
-                    transaction.status === 'active' && styles.activeText,
-                    transaction.status === 'queued' && styles.pendingText,
-                    transaction.status === 'expired' && styles.expiredText
-                  ]}>{transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}</Text>
-                </View>
+              <Text style={[styles.cell, {flex: 2}]}>{transaction.period}</Text>
+              <Text style={[styles.cell, {flex: 2}]}>{transaction.startDate.toLocaleDateString()}</Text>
+              <Text style={[styles.cell, {flex: 2}]}>{transaction.endDate.toLocaleDateString()}</Text>
+              <View style={[styles.statusContainer, {flex: 1}]}>
+                <Text style={[styles.statusText,
+                  transaction.status === 'active' && styles.activeText,
+                  transaction.status === 'queued' && styles.pendingText,
+                  transaction.status === 'expired' && styles.expiredText
+                ]}>{transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}</Text>
               </View>
             </View>
           ))
         )}
       </ScrollView>
+      
+      <View style={styles.paginationContainer}>
+        <View style={styles.paginationControls}>
+          <Text style={styles.paginationLabel}>Show:</Text>
+          <View style={styles.dropdownContainer}>
+            <TouchableOpacity style={styles.dropdown} onPress={() => setShowDropdown(!showDropdown)}>
+              <Text style={styles.dropdownText}>{itemsPerPage}</Text>
+              <Text style={styles.dropdownArrow}>▼</Text>
+            </TouchableOpacity>
+            {showDropdown && (
+              <View style={styles.dropdownMenu}>
+                {[5, 10, 20, 50].map((option) => (
+                  <TouchableOpacity
+                    key={option}
+                    style={styles.dropdownOption}
+                    onPress={() => {
+                      setItemsPerPage(option);
+                      setCurrentPage(1);
+                      setShowDropdown(false);
+                    }}
+                  >
+                    <Text style={styles.dropdownOptionText}>{option}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+          <Text style={styles.paginationLabel}>entries</Text>
+          
+          <TouchableOpacity style={styles.pageBtn} onPress={() => currentPage > 1 && setCurrentPage(currentPage - 1)}>
+            <Text style={styles.pageBtnText}>Prev</Text>
+          </TouchableOpacity>
+          <TextInput 
+            style={styles.pageInput}
+            value={currentPage.toString()}
+            keyboardType="numeric"
+            onChangeText={(text) => {
+              const page = parseInt(text);
+              if (page >= 1) setCurrentPage(page);
+            }}
+          />
+          <Text style={styles.pageOf}>of {Math.ceil(filteredTransactions.length / itemsPerPage)}</Text>
+          <TouchableOpacity style={styles.pageBtn} onPress={() => setCurrentPage(currentPage + 1)}>
+            <Text style={styles.pageBtnText}>Next</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 }
@@ -245,6 +311,7 @@ export default function SuperAdminScreen() {
         period: doc.data().period,
         price: doc.data().price || '₱7,499'
       }));
+      console.log('Fetched subscription periods from database:', periodsData);
       setSubscriptionPeriods(periodsData);
     });
     
@@ -298,31 +365,29 @@ export default function SuperAdminScreen() {
     <View style={styles.container}>
       <SuperAdminSidebar />
       <View style={styles.mainContent}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Subscriber Management</Text>
-        <View style={styles.headerActions}>
 
-          <View style={styles.searchContainer}>
-            <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
-            <TextInput 
-              style={styles.searchInput}
-              placeholder="Search subscribers..."
-              placeholderTextColor="#bbb"
-              value={searchTerm}
-              onChangeText={setSearchTerm}
-            />
-          </View>
-        </View>
-      </View>
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.headerText}>Subscriber Management</Text>
+          <View style={styles.headerActions}>
+
+            <View style={styles.searchContainer}>
+              <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+              <TextInput 
+                style={styles.searchInput}
+                placeholder="Search subscribers..."
+                placeholderTextColor="#bbb"
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+              />
+            </View>
+          </View>
+        </View>
         {!showTenantDetails ? (
         <View style={styles.tableContainer}>
-          <View style={styles.tableTopRow}>
+            <View style={styles.tableTopRow}>
             <View style={styles.headerRow}>
-              <TouchableOpacity style={styles.returnButton} onPress={() => router.back()}>
-                <Image source={require('@/assets/Vector.png')} style={styles.returnIcon} />
-              </TouchableOpacity>
               <Text style={styles.detailTitle}>Subscriber Management</Text>
               <View style={styles.filterButtons}>
                 <TouchableOpacity 
@@ -339,25 +404,25 @@ export default function SuperAdminScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-            <TouchableOpacity style={styles.addSubscriberButton} onPress={() => {
-              setShowAddDrawer(true);
-              Animated.timing(addDrawerAnimation, {
-                toValue: 0,
-                duration: 300,
-                useNativeDriver: false,
-              }).start();
-            }}>
-              <Text style={styles.addSubscriberButtonText}>+ Add New Subscriber</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.tableHeader}>
+              <TouchableOpacity style={styles.addSubscriberButton} onPress={() => {
+                setShowAddDrawer(true);
+                Animated.timing(addDrawerAnimation, {
+                  toValue: 0,
+                  duration: 300,
+                  useNativeDriver: false,
+                }).start();
+              }}>
+                <Text style={styles.addSubscriberButtonText}>+ Add New Subscriber</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.tableHeader}>
             <Text style={[styles.headerCell, {flex: 2}]}>Email</Text>
             <Text style={[styles.headerCell, {flex: 2}]}>Clinic Name</Text>
             <Text style={[styles.headerCell, {flex: 1.5}]}>Expiry Date</Text>
             <Text style={[styles.headerCell, {flex: 1}]}>Period</Text>
             <Text style={[styles.headerCell, {flex: 1}]}>Status</Text>
-          </View>
+            </View>
           
           <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={false}>
             {(() => {
@@ -478,7 +543,7 @@ export default function SuperAdminScreen() {
         ) : (
           <>
           <View style={styles.tableContainer}>
-            <View style={styles.tableTopRow}>
+              <View style={styles.tableTopRow}>
               <View style={styles.headerRow}>
                 <TouchableOpacity style={styles.returnButton} onPress={() => {
                   setShowTenantDetails(false);
@@ -486,14 +551,14 @@ export default function SuperAdminScreen() {
                 }}>
                   <Image source={require('@/assets/Vector.png')} style={styles.returnIcon} />
                 </TouchableOpacity>
-                <Text style={styles.detailTitle}>Subscriber Details - {selectedTenant?.clinicName || 'Clinic Name'}</Text>
+                <Text style={styles.detailTitle}>Subscriber Details</Text>
               </View>
-            </View>
-            
-            <View style={styles.tableHeader}>
+              </View>
+              
+              <View style={styles.tableHeader}>
               <Text style={[styles.headerCell, {flex: 1}]}>Field</Text>
               <Text style={[styles.headerCell, {flex: 2}]}>Value</Text>
-            </View>
+              </View>
             
             <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={false}>
               <View style={styles.tableRow}>
@@ -505,38 +570,8 @@ export default function SuperAdminScreen() {
                 <Text style={[styles.cell, {flex: 2}]}>{selectedTenant?.email}</Text>
               </View>
               <View style={styles.tableRow}>
-                <Text style={[styles.cell, {flex: 1}]}>Status</Text>
-                <Text style={[styles.cell, {flex: 2}]}>{subscriptionData?.status || selectedTenant?.status || 'active'}</Text>
-              </View>
-              <View style={styles.tableRow}>
-                <Text style={[styles.cell, {flex: 1}]}>Active Period</Text>
-                <Text style={[styles.cell, {flex: 2}]}>{activePeriod}</Text>
-              </View>
-              <View style={styles.tableRow}>
-                <Text style={[styles.cell, {flex: 1}]}>Subscription Created</Text>
-                <Text style={[styles.cell, {flex: 2}]}>{subscriptionData?.createdAt?.toLocaleDateString() || 'N/A'}</Text>
-              </View>
-              <View style={styles.tableRow}>
-                <Text style={[styles.cell, {flex: 1}]}>Subscription Start Date</Text>
-                <Text style={[styles.cell, {flex: 2}]}>{subscriptionData?.startDate?.toLocaleDateString() || 'N/A'}</Text>
-              </View>
-              <View style={styles.tableRow}>
-                <Text style={[styles.cell, {flex: 1}]}>Subscription End Date</Text>
-                <Text style={[styles.cell, {flex: 2}]}>{subscriptionData?.endDate?.toLocaleDateString() || 'N/A'}</Text>
-              </View>
-              <View style={styles.tableRow}>
-                <Text style={[styles.cell, {flex: 1}]}>Days Remaining</Text>
-                <Text style={[styles.cell, {flex: 2}]}>{subscriptionData ? Math.max(0, Math.ceil((subscriptionData.endDate - new Date()) / (1000 * 60 * 60 * 24))) + ' days' : 'N/A'}</Text>
-              </View>
-
-
-              <View style={styles.tableRow}>
                 <Text style={[styles.cell, {flex: 1}]}>Account Created</Text>
                 <Text style={[styles.cell, {flex: 2}]}>{selectedTenant?.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}</Text>
-              </View>
-              <View style={styles.tableRow}>
-                <Text style={[styles.cell, {flex: 1}]}>Subscription Status</Text>
-                <Text style={[styles.cell, {flex: 2}]}>{subscriptionData?.status === 'active' ? 'Active' : 'Queueing'}</Text>
               </View>
               <View style={styles.tableRow}>
                 <Text style={[styles.cell, {flex: 1}]}>Actions</Text>
@@ -662,7 +697,7 @@ export default function SuperAdminScreen() {
                   autoCapitalize="none"
                 />
                 
-                <Text style={styles.fieldLabel}>Period *</Text>
+                <Text style={styles.fieldLabel}>Subscription Period *</Text>
                 <SearchableDropdown
                   options={subscriptionPeriods.map((item, index) => ({
                     id: index,
@@ -692,8 +727,19 @@ export default function SuperAdminScreen() {
                     const tenantId = newSubscriber.email.split('@')[0];
                     
                     try {
-                      // Create Firebase Auth account
-                      const result = await createClinicUser(newSubscriber.email, tempPassword, tenantId);
+                      // Store user credentials in database
+                      const subscriberId = await createSubscriber({
+                        email: newSubscriber.email,
+                        password: tempPassword,
+                        tenantId: tenantId,
+                        clinicName: tenantId.replace(/[^a-zA-Z0-9]/g, ' '),
+                        role: 'admin',
+                        status: 'active'
+                      });
+                      
+                      if (!subscriberId) {
+                        throw new Error('Failed to create subscriber in database');
+                      }
                       
                       // Add initial subscription period
                       const selectedPeriod = subscriptionPeriods.find(p => p.period === newSubscriber.period);
@@ -777,6 +823,9 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     paddingHorizontal: 10,
     paddingVertical: 6,
+    marginHorizontal: 20,
+    marginVertical: 10,
+    backgroundColor: '#fff',
   },
   searchIcon: {
     width: 14,
@@ -804,6 +853,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#fff',
   },
+  stickyHeader: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 2,
+    borderBottomColor: '#ddd',
+  },
   tableTopRow: {
     backgroundColor: '#fff',
     paddingVertical: 15,
@@ -813,6 +867,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
+    position: 'static',
   },
   headerRow: {
     flexDirection: 'row',
@@ -1358,5 +1413,13 @@ const styles = StyleSheet.create({
     fontSize: Typography.fieldLabel,
     color: '#999',
     textAlign: 'center',
+  },
+  periodSearchContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginTop: 20,
   },
 });

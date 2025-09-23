@@ -1,4 +1,4 @@
-import { activateQueuedPeriods } from './subscriptionService';
+import { activateQueuedPeriods } from '../services/subscriptionService';
 
 class SubscriptionScheduler {
   private intervalId: NodeJS.Timeout | null = null;

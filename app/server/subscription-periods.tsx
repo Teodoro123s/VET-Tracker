@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import SuperAdminSidebar from '@/components/SuperAdminSidebar';
 import { collection, doc, setDoc, getDocs, onSnapshot, deleteDoc } from 'firebase/firestore';
-import { db } from '../lib/firebaseConfig';
+import { db } from '../../lib/config/firebaseConfig';
 import { Typography, Spacing, ButtonSizes, ModalSizes } from '@/constants/Typography';
 
 export default function SubscriptionPeriodsScreen() {

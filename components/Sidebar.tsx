@@ -14,14 +14,14 @@ export default function Sidebar() {
   const username = userEmail ? userEmail.split('@')[0] : 'admin';
 
   const menuItems = [
-    { name: 'Dashboard', icon: require('@/assets/dashboard.png'), route: '/dashboard' },
-    { name: 'Appointments', icon: require('@/assets/appointments.png'), route: '/appointments' },
-    { name: 'Customers', icon: require('@/assets/customers.png'), route: '/customers' },
-    { name: 'Personnel', icon: require('@/assets/veterinarians.png'), route: '/veterinarians' },
-    { name: 'Medical Records', icon: require('@/assets/medical-forms.png'), route: '/records' },
-    { name: 'Notifications', icon: require('@/assets/notifications.png'), route: '/notifications' },
-    { name: 'Settings', icon: require('@/assets/settings.png'), route: '/settings' },
-    { name: 'Logout', icon: require('@/assets/logout.png'), route: '/logout' },
+    { name: 'Dashboard', icon: require('@/assets/dashboard.png'), route: '/client/dashboard' },
+    { name: 'Appointments', icon: require('@/assets/appointments.png'), route: '/client/appointments' },
+    { name: 'Customers', icon: require('@/assets/customers.png'), route: '/client/customers' },
+    { name: 'Personnel', icon: require('@/assets/veterinarians.png'), route: '/client/veterinarians' },
+    { name: 'Medical Records', icon: require('@/assets/medical-forms.png'), route: '/client/records' },
+    { name: 'Notifications', icon: require('@/assets/notifications.png'), route: '/client/notifications' },
+    { name: 'Settings', icon: require('@/assets/settings.png'), route: '/client/settings' },
+    { name: 'Logout', icon: require('@/assets/logout.png'), route: '/shared/logout' },
   ];
 
   return (
@@ -30,7 +30,7 @@ export default function Sidebar() {
         <Image source={require('@/assets/Group 20.png')} style={styles['sidebar-logo']} />
         <TouchableOpacity 
           style={styles['sidebar-email-clickable']}
-          onPress={() => router.push('/admin-details')}
+          onPress={() => router.push('/client/admin-details')}
         >
           <Text style={styles['sidebar-email-text']}>{username}</Text>
         </TouchableOpacity>

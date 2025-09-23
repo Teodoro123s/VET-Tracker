@@ -2,12 +2,35 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTenant } from '@/contexts/TenantContext';
 
 export default function LogoutScreen() {
   const router = useRouter();
+  const { logout, user } = useAuth();
+  const { userRole } = useTenant();
 
-  const handleLogout = () => {
-    router.push('/login');
+  const getLoginRoute = () => {
+    const role = user?.role || userRole;
+    switch (role) {
+      case 'superadmin':
+        return '/auth/superadmin-login';
+      case 'veterinarian':
+        return '/veterinarian/mobile-login';
+      case 'admin':
+      default:
+        return '/auth/admin-login';
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace(getLoginRoute());
+    } catch (error) {
+      console.error('Error during logout:', error);
+      router.replace(getLoginRoute());
+    }
   };
 
   return (

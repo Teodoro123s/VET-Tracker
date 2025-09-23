@@ -1,5 +1,5 @@
-import { collection, getDocs, doc, deleteDoc, query, orderBy, onSnapshot, updateDoc } from 'firebase/firestore';
-import { db } from './firebaseConfig';
+import { collection, getDocs, doc, deleteDoc, query, orderBy, onSnapshot, updateDoc, addDoc } from 'firebase/firestore';
+import { db } from '../config/firebaseConfig';
 
 export interface Subscriber {
   id: string;
@@ -44,6 +44,19 @@ export function subscribeToTenants(callback: (tenants: Subscriber[]) => void): (
   });
   
   return unsubscribe;
+}
+
+export async function createSubscriber(subscriberData: Partial<Subscriber>): Promise<string | null> {
+  try {
+    const docRef = await addDoc(collection(db, 'tenants'), {
+      ...subscriberData,
+      createdAt: new Date()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating subscriber:', error);
+    return null;
+  }
 }
 
 export async function updateSubscriber(subscriberId: string, updateData: Partial<Subscriber>): Promise<boolean> {
