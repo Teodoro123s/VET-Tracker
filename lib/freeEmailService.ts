@@ -11,11 +11,13 @@ export async function sendStaffCredentialsViaEmailJS(email: string, password: st
         template_id: 'template_7c2cpda',
         user_id: '7nYFwpZOJE87ZXU45',
         template_params: {
+          email: email,
           to_email: email,
           to_name: doctorName,
+          name: doctorName,
           staff_email: email,
           staff_password: password,
-          doctor_name: doctorName,
+          portal_url: 'http://localhost:8081/login',
           login_email: email,
           login_password: password
         }

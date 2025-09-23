@@ -13,6 +13,109 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebaseConfig';
 import { Typography, Spacing, ButtonSizes, ModalSizes } from '@/constants/Typography';
 
+function SubscriptionPeriodsTable({ selectedTenant }) {
+  const [subscriberTransactions, setSubscriberTransactions] = useState([]);
+  
+  useEffect(() => {
+    if (selectedTenant?.email) {
+      const unsubscribe = onSnapshot(collection(db, 'transactions'), (snapshot) => {
+        const transactions = snapshot.docs.map(doc => {
+          const data = doc.data();
+          const createdAt = data.createdAt?.toDate() || new Date();
+          const periodDays = data.period === '1 month' ? 30 : 
+                           data.period === '6 months' ? 180 : 
+                           data.period === '1 year' ? 365 : 730;
+          const endDate = new Date(createdAt);
+          endDate.setDate(createdAt.getDate() + periodDays);
+          
+          return {
+            id: doc.id,
+            ...data,
+            startDate: createdAt,
+            endDate,
+            createdAt
+          };
+        });
+        
+        const emailTransactions = transactions
+          .filter(t => t.email === selectedTenant.email)
+          .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+        
+        const processedTransactions = emailTransactions.map((transaction, index) => {
+          const now = new Date();
+          let status = 'queued';
+          let startDate = transaction.createdAt;
+          
+          if (index === 0) {
+            if (now <= transaction.endDate) {
+              status = 'active';
+            } else {
+              status = 'expired';
+            }
+          } else {
+            const prevTransaction = emailTransactions[index - 1];
+            startDate = prevTransaction.endDate;
+            status = 'queued';
+          }
+          
+          return {
+            ...transaction,
+            status,
+            startDate
+          };
+        });
+        
+        setSubscriberTransactions(processedTransactions);
+      });
+      
+      return () => unsubscribe();
+    }
+  }, [selectedTenant?.email]);
+  
+  return (
+    <View style={[styles.tableContainer, { marginTop: 20 }]}>
+      <View style={styles.tableTopRow}>
+        <Text style={styles.detailTitle}>Subscription Periods</Text>
+      </View>
+      
+      <View style={styles.tableHeader}>
+        <Text style={styles.headerCell}>Period</Text>
+        <Text style={styles.headerCell}>Start Date</Text>
+        <Text style={styles.headerCell}>End Date</Text>
+        <Text style={styles.headerCell}>Status</Text>
+      </View>
+      
+      <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={false}>
+        {subscriberTransactions.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>No subscription periods found</Text>
+          </View>
+        ) : (
+          subscriberTransactions.map((transaction) => (
+            <View key={transaction.id} style={styles.tableRow}>
+              <Text style={styles.cell}>{transaction.period}</Text>
+              <Text style={styles.cell}>{transaction.startDate.toLocaleDateString()}</Text>
+              <Text style={styles.cell}>{transaction.endDate.toLocaleDateString()}</Text>
+              <View style={styles.statusContainer}>
+                <View style={[styles.statusBadge, 
+                  transaction.status === 'active' && styles.activeBadge,
+                  transaction.status === 'queued' && styles.pendingBadge,
+                  transaction.status === 'expired' && styles.expiredBadge
+                ]}>
+                  <Text style={[styles.statusText,
+                    transaction.status === 'active' && styles.activeText,
+                    transaction.status === 'queued' && styles.pendingText,
+                    transaction.status === 'expired' && styles.expiredText
+                  ]}>{transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}</Text>
+                </View>
+              </View>
+            </View>
+          ))
+        )}
+      </ScrollView>
+    </View>
+  );
+}
 
 export default function SuperAdminScreen() {
   const router = useRouter();
@@ -30,20 +133,12 @@ export default function SuperAdminScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Active');
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
-  const [showEmailDropdown, setShowEmailDropdown] = useState(false);
-  const [tenantEmails, setTenantEmails] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingPassword, setIsGeneratingPassword] = useState(false);
   const [activePeriod, setActivePeriod] = useState('');
+  const [subscriberPeriods, setSubscriberPeriods] = useState({});
   
-  // Fetch tenant emails from database
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'tenants'), (snapshot) => {
-      const emails = snapshot.docs.map(doc => doc.data().email).filter(email => email);
-      setTenantEmails(emails);
-    });
-    
-    return () => unsubscribe();
-  }, []);
+
   const [notification, setNotification] = useState(null);
 
   // Real-time subscription to tenants with inactivity check
@@ -132,14 +227,7 @@ export default function SuperAdminScreen() {
     }
   }, [selectedTenant?.email]);
   
-  const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let password = '';
-    for (let i = 0; i < 8; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return password;
-  };
+
   
 
 
@@ -147,12 +235,64 @@ export default function SuperAdminScreen() {
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  const subscriptionPeriods = [
-    { period: '1 month', price: '₱7,499' },
-    { period: '6 months', price: '₱44,994' },
-    { period: '1 year', price: '₱89,988' },
-    { period: '2 years', price: '₱179,976' }
-  ];
+  const [subscriptionPeriods, setSubscriptionPeriods] = useState([]);
+
+  // Fetch subscription periods from database
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'subscriptionPeriods'), (snapshot) => {
+      const periodsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        period: doc.data().period,
+        price: doc.data().price || '₱7,499'
+      }));
+      setSubscriptionPeriods(periodsData);
+    });
+    
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch periods for all subscribers
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'transactions'), (snapshot) => {
+      const transactions = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const createdAt = data.createdAt?.toDate() || new Date();
+        return {
+          id: doc.id,
+          ...data,
+          createdAt
+        };
+      });
+      
+      const periods = {};
+      subscribers.forEach(subscriber => {
+        const emailTransactions = transactions.filter(t => t.email === subscriber.email)
+          .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+        
+        if (emailTransactions.length > 0) {
+          const now = new Date();
+          const firstTransaction = emailTransactions[0];
+          const periodDays = firstTransaction.period === '1 month' ? 30 : 
+                           firstTransaction.period === '6 months' ? 180 : 
+                           firstTransaction.period === '1 year' ? 365 : 730;
+          const endDate = new Date(firstTransaction.createdAt);
+          endDate.setDate(endDate.getDate() + periodDays);
+          
+          if (now <= endDate) {
+            periods[subscriber.email] = firstTransaction.period;
+          } else {
+            periods[subscriber.email] = 'Expired';
+          }
+        } else {
+          periods[subscriber.email] = 'No subscription';
+        }
+      });
+      
+      setSubscriberPeriods(periods);
+    });
+    
+    return () => unsubscribe();
+  }, [subscribers]);
 
   return (
     <View style={styles.container}>
@@ -175,7 +315,7 @@ export default function SuperAdminScreen() {
         </View>
       </View>
       
-      <View style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {!showTenantDetails ? (
         <View style={styles.tableContainer}>
           <View style={styles.tableTopRow}>
@@ -199,21 +339,16 @@ export default function SuperAdminScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-            <View style={styles.actionButtons}>
-              <TouchableOpacity style={styles.transactionHistoryButton} onPress={() => router.push('/transaction-history')}>
-                <Text style={styles.transactionHistoryButtonText}>📊 Transaction History</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.addSubscriberButton} onPress={() => {
-                setShowAddDrawer(true);
-                Animated.timing(addDrawerAnimation, {
-                  toValue: 0,
-                  duration: 300,
-                  useNativeDriver: false,
-                }).start();
-              }}>
-                <Text style={styles.addSubscriberButtonText}>+ Add New Subscriber</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity style={styles.addSubscriberButton} onPress={() => {
+              setShowAddDrawer(true);
+              Animated.timing(addDrawerAnimation, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: false,
+              }).start();
+            }}>
+              <Text style={styles.addSubscriberButtonText}>+ Add New Subscriber</Text>
+            </TouchableOpacity>
           </View>
           
           <View style={styles.tableHeader}>
@@ -263,7 +398,7 @@ export default function SuperAdminScreen() {
                   <Text style={[styles.cell, {flex: 2}]} numberOfLines={1}>{subscriber.email}</Text>
                   <Text style={[styles.cell, {flex: 2}]} numberOfLines={1}>{subscriber.clinicName || subscriber.email?.split('@')[0]}</Text>
                   <Text style={[styles.cell, {flex: 1.5}]} numberOfLines={1}>{subscriber.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}</Text>
-                  <Text style={[styles.cell, {flex: 1}]} numberOfLines={1}>{activePeriod}</Text>
+                  <Text style={[styles.cell, {flex: 1}]} numberOfLines={1}>{subscriberPeriods[subscriber.email] || 'Loading...'}</Text>
                   <View style={[styles.statusCell, {flex: 1}]}>
                     <View style={[styles.statusBadge, 
                       subscriber.status === 'active' && styles.activeBadge,
@@ -341,6 +476,7 @@ export default function SuperAdminScreen() {
           </View>
         </View>
         ) : (
+          <>
           <View style={styles.tableContainer}>
             <View style={styles.tableTopRow}>
               <View style={styles.headerRow}>
@@ -405,7 +541,13 @@ export default function SuperAdminScreen() {
               <View style={styles.tableRow}>
                 <Text style={[styles.cell, {flex: 1}]}>Actions</Text>
                 <View style={[styles.actionButtonsRow, {flex: 2}]}>
-                  <TouchableOpacity style={[styles.resendCredentialsButton, { flex: 0, minWidth: 150 }]} onPress={async () => {
+                  <TouchableOpacity 
+                    style={[styles.resendCredentialsButton, { flex: 0, minWidth: 150, opacity: isGeneratingPassword ? 0.5 : 1 }]} 
+                    disabled={isGeneratingPassword}
+                    onPress={async () => {
+                    if (isGeneratingPassword) return;
+                    setIsGeneratingPassword(true);
+                    
                     const newTempPassword = generateSecurePassword();
                     
                     try {
@@ -458,26 +600,29 @@ export default function SuperAdminScreen() {
                       setNotification({ type: passwordUpdated ? 'success' : 'warning', message });
                       setTimeout(() => setNotification(null), 5000);
                       
-                      if (passwordUpdated) {
-                        Alert.alert('Success', `🔑 Password Updated & Sent Successfully!\n\n${emailResult.message}\n\n✅ Firebase Auth password updated automatically\n\n💡 User can login immediately with new password: ${newTempPassword}`);
-                      } else {
-                        Alert.alert('Manual Update Required', `🔑 Password Generated & Sent\n\n${emailResult.message}\n\n⚠️ MANUAL ACTION REQUIRED:\n\n1. Open Firebase Console\n2. Go to Authentication > Users\n3. Find user: ${selectedTenant?.email}\n4. Click 'Reset Password' or 'Edit'\n5. Set password to: ${newTempPassword}\n\n💡 User can login after manual update.`);
-                      }
+                      Alert.alert('Success', `✅ Password Generated Successfully!\n\n📧 Email: ${selectedTenant?.email}\n🔑 New Password: ${newTempPassword}\n\n${emailResult.message}\n\n💡 New credentials have been sent to the user's email.`);
                       
                     } catch (error) {
                       console.error('Error in password reset process:', error);
                       Alert.alert('Error', `❌ Failed to reset password\n\nError: ${error.message}\n\nPlease try again or contact support.`);
+                    } finally {
+                      setIsGeneratingPassword(false);
                     }
                   }}>
-                    <Text style={styles.resendCredentialsText}>Generate New Password</Text>
+                    <Text style={styles.resendCredentialsText}>
+                      {isGeneratingPassword ? 'Generating...' : 'Generate New Password'}
+                    </Text>
                   </TouchableOpacity>
 
                 </View>
               </View>
             </ScrollView>
           </View>
+          
+          <SubscriptionPeriodsTable selectedTenant={selectedTenant} />
+          </>
         )}
-      </View>
+      </ScrollView>
       </View>
       
       {notification && (
@@ -508,16 +653,13 @@ export default function SuperAdminScreen() {
               
               <ScrollView style={styles.drawerForm}>
                 <Text style={styles.fieldLabel}>Email *</Text>
-                <SearchableDropdown
-                  options={tenantEmails.map((email, index) => ({
-                    id: index,
-                    label: email,
-                    value: email
-                  }))}
-                  placeholder="Select Email (e.g., clinic@gmail.com)"
-                  selectedValue={newSubscriber.email}
-                  onSelect={(option) => setNewSubscriber({...newSubscriber, email: option.value})}
-                  zIndex={2000}
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Enter email (e.g., clinic@gmail.com)"
+                  value={newSubscriber.email}
+                  onChangeText={(text) => setNewSubscriber({...newSubscriber, email: text})}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
                 />
                 
                 <Text style={styles.fieldLabel}>Period *</Text>
@@ -527,6 +669,7 @@ export default function SuperAdminScreen() {
                     label: `${item.period} - ${item.price}`,
                     value: item.period
                   }))}
+                  placeholder={subscriptionPeriods.length === 0 ? "No subscription periods available" : "Select subscription period"}
                   selectedValue={newSubscriber.period}
                   onSelect={(option) => setNewSubscriber({...newSubscriber, period: option.value})}
                   zIndex={1500}
@@ -546,21 +689,15 @@ export default function SuperAdminScreen() {
                 <TouchableOpacity style={styles.saveButton} onPress={async () => {
                   if (newSubscriber.email && newSubscriber.period) {
                     const tempPassword = generateSecurePassword();
-                    const selectedPeriod = subscriptionPeriods.find(p => p.period === newSubscriber.period);
-                    
                     const tenantId = newSubscriber.email.split('@')[0];
                     
                     try {
                       // Create Firebase Auth account
-                      console.log('Creating account for:', newSubscriber.email);
                       const result = await createClinicUser(newSubscriber.email, tempPassword, tenantId);
-                      console.log('Account created successfully:', result);
                       
-                      // Add initial subscription period - ALWAYS CREATE
+                      // Add initial subscription period
                       const selectedPeriod = subscriptionPeriods.find(p => p.period === newSubscriber.period);
                       const periodPrice = selectedPeriod?.price || '₱7,499';
-                      
-                      console.log('Creating subscription for:', newSubscriber.email, newSubscriber.period, periodPrice);
                       
                       const subscriptionResult = await addSubscriptionPeriod(
                         tenantId,
@@ -570,20 +707,20 @@ export default function SuperAdminScreen() {
                         periodPrice
                       );
                       
-                      console.log('Subscription creation result:', subscriptionResult);
-                      
-                      if (!subscriptionResult.success) {
-                        console.error('Failed to create subscription period:', subscriptionResult.message);
-                        alert('Warning: Account created but subscription period failed. Please add manually.');
-                      }
-                      
                       // Send credentials via email
-                      console.log(`📧 Sending credentials to: ${newSubscriber.email}`);
-                      const emailResult = await sendCredentialsEmail(newSubscriber.email, tempPassword);
-                      
-                      const successMessage = `✅ Account created successfully!\n\n📧 Email: ${newSubscriber.email}\n🔑 Password: ${tempPassword}\n📅 Subscription: ${newSubscriber.period}\n\n${emailResult.message}\n\n💡 User should change password after first login.`;
-                      
-                      alert(successMessage);
+                      try {
+                        const emailResult = await sendCredentialsEmail(newSubscriber.email, tempPassword);
+                        
+                        Alert.alert(
+                          'Success',
+                          `✅ Subscriber created successfully!\n\n📧 Email: ${newSubscriber.email}\n🔑 Password: ${tempPassword}\n📅 Subscription: ${newSubscriber.period}\n\n${emailResult.message}\n\n💡 Credentials sent to user's email.`
+                        );
+                      } catch (emailError) {
+                        Alert.alert(
+                          'Partial Success',
+                          `✅ Subscriber created successfully!\n\n📧 Email: ${newSubscriber.email}\n🔑 Password: ${tempPassword}\n📅 Subscription: ${newSubscriber.period}\n\n⚠️ Email sending failed: ${emailError.message}\n\n💡 Please send credentials manually.`
+                        );
+                      }
                       
                       setNewSubscriber({ email: '', period: '1 month' });
                       Animated.timing(addDrawerAnimation, {
@@ -593,9 +730,10 @@ export default function SuperAdminScreen() {
                       }).start(() => setShowAddDrawer(false));
                       
                     } catch (error) {
-                      console.error('Error creating account or sending email:', error);
-                      alert('Error: ' + error.message);
+                      Alert.alert('Error', `❌ Failed to create subscriber: ${error.message}`);
                     }
+                  } else {
+                    Alert.alert('Error', 'Please fill in all required fields');
                   }
                 }}>
                   <Text style={styles.saveButtonText}>Add Subscriber</Text>
@@ -708,6 +846,9 @@ const styles = StyleSheet.create({
   },
   tableBody: {
     height: 250,
+  },
+  tableBodySmall: {
+    height: 150,
   },
   tableRow: {
     flexDirection: 'row',

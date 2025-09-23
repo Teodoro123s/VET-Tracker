@@ -460,24 +460,30 @@ export default function SubscriptionsScreen() {
                 <Text style={styles.fieldLabel}>Email *</Text>
                 <View style={styles.emailDropdownContainer}>
                   <TouchableOpacity style={styles.drawerDropdown} onPress={() => setShowEmailDropdown(!showEmailDropdown)}>
-                    <Text style={styles.drawerDropdownText}>{newPeriod.email || 'Select Email'}</Text>
+                    <Text style={styles.drawerDropdownText}>{newPeriod.email || (tenantEmails.length === 0 ? 'No emails available' : 'Select Email')}</Text>
                     <Text style={styles.dropdownArrow}>▼</Text>
                   </TouchableOpacity>
                   {showEmailDropdown && (
                     <View style={styles.emailDropdownMenu}>
                       <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={false} style={styles.emailDropdownScroll}>
-                        {tenantEmails.map((email, index) => (
-                          <TouchableOpacity
-                            key={index}
-                            style={styles.dropdownOption}
-                            onPress={() => {
-                              setNewPeriod({...newPeriod, email: email});
-                              setShowEmailDropdown(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownOptionText}>{email}</Text>
-                          </TouchableOpacity>
-                        ))}
+                        {tenantEmails.length === 0 ? (
+                          <View style={styles.noEmailsContainer}>
+                            <Text style={styles.noEmailsText}>No tenant emails found</Text>
+                          </View>
+                        ) : (
+                          tenantEmails.map((email, index) => (
+                            <TouchableOpacity
+                              key={index}
+                              style={styles.dropdownOption}
+                              onPress={() => {
+                                setNewPeriod({...newPeriod, email: email});
+                                setShowEmailDropdown(false);
+                              }}
+                            >
+                              <Text style={styles.dropdownOptionText}>{email}</Text>
+                            </TouchableOpacity>
+                          ))
+                        )}
                       </ScrollView>
                     </View>
                   )}
@@ -486,24 +492,30 @@ export default function SubscriptionsScreen() {
                 <Text style={styles.fieldLabel}>Subscription Period *</Text>
                 <View style={styles.periodDropdownContainer}>
                   <TouchableOpacity style={styles.drawerDropdown} onPress={() => setShowPeriodDropdown(!showPeriodDropdown)}>
-                    <Text style={styles.drawerDropdownText}>{newPeriod.period}</Text>
+                    <Text style={styles.drawerDropdownText}>{subscriptionPeriods.length === 0 ? 'No periods available' : newPeriod.period}</Text>
                     <Text style={styles.dropdownArrow}>▼</Text>
                   </TouchableOpacity>
                   {showPeriodDropdown && (
                     <View style={styles.periodDropdownMenu}>
                       <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={false}>
-                        {subscriptionPeriods.map((item, index) => (
-                          <TouchableOpacity
-                            key={index}
-                            style={styles.dropdownOption}
-                            onPress={() => {
-                              setNewPeriod({...newPeriod, period: item.period});
-                              setShowPeriodDropdown(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownOptionText}>{item.period}</Text>
-                          </TouchableOpacity>
-                        ))}
+                        {subscriptionPeriods.length === 0 ? (
+                          <View style={styles.noPeriodsContainer}>
+                            <Text style={styles.noPeriodsText}>No subscription periods found</Text>
+                          </View>
+                        ) : (
+                          subscriptionPeriods.map((item, index) => (
+                            <TouchableOpacity
+                              key={index}
+                              style={styles.dropdownOption}
+                              onPress={() => {
+                                setNewPeriod({...newPeriod, period: item.period});
+                                setShowPeriodDropdown(false);
+                              }}
+                            >
+                              <Text style={styles.dropdownOptionText}>{item.period}</Text>
+                            </TouchableOpacity>
+                          ))
+                        )}
                       </ScrollView>
                     </View>
                   )}
@@ -1079,6 +1091,24 @@ const styles = StyleSheet.create({
   },
   emailDropdownScroll: {
     maxHeight: 150,
+  },
+  noEmailsContainer: {
+    padding: 15,
+    alignItems: 'center',
+  },
+  noEmailsText: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  noPeriodsContainer: {
+    padding: 15,
+    alignItems: 'center',
+  },
+  noPeriodsText: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
   },
 
 });

@@ -1,28 +1,46 @@
-// Email service for sending credentials
+// Email service for sending credentials using existing EmailJS setup
 export const sendCredentialsEmail = async (email: string, password: string) => {
   try {
-    // In a real application, you would integrate with an email service like:
-    // - SendGrid
-    // - AWS SES
-    // - Nodemailer with SMTP
-    // - Firebase Functions with email service
-    
-    // For now, we'll simulate the email sending
     console.log(`📧 Sending credentials to: ${email}`);
     console.log(`🔑 Password: ${password}`);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    return {
-      success: true,
-      message: `✅ Credentials sent successfully to ${email}`
-    };
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        service_id: 'service_n0fmulh',
+        template_id: 'template_7c2cpda', 
+        user_id: '7nYFwpZOJE87ZXU45',
+        template_params: {
+          email: email,
+          to_email: email,
+          to_name: email.split('@')[0],
+          name: email.split('@')[0],
+          staff_email: email,
+          staff_password: password,
+          portal_url: window.location.origin + '/login',
+          login_email: email,
+          login_password: password
+        }
+      })
+    });
+
+    if (response.ok) {
+      console.log('✅ Email sent successfully');
+      return {
+        success: true,
+        message: `✅ Credentials sent successfully to ${email}`
+      };
+    } else {
+      throw new Error('EmailJS API failed');
+    }
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('❌ Error sending email:', error);
     return {
       success: false,
-      message: `❌ Failed to send email: ${error.message}`
+      message: `❌ Failed to send email: ${error.message || 'Unknown error'}`
     };
   }
 };

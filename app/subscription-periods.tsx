@@ -284,10 +284,10 @@ export default function SubscriptionPeriodsScreen() {
               </View>
               
               <ScrollView style={styles.drawerForm}>
-                <Text style={styles.fieldLabel}>Quantity *</Text>
+                <Text style={styles.fieldLabel}>Duration *</Text>
                 <TextInput
                   style={styles.modalInput}
-                  placeholder="Enter quantity (e.g., 1, 6, 12)"
+                  placeholder="Enter duration (e.g., 1, 7, 30)"
                   placeholderTextColor="#bbb"
                   keyboardType="numeric"
                   value={periodQuantity}
@@ -313,7 +313,7 @@ export default function SubscriptionPeriodsScreen() {
                 <Text style={styles.fieldLabel}>Price *</Text>
                 <TextInput
                   style={styles.modalInput}
-                  placeholder="Enter price (e.g., ₱7,499)"
+                  placeholder="Enter price (e.g., ₱7,499.00)"
                   placeholderTextColor="#bbb"
                   value={periodPrice}
                   onChangeText={(text) => {
@@ -323,6 +323,16 @@ export default function SubscriptionPeriodsScreen() {
                       setPeriodPrice('₱' + text);
                     } else {
                       setPeriodPrice(text);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (periodPrice && periodPrice !== '₱') {
+                      let price = periodPrice.replace('₱', '').replace(/,/g, '');
+                      if (price && !price.includes('.')) {
+                        setPeriodPrice('₱' + price + '.00');
+                      } else if (price && price.includes('.') && price.split('.')[1].length === 1) {
+                        setPeriodPrice('₱' + price + '0');
+                      }
                     }
                   }}
                 />
@@ -352,7 +362,7 @@ export default function SubscriptionPeriodsScreen() {
                   
                   const quantity = parseInt(periodQuantity);
                   if (isNaN(quantity) || quantity <= 0) {
-                    alert('Please enter a valid quantity (positive number)');
+                    alert('Please enter a valid duration (positive number)');
                     return;
                   }
                   
