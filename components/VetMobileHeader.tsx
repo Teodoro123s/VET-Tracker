@@ -5,7 +5,13 @@ import { useTenant } from '@/contexts/TenantContext';
 import { getVeterinarians } from '@/lib/services/firebaseService';
 import { useRouter } from 'expo-router';
 
-export default function VetMobileHeader() {
+interface VetMobileHeaderProps {
+  showBackButton?: boolean;
+  title?: string;
+  onBackPress?: () => void;
+}
+
+export default function VetMobileHeader({ showBackButton = false, title, onBackPress }: VetMobileHeaderProps) {
   const { userEmail } = useTenant();
   const router = useRouter();
 
@@ -33,13 +39,14 @@ export default function VetMobileHeader() {
   return (
     <View style={styles.container}>
       <View style={styles.leftSection}>
-        <TouchableOpacity style={styles.avatar} onPress={() => router.push('/veterinarian/vet-profile')}>
-          <Ionicons name="person" size={24} color="#fff" />
-        </TouchableOpacity>
-        <View style={styles.userInfo}>
-          <Text style={styles.name}>{vetData?.name || getDisplayName(userEmail)}</Text>
-          <Text style={styles.email}>{vetData?.email || userEmail}</Text>
-        </View>
+        {showBackButton ? (
+          <>
+            <TouchableOpacity style={styles.backButton} onPress={onBackPress}>
+              <Ionicons name="arrow-back" size={24} color="#2c5aa0" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{title}</Text>
+          </>
+        ) : null}
       </View>
       <View style={styles.rightSection}>
         <TouchableOpacity style={styles.notificationButton}>
@@ -73,27 +80,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  avatar: {
+
+  backButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2c5aa0',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  userInfo: {
-    flex: 1,
-  },
-  name: {
-    fontSize: 16,
+  headerTitle: {
+    fontSize: 20,
     fontWeight: '600',
     color: '#333',
-  },
-  email: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
+    flex: 1,
   },
   rightSection: {
     flexDirection: 'row',

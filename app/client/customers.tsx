@@ -64,29 +64,7 @@ export default function CustomersScreen() {
     5: [{ id: 8, name: 'Buddy', type: 'Dog', breed: 'Beagle' }, { id: 9, name: 'Shadow', type: 'Cat', breed: 'Black Cat' }],
   };
   
-  const [petMedicalHistory, setPetMedicalHistory] = useState({
-    1: [
-      { 
-        id: 1, 
-        formType: 'Dog Vaccination Form',
-        date: 'Dec 10, 2023', 
-        treatment: 'Vaccination', 
-        veterinarian: 'Dr. Smith', 
-        formData: {
-          vaccineType: 'DHPP (Distemper, Hepatitis, Parvovirus, Parainfluenza)',
-          administrationDate: 'Dec 10, 2023',
-          nextDueDate: 'Dec 10, 2024',
-          veterinarian: 'Dr. Smith',
-          notes: 'Annual vaccines updated - dog showed no adverse reactions'
-        },
-        diagnosis: 'Preventive Care', 
-        symptoms: 'None', 
-        medications: 'DHPP vaccine', 
-        followUp: 'Next vaccination in 1 year', 
-        cost: '$95.00' 
-      }
-    ]
-  });
+  const [petMedicalHistory, setPetMedicalHistory] = useState({});
   
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -130,7 +108,7 @@ export default function CustomersScreen() {
   });
   const [showAnimalTypeDropdown, setShowAnimalTypeDropdown] = useState(false);
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
-  const [customerPetsList, setCustomerPetsList] = useState(customerPets);
+  const [customerPetsList, setCustomerPetsList] = useState({});
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [addDrawerAnimation] = useState(new Animated.Value(-350));
   const [showAddRecordDrawer, setShowAddRecordDrawer] = useState(false);
@@ -372,34 +350,44 @@ export default function CustomersScreen() {
             <View style={styles.petsSection}>
               <View style={styles.petsHeader}>
                 <Text style={styles.sectionTitle}>Medical History</Text>
-                <TouchableOpacity style={styles.addButton} onPress={() => {
-                  setShowAddRecordDrawer(true);
-                  Animated.timing(addRecordDrawerAnimation, {
-                    toValue: 0,
-                    duration: 300,
-                    useNativeDriver: false,
-                  }).start();
-                }}>
-                  <Image source={require('@/assets/ic_round-plus.png')} style={styles.addIcon} />
-                  <Text style={styles.addButtonText}>Add Record</Text>
-                </TouchableOpacity>
+                <View style={styles.petsHeaderActions}>
+                  <TouchableOpacity style={styles.addButton} onPress={() => {
+                    setShowAddRecordDrawer(true);
+                    Animated.timing(addRecordDrawerAnimation, {
+                      toValue: 0,
+                      duration: 300,
+                      useNativeDriver: false,
+                    }).start();
+                  }}>
+                    <Image source={require('@/assets/ic_round-plus.png')} style={styles.addIcon} />
+                    <Text style={styles.addButtonText}>Add Record</Text>
+                  </TouchableOpacity>
+                  <View style={styles.searchContainer}>
+                    <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+                    <TextInput 
+                      style={styles.searchInput}
+                      placeholder="Search records..."
+                      placeholderTextColor="#999"
+                      value={medicalHistorySearchTerm}
+                      onChangeText={setMedicalHistorySearchTerm}
+                    />
+                  </View>
+                </View>
               </View>
               <View style={styles.tableContainer}>
                 <View style={styles.petsTable}>
                   <View style={styles.tableHeader}>
                     <Text style={styles.headerCellId}>Order</Text>
                     <Text style={styles.headerCellName}>Date</Text>
-                    <Text style={styles.headerCell}>Treatment</Text>
-                    <Text style={styles.headerCell}>Veterinarian</Text>
-                    <Text style={styles.headerCell}>Diagnosis</Text>
+                    <Text style={styles.headerCell}>Category</Text>
+                    <Text style={styles.headerCell}>Form Name</Text>
                   </View>
                   {(petMedicalHistory[selectedPetDetail.id] || []).map((record, recordIndex) => (
                     <TouchableOpacity key={record.id} style={styles.tableRow} onPress={() => setSelectedMedicalRecord(record)}>
                       <Text style={styles.cellId}>{recordIndex + 1}</Text>
-                      <Text style={styles.cellName}>{record.date}</Text>
-                      <Text style={styles.cell}>{record.treatment}</Text>
-                      <Text style={styles.cell}>{record.veterinarian}</Text>
-                      <Text style={styles.cell}>{record.diagnosis}</Text>
+                      <Text style={styles.cellName}>{record.date || 'N/A'}</Text>
+                      <Text style={styles.cell}>{record.category || 'No Category'}</Text>
+                      <Text style={styles.cell}>{record.formType || 'N/A'}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -460,17 +448,29 @@ export default function CustomersScreen() {
             <View style={styles.petsSection}>
               <View style={styles.petsHeader}>
                 <Text style={styles.sectionTitle}>Pets</Text>
-                <TouchableOpacity style={styles.addButton} onPress={() => {
-                  setShowAddPetDrawer(true);
-                  Animated.timing(addPetDrawerAnimation, {
-                    toValue: 0,
-                    duration: 300,
-                    useNativeDriver: false,
-                  }).start();
-                }}>
-                  <Image source={require('@/assets/ic_round-plus.png')} style={styles.addIcon} />
-                  <Text style={styles.addButtonText}>Add Pet</Text>
-                </TouchableOpacity>
+                <View style={styles.petsHeaderActions}>
+                  <TouchableOpacity style={styles.addButton} onPress={() => {
+                    setShowAddPetDrawer(true);
+                    Animated.timing(addPetDrawerAnimation, {
+                      toValue: 0,
+                      duration: 300,
+                      useNativeDriver: false,
+                    }).start();
+                  }}>
+                    <Image source={require('@/assets/ic_round-plus.png')} style={styles.addIcon} />
+                    <Text style={styles.addButtonText}>Add Pet</Text>
+                  </TouchableOpacity>
+                  <View style={styles.searchContainer}>
+                    <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+                    <TextInput 
+                      style={styles.searchInput}
+                      placeholder="Search pets..."
+                      placeholderTextColor="#999"
+                      value={petsSearchTerm}
+                      onChangeText={setPetsSearchTerm}
+                    />
+                  </View>
+                </View>
               </View>
               <View style={styles.tableContainer}>
                 <View style={styles.petsTable}>
@@ -480,93 +480,37 @@ export default function CustomersScreen() {
                     <Text style={styles.headerCell}>Type</Text>
                     <Text style={styles.headerCell}>Breed</Text>
                   </View>
-                  {(customerPetsList[selectedCustomer.id] || []).length === 0 ? (
-                    <View style={styles.noDataContainer}>
-                      <Text style={styles.noDataText}>No pets found</Text>
-                    </View>
-                  ) : (
-                    (customerPetsList[selectedCustomer.id] || []).map((pet, petIndex) => (
-                      <TouchableOpacity key={pet.id} style={styles.tableRow} onPress={() => {
-                        console.log('Pet clicked:', pet);
-                        setSelectedPetDetail(pet);
-                      }}>
-                        <Text style={styles.cellId}>{petIndex + 1}</Text>
-                        <Text style={styles.cellName}>{pet.name}</Text>
-                        <Text style={styles.cell}>{pet.type}</Text>
-                        <Text style={styles.cell}>{pet.breed}</Text>
-                      </TouchableOpacity>
-                    ))
-                  )}
+                  {(() => {
+                    const pets = customerPetsList[selectedCustomer.id] || [];
+                    const filteredPets = pets.filter(pet =>
+                      pet.name.toLowerCase().includes(petsSearchTerm.toLowerCase()) ||
+                      pet.type.toLowerCase().includes(petsSearchTerm.toLowerCase()) ||
+                      pet.breed.toLowerCase().includes(petsSearchTerm.toLowerCase())
+                    );
+                    
+                    return filteredPets.length === 0 ? (
+                      <View style={styles.noDataContainer}>
+                        <Text style={styles.noDataText}>{petsSearchTerm ? 'No pets match your search' : 'No pets found'}</Text>
+                      </View>
+                    ) : (
+                      filteredPets.map((pet, petIndex) => (
+                        <TouchableOpacity key={pet.id} style={styles.tableRow} onPress={() => {
+                          console.log('Pet clicked:', pet);
+                          setSelectedPetDetail(pet);
+                        }}>
+                          <Text style={styles.cellId}>{petIndex + 1}</Text>
+                          <Text style={styles.cellName}>{pet.name}</Text>
+                          <Text style={styles.cell}>{pet.type}</Text>
+                          <Text style={styles.cell}>{pet.breed}</Text>
+                        </TouchableOpacity>
+                      ))
+                    );
+                  })()}
                 </View>
               </View>
             </View>
           </ScrollView>
-        ) : selectedMedicalRecord ? (
-          <ScrollView style={styles.detailScrollView}>
-            <View style={styles.tableContainer}>
-              <View style={styles.detailTable}>
-                <View style={styles.tableTopRow}>
-                  <View style={styles.headerRow}>
-                    <TouchableOpacity style={styles.returnButton} onPress={() => setSelectedMedicalRecord(null)}>
-                      <Image source={require('@/assets/return-arrow.svg')} style={styles.returnIcon} />
-                    </TouchableOpacity>
-                    <Text style={styles.detailTitle}>Medical Record Details</Text>
-                  </View>
-                  <TouchableOpacity style={styles.editButton}>
-                    <Text style={styles.editButtonText}>Edit</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.medicalRecordDetails}>
-                  <View style={styles.medicalRecordRow}>
-                    <Text style={styles.medicalRecordLabel}>Form Type:</Text>
-                    <Text style={styles.medicalRecordValue}>{selectedMedicalRecord.formType}</Text>
-                  </View>
-                  <View style={styles.medicalRecordRow}>
-                    <Text style={styles.medicalRecordLabel}>Date:</Text>
-                    <Text style={styles.medicalRecordValue}>{selectedMedicalRecord.date}</Text>
-                  </View>
-                  <View style={styles.medicalRecordRow}>
-                    <Text style={styles.medicalRecordLabel}>Treatment:</Text>
-                    <Text style={styles.medicalRecordValue}>{selectedMedicalRecord.treatment}</Text>
-                  </View>
-                  <View style={styles.medicalRecordRow}>
-                    <Text style={styles.medicalRecordLabel}>Veterinarian:</Text>
-                    <Text style={styles.medicalRecordValue}>{selectedMedicalRecord.veterinarian}</Text>
-                  </View>
-                  
-                  <Text style={styles.formDataTitle}>Form Data:</Text>
-                  {selectedMedicalRecord.formData && Object.entries(selectedMedicalRecord.formData).map(([key, value]) => (
-                    <View key={key} style={styles.medicalRecordRow}>
-                      <Text style={styles.medicalRecordLabel}>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}:</Text>
-                      <Text style={styles.medicalRecordValue}>{value}</Text>
-                    </View>
-                  ))}
-                  
-                  <Text style={styles.formDataTitle}>Summary:</Text>
-                  <View style={styles.medicalRecordRow}>
-                    <Text style={styles.medicalRecordLabel}>Diagnosis:</Text>
-                    <Text style={styles.medicalRecordValue}>{selectedMedicalRecord.diagnosis}</Text>
-                  </View>
-                  <View style={styles.medicalRecordRow}>
-                    <Text style={styles.medicalRecordLabel}>Symptoms:</Text>
-                    <Text style={styles.medicalRecordValue}>{selectedMedicalRecord.symptoms}</Text>
-                  </View>
-                  <View style={styles.medicalRecordRow}>
-                    <Text style={styles.medicalRecordLabel}>Medications:</Text>
-                    <Text style={styles.medicalRecordValue}>{selectedMedicalRecord.medications}</Text>
-                  </View>
-                  <View style={styles.medicalRecordRow}>
-                    <Text style={styles.medicalRecordLabel}>Follow-up:</Text>
-                    <Text style={styles.medicalRecordValue}>{selectedMedicalRecord.followUp}</Text>
-                  </View>
-                  <View style={styles.medicalRecordRow}>
-                    <Text style={styles.medicalRecordLabel}>Cost:</Text>
-                    <Text style={styles.medicalRecordValue}>{selectedMedicalRecord.cost}</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </ScrollView>
+
         ) : selectedPetDetail ? (
           <ScrollView style={styles.detailScrollView}>
             <View style={styles.tableContainer}>
@@ -616,36 +560,61 @@ export default function CustomersScreen() {
             <View style={styles.petsSection}>
               <View style={styles.petsHeader}>
                 <Text style={styles.sectionTitle}>Medical History</Text>
-                <TouchableOpacity style={styles.addButton} onPress={() => {
-                  setShowAddRecordDrawer(true);
-                  Animated.timing(addRecordDrawerAnimation, {
-                    toValue: 0,
-                    duration: 300,
-                    useNativeDriver: false,
-                  }).start();
-                }}>
-                  <Image source={require('@/assets/ic_round-plus.png')} style={styles.addIcon} />
-                  <Text style={styles.addButtonText}>Add Record</Text>
-                </TouchableOpacity>
+                <View style={styles.petsHeaderActions}>
+                  <TouchableOpacity style={styles.addButton} onPress={() => {
+                    setShowAddRecordDrawer(true);
+                    Animated.timing(addRecordDrawerAnimation, {
+                      toValue: 0,
+                      duration: 300,
+                      useNativeDriver: false,
+                    }).start();
+                  }}>
+                    <Image source={require('@/assets/ic_round-plus.png')} style={styles.addIcon} />
+                    <Text style={styles.addButtonText}>Add Record</Text>
+                  </TouchableOpacity>
+                  <View style={styles.searchContainer}>
+                    <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+                    <TextInput 
+                      style={styles.searchInput}
+                      placeholder="Search records..."
+                      placeholderTextColor="#999"
+                      value={medicalHistorySearchTerm}
+                      onChangeText={setMedicalHistorySearchTerm}
+                    />
+                  </View>
+                </View>
               </View>
               <View style={styles.tableContainer}>
                 <View style={styles.petsTable}>
                   <View style={styles.tableHeader}>
                     <Text style={styles.headerCellId}>Order</Text>
                     <Text style={styles.headerCellName}>Date</Text>
-                    <Text style={styles.headerCell}>Treatment</Text>
-                    <Text style={styles.headerCell}>Veterinarian</Text>
-                    <Text style={styles.headerCell}>Diagnosis</Text>
+                    <Text style={styles.headerCell}>Category</Text>
+                    <Text style={styles.headerCell}>Form Name</Text>
                   </View>
-                  {(petMedicalHistory[selectedPetDetail.id] || []).map((record, recordIndex) => (
-                    <TouchableOpacity key={record.id} style={styles.tableRow} onPress={() => setSelectedMedicalRecord(record)}>
-                      <Text style={styles.cellId}>{recordIndex + 1}</Text>
-                      <Text style={styles.cellName}>{record.date}</Text>
-                      <Text style={styles.cell}>{record.treatment}</Text>
-                      <Text style={styles.cell}>{record.veterinarian}</Text>
-                      <Text style={styles.cell}>{record.diagnosis}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  {(() => {
+                    const records = petMedicalHistory[selectedPetDetail.id] || [];
+                    const filteredRecords = records.filter(record =>
+                      (record.date || '').toLowerCase().includes(medicalHistorySearchTerm.toLowerCase()) ||
+                      (record.category || '').toLowerCase().includes(medicalHistorySearchTerm.toLowerCase()) ||
+                      (record.formType || '').toLowerCase().includes(medicalHistorySearchTerm.toLowerCase())
+                    );
+                    
+                    return filteredRecords.length === 0 ? (
+                      <View style={styles.noDataContainer}>
+                        <Text style={styles.noDataText}>{medicalHistorySearchTerm ? 'No records match your search' : 'No medical records found'}</Text>
+                      </View>
+                    ) : (
+                      filteredRecords.map((record, recordIndex) => (
+                        <TouchableOpacity key={record.id} style={styles.tableRow} onPress={() => setSelectedMedicalRecord(record)}>
+                          <Text style={styles.cellId}>{recordIndex + 1}</Text>
+                          <Text style={styles.cellName}>{record.date || 'N/A'}</Text>
+                          <Text style={styles.cell}>{record.category || 'No Category'}</Text>
+                          <Text style={styles.cell}>{record.formType || 'N/A'}</Text>
+                        </TouchableOpacity>
+                      ))
+                    );
+                  })()}
                 </View>
               </View>
             </View>
@@ -1015,6 +984,173 @@ export default function CustomersScreen() {
           </View>
         </Modal>
       )}
+      
+      {selectedMedicalForm && (
+        <Modal visible={true} transparent animationType="fade">
+          <View style={styles.floatingModalOverlay}>
+            <View style={styles.floatingModal}>
+              <View style={styles.floatingModalHeader}>
+                <Text style={styles.floatingModalTitle}>{selectedMedicalForm.formTemplate}</Text>
+                <TouchableOpacity style={styles.floatingModalCloseButton} onPress={() => setSelectedMedicalForm(null)}>
+                  <Text style={styles.floatingModalCloseText}>×</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.previewScrollView} showsVerticalScrollIndicator={false}>
+                {selectedMedicalForm.fields.map((field) => (
+                  <View key={field.id} style={styles.previewFieldContainer}>
+                    <Text style={styles.previewFieldLabel}>{field.label} {field.required && '*'}</Text>
+                    {field.type === 'text' || field.type === 'email' || field.type === 'number' ? (
+                      <TextInput
+                        style={styles.previewInput}
+                        placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                        placeholderTextColor="#999"
+                        value={formFieldValues[field.id] || ''}
+                        onChangeText={(text) => setFormFieldValues({...formFieldValues, [field.id]: text})}
+                        keyboardType={field.type === 'email' ? 'email-address' : field.type === 'number' ? 'numeric' : 'default'}
+                        autoCapitalize={field.type === 'email' ? 'none' : 'sentences'}
+                      />
+                    ) : field.type === 'textarea' ? (
+                      <TextInput
+                        style={[styles.previewInput, styles.previewTextarea]}
+                        placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}`}
+                        placeholderTextColor="#999"
+                        value={formFieldValues[field.id] || ''}
+                        onChangeText={(text) => setFormFieldValues({...formFieldValues, [field.id]: text})}
+                        multiline
+                        numberOfLines={3}
+                      />
+                    ) : field.type === 'select' ? (
+                      <View style={styles.categoryDropdownContainer}>
+                        <TouchableOpacity style={styles.previewDropdown} onPress={() => {
+                          const dropdownKey = `dropdown_${field.id}`;
+                          setFormFieldValues({...formFieldValues, [dropdownKey]: !formFieldValues[dropdownKey]});
+                        }}>
+                          <Text style={styles.previewPlaceholder}>{formFieldValues[field.id] || field.placeholder || 'Select option'}</Text>
+                          <Text style={styles.previewDropdownArrow}>▼</Text>
+                        </TouchableOpacity>
+                        {formFieldValues[`dropdown_${field.id}`] && (
+                          <View style={styles.categoryDropdownMenu}>
+                            <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={false}>
+                              {field.options?.map((option, index) => (
+                                <TouchableOpacity
+                                  key={index}
+                                  style={styles.dropdownOption}
+                                  onPress={() => {
+                                    setFormFieldValues({
+                                      ...formFieldValues, 
+                                      [field.id]: option,
+                                      [`dropdown_${field.id}`]: false
+                                    });
+                                  }}
+                                >
+                                  <Text style={styles.dropdownOptionText}>{option}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </ScrollView>
+                          </View>
+                        )}
+                      </View>
+                    ) : field.type === 'date' ? (
+                      <TextInput
+                        style={styles.previewInput}
+                        placeholder="YYYY-MM-DD"
+                        placeholderTextColor="#999"
+                        value={formFieldValues[field.id] || ''}
+                        onChangeText={(text) => setFormFieldValues({...formFieldValues, [field.id]: text})}
+                      />
+                    ) : null}
+                  </View>
+                ))}
+              </ScrollView>
+              
+              <View style={styles.floatingModalButtons}>
+                <TouchableOpacity style={styles.floatingCancelButton} onPress={() => setSelectedMedicalForm(null)}>
+                  <Text style={styles.floatingCancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.floatingSaveButton} onPress={async () => {
+                  try {
+                    // Filter out empty values from formFieldValues
+                    const filteredFormData = {};
+                    Object.entries(formFieldValues).forEach(([key, value]) => {
+                      if (value && value.toString().trim() !== '' && !key.startsWith('dropdown_')) {
+                        filteredFormData[key] = value;
+                      }
+                    });
+                    
+                    const recordData = {
+                      petId: selectedPetDetail.id,
+                      formType: selectedMedicalForm.formTemplate,
+                      date: new Date().toLocaleDateString(),
+                      formData: filteredFormData,
+                    };
+                    
+                    // Only add these fields if they have values
+                    if (formFieldValues.treatment && formFieldValues.treatment.trim()) {
+                      recordData.treatment = formFieldValues.treatment;
+                    }
+                    if (formFieldValues.veterinarian && formFieldValues.veterinarian.trim()) {
+                      recordData.veterinarian = formFieldValues.veterinarian;
+                    }
+                    if (formFieldValues.diagnosis && formFieldValues.diagnosis.trim()) {
+                      recordData.diagnosis = formFieldValues.diagnosis;
+                    }
+                    
+                    const savedRecord = await addMedicalRecord(recordData, userEmail);
+                    
+                    const updatedHistory = {
+                      ...petMedicalHistory,
+                      [selectedPetDetail.id]: [...(petMedicalHistory[selectedPetDetail.id] || []), savedRecord]
+                    };
+                    setPetMedicalHistory(updatedHistory);
+                    
+                    setFormFieldValues({});
+                    setSelectedMedicalForm(null);
+                    alert('Medical record saved successfully!');
+                  } catch (error) {
+                    console.error('Error saving medical record:', error);
+                    alert('Error saving medical record');
+                  }
+                }}>
+                  <Text style={styles.floatingSaveButtonText}>Save Record</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+      
+      {selectedMedicalRecord && (
+        <Modal visible={true} transparent animationType="fade">
+          <View style={styles.floatingModalOverlay}>
+            <View style={styles.floatingModal}>
+              <View style={styles.floatingModalHeader}>
+                <Text style={styles.floatingModalTitle}>{selectedMedicalRecord.formType}</Text>
+                <TouchableOpacity style={styles.floatingModalCloseButton} onPress={() => setSelectedMedicalRecord(null)}>
+                  <Text style={styles.floatingModalCloseText}>×</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.previewScrollView} showsVerticalScrollIndicator={false}>
+                {selectedMedicalRecord.formData && Object.entries(selectedMedicalRecord.formData).map(([key, value]) => (
+                  <View key={key} style={styles.previewFieldContainer}>
+                    <Text style={styles.previewFieldLabel}>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}</Text>
+                    <View style={styles.readOnlyField}>
+                      <Text style={styles.readOnlyText}>{value}</Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+              
+              <View style={styles.floatingModalButtons}>
+                <TouchableOpacity style={[styles.floatingCancelButton, { flex: 1 }]} onPress={() => setSelectedMedicalRecord(null)}>
+                  <Text style={styles.floatingCancelButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -1330,6 +1466,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
+  petsHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+  },
   detailScrollView: {
     flex: 1,
   },
@@ -1466,26 +1607,6 @@ const styles = StyleSheet.create({
     color: '#666',
     fontStyle: 'italic',
   },
-  medicalRecordDetails: {
-    padding: 20,
-  },
-  medicalRecordRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  medicalRecordLabel: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  medicalRecordValue: {
-    flex: 2,
-    fontSize: 14,
-    color: '#555',
-  },
   formDataTitle: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -1558,5 +1679,142 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     tintColor: '#800000',
+  },
+  formFieldContainer: {
+    marginBottom: 20,
+  },
+  readOnlyField: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 15,
+    backgroundColor: '#f8f9fa',
+  },
+  readOnlyText: {
+    fontSize: 12,
+    color: '#333',
+  },
+
+  previewScrollView: {
+    maxHeight: 500,
+  },
+  previewFieldContainer: {
+    marginBottom: 15,
+  },
+  previewFieldLabel: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  previewInput: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    padding: 10,
+    backgroundColor: '#fff',
+    fontSize: 11,
+    color: '#333',
+  },
+  previewTextarea: {
+    height: 60,
+  },
+  previewDropdown: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    padding: 10,
+    backgroundColor: '#fff',
+  },
+  previewDropdownArrow: {
+    fontSize: 10,
+    color: '#666',
+  },
+  previewPlaceholder: {
+    fontSize: 11,
+    color: '#333',
+  },
+  floatingModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  floatingModal: {
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 20,
+    maxHeight: 600,
+    width: '95%',
+    maxWidth: 800,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 15,
+  },
+  floatingModalHeader: {
+    marginBottom: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  floatingModalTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#800000',
+    textAlign: 'center',
+    flex: 1,
+  },
+  floatingModalCloseButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  floatingModalCloseText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  floatingModalButtons: {
+    flexDirection: 'row',
+    marginTop: 15,
+    gap: 10,
+  },
+  floatingCancelButton: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    paddingVertical: 8,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    alignItems: 'center',
+  },
+  floatingCancelButtonText: {
+    color: '#666',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  floatingSaveButton: {
+    flex: 1,
+    backgroundColor: '#23C062',
+    paddingVertical: 8,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  floatingSaveButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
 });

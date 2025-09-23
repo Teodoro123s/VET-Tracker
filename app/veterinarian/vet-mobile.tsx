@@ -40,14 +40,17 @@ export default function VetMobile() {
       
       if (!vetSnapshot.empty) {
         const vetData = vetSnapshot.docs[0].data();
+        console.log('Vet data from database:', vetData); // Debug log
         setVetDetails({
           name: vetData.name || 'Dr. Veterinarian',
           email: vetData.email || user.email,
-          license: vetData.license || 'Not Available',
-          specialization: vetData.specialization || 'General Practice',
-          phone: vetData.phone || 'Not Available',
-          experience: vetData.experience || 'Not Available'
+          license: vetData.license || 'License not provided',
+          specialization: vetData.specialization || 'Specialization not provided',
+          phone: vetData.phone || 'Phone not provided',
+          experience: vetData.experience || 'Experience not provided'
         });
+      } else {
+        console.log('No veterinarian found with email:', user.email);
       }
     } catch (error) {
       console.error('Error fetching vet details:', error);
@@ -62,6 +65,24 @@ export default function VetMobile() {
         <View style={styles.welcomeSection}>
           <ThemedText type="subtitle" style={styles.welcomeText}>Welcome back, {vetDetails.name}</ThemedText>
           <ThemedText style={styles.dateText}>Today is {new Date().toLocaleDateString()}</ThemedText>
+        </View>
+
+        <View style={styles.vetDetailsCard}>
+          <View style={styles.detailRow}>
+            <Ionicons name="medical" size={20} color="#2196F3" />
+            <Text style={styles.detailLabel}>Specialty:</Text>
+            <Text style={styles.detailValueActive}>{vetDetails.specialization}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="document-text" size={20} color="#2196F3" />
+            <Text style={styles.detailLabel}>License:</Text>
+            <Text style={styles.detailValueActive}>{vetDetails.license}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="call" size={20} color="#2196F3" />
+            <Text style={styles.detailLabel}>Phone:</Text>
+            <Text style={styles.detailValueActive}>{vetDetails.phone}</Text>
+          </View>
         </View>
 
         <View style={styles.quickStats}>
@@ -88,9 +109,9 @@ export default function VetMobile() {
               <Ionicons name="search" size={40} color="#2196F3" />
               <Text style={styles.actionText}>Search Patient</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="time" size={40} color="#2196F3" />
-              <Text style={styles.actionText}>Schedule</Text>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-calendar')}>
+              <Ionicons name="calendar" size={40} color="#2196F3" />
+              <Text style={styles.actionText}>Calendar</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard}>
               <Ionicons name="notifications" size={40} color="#2196F3" />
@@ -220,6 +241,40 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 16,
     color: '#666',
+  },
+  vetDetailsCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 8,
+    width: 70,
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#999',
+    flex: 1,
+    fontStyle: 'italic',
+  },
+  detailValueActive: {
+    color: '#333',
+    fontStyle: 'normal',
+    fontWeight: '500',
   },
   quickStats: {
     flexDirection: 'row',

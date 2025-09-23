@@ -1,41 +1,59 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Animated } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { getAppointments } from '@/lib/services/firebaseService';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function VetCalendarScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [appointments, setAppointments] = useState([]);
   
-  const veterinarians = [
-    'Dr. Michael Smith',
-    'Dr. Sarah Johnson', 
-    'Dr. Michael Brown',
-    'Dr. Lisa Wilson'
-  ];
-  
-  const appointments = [
-    { id: 1, name: 'Smith, John', petName: 'Max', service: 'Checkup', staff: 'Dr. Michael Brown', dateTime: 'Today\n9:00 AM', status: 'Pending' },
-    { id: 2, name: 'Johnson, Sarah', petName: 'Luna', service: 'Vaccination', staff: 'Dr. Michael Smith', dateTime: 'Yesterday\n10:30 AM', status: 'Completed' },
-    { id: 3, name: 'Brown, Mike', petName: 'Charlie', service: 'Surgery', staff: 'Dr. Lisa Wilson', dateTime: 'Tomorrow\n2:00 PM', status: 'Due' },
-    { id: 4, name: 'Davis, Lisa', petName: 'Whiskers', service: 'Grooming', staff: 'Dr. Michael Brown', dateTime: 'Tomorrow\n9:30 AM', status: 'Pending' },
-    { id: 5, name: 'Wilson, Tom', petName: 'Buddy', service: 'Checkup', staff: 'Dr. Michael Smith', dateTime: '2 days ago\n11:00 AM', status: 'Cancelled' },
-    { id: 6, name: 'Wilson, Tom', petName: 'Shadow', service: 'Vaccination', staff: 'Dr. Lisa Wilson', dateTime: 'Tomorrow\n1:30 PM', status: 'Due' },
-    { id: 7, name: 'Brown, Mike', petName: 'Milo', service: 'Surgery', staff: 'Dr. Sarah Johnson', dateTime: 'Jan 17\n10:00 AM', status: 'Pending' },
-    { id: 8, name: 'Smith, John', petName: 'Bella', service: 'Vaccination', staff: 'Dr. Michael Brown', dateTime: 'Today\n11:30 AM', status: 'Pending' },
-  ];
-  
-  const [selectedVet, setSelectedVet] = useState('Dr. Michael Smith');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [showVetDropdown, setShowVetDropdown] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
   const [showDayView, setShowDayView] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('All');
   
-  const getVetAppointments = (vetName) => {
-    return appointments.filter(apt => apt.staff === vetName);
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
+  
+  const fetchAppointments = async () => {
+    try {
+      const appointmentData = await getAppointments(user?.email);
+      setAppointments(appointmentData);
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+    }
+  };
+  
+  const getVetAppointments = () => {
+    let filtered = appointments.filter(apt => apt.veterinarian === user?.email || apt.assignedVet === user?.email);
+    if (statusFilter !== 'All') {
+      filtered = filtered.filter(apt => apt.status === statusFilter);
+    }
+    return filtered;
   };
   
   return (
     <View style={styles.container}>
+      <View style={styles.filterHeader}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+          {['All', 'Pending', 'Approved', 'Due'].map((status) => (
+            <TouchableOpacity
+              key={status}
+              style={[styles.filterButton, statusFilter === status && styles.filterButtonActive]}
+              onPress={() => setStatusFilter(status)}
+            >
+              <Text style={[styles.filterText, statusFilter === status && styles.filterTextActive]}>
+                {status}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
       <View style={styles.content}>
         {!showDayView ? (
           <View style={styles.calendarContainer}>
@@ -103,7 +121,7 @@ export default function VetCalendarScreen() {
                   const currentMonth = todayDate.getMonth();
                   const currentYear = todayDate.getFullYear();
                   
-                  const vetAppointments = getVetAppointments(selectedVet);
+                  const vetAppointments = getVetAppointments();
                   const dayAppointments = isCurrentMonth ? vetAppointments.filter(apt => {
                     const isCurrentMonthAppt = apt.dateTime.includes(`${selectedMonthName} ${day}`);
                     const isTodayAppt = day === currentDay && selectedMonth === currentMonth && selectedYear === currentYear && apt.dateTime.includes('Today');
@@ -154,8 +172,11 @@ export default function VetCalendarScreen() {
         ) : (
           <View style={styles.dayViewContainer}>
             <View style={styles.dayViewHeader}>
+              <TouchableOpacity style={styles.backToDayButton} onPress={() => setShowDayView(false)}>
+                <Ionicons name="arrow-back" size={20} color="#2196F3" />
+              </TouchableOpacity>
               <Text style={styles.dayViewTitle}>
-                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][selectedMonth]} {selectedDay}, {selectedYear} - {selectedVet}
+                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][selectedMonth]} {selectedDay}, {selectedYear}
               </Text>
             </View>
             
@@ -164,7 +185,7 @@ export default function VetCalendarScreen() {
                 const hour = i;
                 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                 const selectedMonthName = monthNames[selectedMonth];
-                const vetAppointments = getVetAppointments(selectedVet);
+                const vetAppointments = getVetAppointments();
                 
                 const hourAppts = vetAppointments.filter(apt => {
                   const currentDate = new Date();
@@ -225,9 +246,38 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
 
+
   content: {
     flex: 1,
     padding: 20,
+  },
+  filterHeader: {
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  filterScroll: {
+    flexGrow: 0,
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 12,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  filterButtonActive: {
+    backgroundColor: '#2196F3',
+  },
+  filterText: {
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  filterTextActive: {
+    color: '#fff',
   },
   calendarContainer: {
     backgroundColor: '#fff',
@@ -348,6 +398,10 @@ const styles = StyleSheet.create({
     color: '#2c5aa0',
     marginLeft: 15,
     flex: 1,
+  },
+  backToDayButton: {
+    padding: 5,
+    marginRight: 10,
   },
   scheduleView: {
     flex: 1,
