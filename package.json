@@ -1,0 +1,19 @@
+{
+  "dependencies": {
+    "@expo/metro-runtime": "^6.1.2",
+    "@supabase/supabase-js": "^2.57.4",
+    "aws-sdk": "^2.1692.0",
+    "expo-document-picker": "^14.0.7",
+    "expo-image-picker": "^17.0.8",
+    "firebase": "^12.2.1",
+    "firebase-admin": "^13.5.0",
+    "expo": "~54.0.0",
+    "react-dom": "19.1.0",
+    "react-native-web": "^0.21.0"
+  },
+  "devDependencies": {
+    "@react-native-community/cli": "latest",
+    "@types/react": "~19.1.10",
+    "typescript": "~5.9.2"
+  }
+}
