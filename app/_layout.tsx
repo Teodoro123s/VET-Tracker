@@ -3,6 +3,7 @@ import { useFonts } from 'expo-font';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
 import { useEffect, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import 'react-native-reanimated';
@@ -14,30 +15,39 @@ import { NotificationProvider } from '@/contexts/NotificationContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { TenantProvider } from '@/contexts/TenantContext';
 import Sidebar from '@/components/Sidebar';
+import VetBottomMenu from '@/components/VetBottomMenu';
+import VetMobileHeader from '@/components/VetMobileHeader';
 import { subscriptionScheduler } from '@/lib/utils/subscriptionScheduler';
 
 function AppContent() {
   const pathname = usePathname();
-  const noSidebarRoutes = pathname === '/server/superadmin' || pathname === '/server/subscriptions' || pathname === '/server/subscription-periods' || pathname === '/server/transaction-history' || pathname === '/server/superadmin-dashboard' || pathname === '/auth/admin-login' || pathname === '/auth/superadmin-login' || pathname === '/veterinarian/mobile-login' || pathname === '/veterinarian/vet-mobile' || pathname === '/client/staff-dashboard' || pathname === '/veterinarian/mobile' || pathname === '/auth/login' || pathname === '/login' || pathname === '/';
-  const showSidebar = !noSidebarRoutes;
+  
+  // Check for veterinarian routes
+  const isVetRoute = pathname.startsWith('/veterinarian/') && pathname !== '/veterinarian/mobile-login';
+  
+  // Routes that should have no sidebar
+  const noSidebarRoutes = pathname === '/server/superadmin' || pathname === '/server/subscriptions' || pathname === '/server/subscription-periods' || pathname === '/server/transaction-history' || pathname === '/server/superadmin-dashboard' || pathname === '/auth/admin-login' || pathname === '/auth/superadmin-login' || pathname === '/veterinarian/mobile-login' || pathname === '/auth/login' || pathname === '/login' || pathname === '/' || pathname.startsWith('/veterinarian/');
+  
+  const showMainSidebar = !noSidebarRoutes;
+  const showBottomMenu = isVetRoute;
+  const showMobileHeader = isVetRoute;
   
   return (
     <NavigationThemeProvider value={DefaultTheme}>
       <View style={styles.container}>
-        {showSidebar && <Sidebar />}
-        <View style={(!showSidebar) ? styles.fullContent : styles.content}>
+        {showMainSidebar && <Sidebar />}
+        <View style={!showMainSidebar ? styles.fullContent : styles.content}>
+          {showMobileHeader && <VetMobileHeader />}
+          <View style={showBottomMenu ? styles.contentWithMenu : styles.fullHeight}>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
-            <Stack.Screen name="client/dashboard" />
+
             <Stack.Screen name="client/appointments" />
             <Stack.Screen name="client/customers" />
             <Stack.Screen name="client/veterinarians" />
-            <Stack.Screen name="client/staff" />
             <Stack.Screen name="client/records" />
             <Stack.Screen name="client/notifications" />
             <Stack.Screen name="client/settings" />
-            <Stack.Screen name="client/staff-dashboard" />
-            <Stack.Screen name="client/staff-profile" />
             <Stack.Screen name="client/admin-details" />
             <Stack.Screen name="client/dashboard-analytics" />
             <Stack.Screen name="shared/logout" />
@@ -47,19 +57,20 @@ function AppContent() {
             <Stack.Screen name="server/transaction-history" />
             <Stack.Screen name="server/superadmin-dashboard" />
             <Stack.Screen name="veterinarian/vet-calendar" />
-            <Stack.Screen name="veterinarian/vet-mobile" />
             <Stack.Screen name="veterinarian/vet-appointments" />
             <Stack.Screen name="veterinarian/vet-medical-record" />
+            <Stack.Screen name="veterinarian/vet-profile" />
             <Stack.Screen name="veterinarian/mobile-login" />
-            <Stack.Screen name="veterinarian/mobile" />
             <Stack.Screen name="auth/admin-login" />
             <Stack.Screen name="auth/superadmin-login" />
 
             <Stack.Screen name="+not-found" />
           </Stack>
+          </View>
+          {showBottomMenu && <VetBottomMenu />}
         </View>
       </View>
-      <StatusBar style="dark" />
+      <StatusBar style="dark" translucent backgroundColor="transparent" />
     </NavigationThemeProvider>
   );
 }
@@ -110,5 +121,11 @@ const styles = StyleSheet.create({
   fullContent: {
     flex: 1,
     width: '100%',
+  },
+  contentWithMenu: {
+    flex: 1,
+  },
+  fullHeight: {
+    flex: 1,
   },
 });

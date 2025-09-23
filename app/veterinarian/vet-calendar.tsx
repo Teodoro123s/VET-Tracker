@@ -36,35 +36,6 @@ export default function VetCalendarScreen() {
   
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerText}>Veterinarian Calendar</Text>
-        <View style={styles.vetSelector}>
-          <TouchableOpacity style={styles.vetDropdown} onPress={() => setShowVetDropdown(!showVetDropdown)}>
-            <Text style={styles.vetDropdownText}>{selectedVet}</Text>
-            <Text style={styles.dropdownArrow}>▼</Text>
-          </TouchableOpacity>
-          {showVetDropdown && (
-            <View style={styles.vetDropdownMenu}>
-              {veterinarians.map((vet) => (
-                <TouchableOpacity
-                  key={vet}
-                  style={styles.vetDropdownOption}
-                  onPress={() => {
-                    setSelectedVet(vet);
-                    setShowVetDropdown(false);
-                  }}
-                >
-                  <Text style={styles.vetDropdownOptionText}>{vet}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-      </View>
-      
       <View style={styles.content}>
         {!showDayView ? (
           <View style={styles.calendarContainer}>
@@ -183,9 +154,6 @@ export default function VetCalendarScreen() {
         ) : (
           <View style={styles.dayViewContainer}>
             <View style={styles.dayViewHeader}>
-              <TouchableOpacity style={styles.backButton} onPress={() => setShowDayView(false)}>
-                <Text style={styles.backButtonText}>←</Text>
-              </TouchableOpacity>
               <Text style={styles.dayViewTitle}>
                 {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][selectedMonth]} {selectedDay}, {selectedYear} - {selectedVet}
               </Text>
@@ -256,86 +224,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  header: {
-    paddingTop: 20,
-    paddingBottom: 15,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-  },
-  backButton: {
-    backgroundColor: '#800000',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  backButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  headerText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#800000',
-    flex: 1,
-    textAlign: 'center',
-  },
-  vetSelector: {
-    position: 'relative',
-    zIndex: 1000,
-  },
-  vetDropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#800000',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minWidth: 150,
-  },
-  vetDropdownText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
-    marginRight: 6,
-    flex: 1,
-  },
-  dropdownArrow: {
-    fontSize: 10,
-    color: '#ffffff',
-    fontWeight: 'bold',
-  },
-  vetDropdownMenu: {
-    position: 'absolute',
-    top: 40,
-    right: 0,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    minWidth: 150,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    zIndex: 1001,
-  },
-  vetDropdownOption: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  vetDropdownOptionText: {
-    fontSize: 12,
-    color: '#333',
-  },
+
   content: {
     flex: 1,
     padding: 20,
@@ -354,7 +243,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   navButton: {
-    backgroundColor: '#800000',
+    backgroundColor: '#2c5aa0',
     borderRadius: 5,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -367,7 +256,7 @@ const styles = StyleSheet.create({
   monthTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#800000',
+    color: '#2c5aa0',
   },
   weekHeader: {
     flexDirection: 'row',
@@ -381,7 +270,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#800000',
+    color: '#2c5aa0',
   },
   daysGrid: {
     flexDirection: 'row',
@@ -401,9 +290,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#e8f5e8',
   },
   todayBox: {
-    backgroundColor: '#800000',
+    backgroundColor: '#2c5aa0',
     borderWidth: 2,
-    borderColor: '#800000',
+    borderColor: '#2c5aa0',
   },
   otherMonthBox: {
     backgroundColor: '#f8f9fa',
@@ -456,7 +345,7 @@ const styles = StyleSheet.create({
   dayViewTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#800000',
+    color: '#2c5aa0',
     marginLeft: 15,
     flex: 1,
   },
@@ -472,7 +361,7 @@ const styles = StyleSheet.create({
   timeLabel: {
     width: 80,
     fontSize: 11,
-    color: '#800000',
+    color: '#2c5aa0',
     fontWeight: '600',
     paddingVertical: 10,
     textAlign: 'right',

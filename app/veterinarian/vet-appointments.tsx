@@ -115,13 +115,6 @@ export default function VetAppointments() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Appointments</Text>
-      </View>
-
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
@@ -233,27 +226,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f7fa',
   },
-  header: {
-    backgroundColor: '#2c5aa0',
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    marginRight: 15,
-  },
-  backButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
+
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -491,3 +491,35 @@ export const deleteStaff = async (staffId, userEmail?: string) => {
     throw error;
   }
 };
+
+// Animal type functions
+export const getAnimalTypes = async (userEmail?: string) => {
+  try {
+    const querySnapshot = await getDocs(getTenantCollection(userEmail || '', 'animalTypes'));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error fetching animal types:', error);
+    return [];
+  }
+};
+
+export const addAnimalType = async (animalTypeData, userEmail?: string) => {
+  try {
+    const docRef = await addDoc(getTenantCollection(userEmail || '', 'animalTypes'), animalTypeData);
+    return { id: docRef.id, ...animalTypeData };
+  } catch (error) {
+    console.error('Error adding animal type:', error);
+    throw error;
+  }
+};
+
+export const updateAnimalType = async (animalTypeId, updateData, userEmail?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/animalTypes` : 'animalTypes';
+    await updateDoc(doc(db, collectionPath, animalTypeId), updateData);
+  } catch (error) {
+    console.error('Error updating animal type:', error);
+    throw error;
+  }
+};

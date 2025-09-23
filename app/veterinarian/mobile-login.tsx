@@ -22,20 +22,8 @@ export default function MobileLogin() {
       const result = await login(email.trim(), password);
       
       if (result.success) {
-        // Route based on user role for mobile
-        switch (result.user.role) {
-          case 'staff':
-            router.replace('/staff-dashboard');
-            break;
-          case 'veterinarian':
-            router.replace('/vet-mobile');
-            break;
-          case 'admin':
-            router.replace('/staff-dashboard'); // Admin uses staff dashboard on mobile
-            break;
-          default:
-            router.replace('/staff-dashboard');
-        }
+        // Route all mobile users to blue veterinarian interface
+        router.replace('/veterinarian/vet-mobile');
       } else {
         Alert.alert('Login Failed', result.error || 'Invalid credentials');
       }

@@ -1,52 +1,144 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '@/contexts/AuthContext';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/config/firebaseConfig';
 
 export default function VetMobile() {
   const router = useRouter();
+  const { user } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [vetDetails, setVetDetails] = useState({
+    name: 'Loading...',
+    email: user?.email || '',
+    license: 'Loading...',
+    specialization: 'Loading...',
+    phone: 'Loading...',
+    experience: 'Loading...'
+  });
 
-  const vetDetails = {
-    name: 'Dr. Sarah Smith',
-    email: 'dr.sarah@vetclinic.com',
-    license: 'VET-2024-001',
-    specialization: 'Small Animal Medicine',
-    phone: '+1 (555) 123-4567',
-    experience: '8 years'
+  useEffect(() => {
+    fetchVetDetails();
+  }, [user]);
+
+  const fetchVetDetails = async () => {
+    if (!user?.email) return;
+    
+    try {
+      // Query veterinarians collection directly
+      const vetQuery = query(
+        collection(db, 'veterinarians'),
+        where('email', '==', user.email)
+      );
+      
+      const vetSnapshot = await getDocs(vetQuery);
+      
+      if (!vetSnapshot.empty) {
+        const vetData = vetSnapshot.docs[0].data();
+        setVetDetails({
+          name: vetData.name || 'Dr. Veterinarian',
+          email: vetData.email || user.email,
+          license: vetData.license || 'Not Available',
+          specialization: vetData.specialization || 'General Practice',
+          phone: vetData.phone || 'Not Available',
+          experience: vetData.experience || 'Not Available'
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching vet details:', error);
+    }
   };
 
   return (
     <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText type="title" style={styles.headerTitle}>Veterinarian Dashboard</ThemedText>
-        <TouchableOpacity 
-          style={styles.avatarButton}
-          onPress={() => setShowProfile(true)}
-        >
-          <Text style={styles.avatarText}>DS</Text>
-        </TouchableOpacity>
-      </View>
+
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.welcomeSection}>
-          <ThemedText type="subtitle" style={styles.welcomeText}>Welcome back, Dr. Smith</ThemedText>
+          <ThemedText type="subtitle" style={styles.welcomeText}>Welcome back, {vetDetails.name}</ThemedText>
           <ThemedText style={styles.dateText}>Today is {new Date().toLocaleDateString()}</ThemedText>
         </View>
 
         <View style={styles.quickStats}>
-          <View style={styles.statCard}>
+          <TouchableOpacity style={styles.statCard}>
+            <Ionicons name="calendar" size={32} color="#2196F3" />
             <ThemedText style={styles.statValue}>8</ThemedText>
             <ThemedText style={styles.statLabel}>Today's Appointments</ThemedText>
-          </View>
-          <View style={styles.statCard}>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statCard}>
+            <Ionicons name="document-text" size={32} color="#2196F3" />
             <ThemedText style={styles.statValue}>3</ThemedText>
             <ThemedText style={styles.statLabel}>Pending Records</ThemedText>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.quickActions}>
+          <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
+          <View style={styles.actionsGrid}>
+            <TouchableOpacity style={styles.actionCard}>
+              <Ionicons name="add-circle" size={40} color="#2196F3" />
+              <Text style={styles.actionText}>New Record</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard}>
+              <Ionicons name="search" size={40} color="#2196F3" />
+              <Text style={styles.actionText}>Search Patient</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard}>
+              <Ionicons name="time" size={40} color="#2196F3" />
+              <Text style={styles.actionText}>Schedule</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard}>
+              <Ionicons name="notifications" size={40} color="#2196F3" />
+              <Text style={styles.actionText}>Alerts</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
 
+      {/* Hamburger Menu */}
+      <Modal
+        visible={showMenu}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowMenu(false)}
+      >
+        <View style={styles.menuOverlay}>
+          <View style={styles.menuContent}>
+            <View style={styles.menuHeader}>
+              <ThemedText type="subtitle" style={styles.menuTitle}>Menu</ThemedText>
+              <TouchableOpacity onPress={() => setShowMenu(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.menuItems}>
+              <TouchableOpacity style={styles.menuItem}>
+                <Ionicons name="calendar" size={20} color="#2196F3" />
+                <Text style={styles.menuItemText}>Appointments</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem}>
+                <Ionicons name="document-text" size={20} color="#2196F3" />
+                <Text style={styles.menuItemText}>Medical Records</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem}>
+                <Ionicons name="people" size={20} color="#2196F3" />
+                <Text style={styles.menuItemText}>Patients</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem}>
+                <Ionicons name="settings" size={20} color="#2196F3" />
+                <Text style={styles.menuItemText}>Settings</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Profile Modal */}
       <Modal
         visible={showProfile}
         transparent={true}
@@ -58,7 +150,7 @@ export default function VetMobile() {
             <View style={styles.modalHeader}>
               <ThemedText type="subtitle">Veterinarian Profile</ThemedText>
               <TouchableOpacity onPress={() => setShowProfile(false)}>
-                <Text style={styles.closeButton}>✕</Text>
+                <Ionicons name="close" size={24} color="#666" />
               </TouchableOpacity>
             </View>
             
@@ -72,16 +164,16 @@ export default function VetMobile() {
                 <ThemedText style={styles.profileValue}>{vetDetails.email}</ThemedText>
               </View>
               <View style={styles.profileRow}>
+                <ThemedText style={styles.profileLabel}>Phone:</ThemedText>
+                <ThemedText style={styles.profileValue}>{vetDetails.phone}</ThemedText>
+              </View>
+              <View style={styles.profileRow}>
                 <ThemedText style={styles.profileLabel}>License:</ThemedText>
                 <ThemedText style={styles.profileValue}>{vetDetails.license}</ThemedText>
               </View>
               <View style={styles.profileRow}>
                 <ThemedText style={styles.profileLabel}>Specialization:</ThemedText>
                 <ThemedText style={styles.profileValue}>{vetDetails.specialization}</ThemedText>
-              </View>
-              <View style={styles.profileRow}>
-                <ThemedText style={styles.profileLabel}>Phone:</ThemedText>
-                <ThemedText style={styles.profileValue}>{vetDetails.phone}</ThemedText>
               </View>
               <View style={styles.profileRow}>
                 <ThemedText style={styles.profileLabel}>Experience:</ThemedText>
@@ -93,9 +185,10 @@ export default function VetMobile() {
               style={styles.logoutButton}
               onPress={() => {
                 setShowProfile(false);
-                router.push('/logout');
+                router.push('/shared/logout');
               }}
             >
+              <Ionicons name="log-out" size={20} color="white" style={{ marginRight: 8 }} />
               <Text style={styles.logoutText}>Logout</Text>
             </TouchableOpacity>
           </View>
@@ -110,32 +203,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  header: {
-    backgroundColor: '#2196F3',
-    padding: 20,
-    paddingTop: 50,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    color: 'white',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  avatarButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+
   content: {
     flex: 1,
     padding: 20,
@@ -156,10 +224,11 @@ const styles = StyleSheet.create({
   quickStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 24,
   },
   statCard: {
     backgroundColor: 'white',
-    padding: 20,
+    padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     flex: 0.48,
@@ -179,6 +248,78 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 16,
+  },
+  quickActions: {
+    marginBottom: 24,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  actionCard: {
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    width: '48%',
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  actionText: {
+    fontSize: 12,
+    color: '#333',
+    marginTop: 8,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  menuContent: {
+    backgroundColor: 'white',
+    width: '80%',
+    height: '100%',
+    paddingTop: 50,
+  },
+  menuHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  menuTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  menuItems: {
+    padding: 20,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  menuItemText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 16,
   },
   modalOverlay: {
     flex: 1,
@@ -201,11 +342,6 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
-  },
-  closeButton: {
-    fontSize: 20,
-    color: '#666',
-    fontWeight: 'bold',
   },
   profileDetails: {
     marginBottom: 20,
@@ -230,6 +366,8 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   logoutText: {
     color: 'white',

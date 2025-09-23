@@ -24,7 +24,8 @@ export default function IndexScreen() {
         if (user.email?.includes('superadmin')) {
           router.replace('/server/superadmin');
         } else {
-          checkUserRoleAndRedirect(user.email);
+          // All non-superadmin users go to blue veterinarian interface
+          router.replace('/veterinarian/vet-mobile');
         }
       } else {
         // User not logged in, redirect to mobile login
@@ -33,18 +34,7 @@ export default function IndexScreen() {
     }
   }, [user, loading, isReady]);
   
-  const checkUserRoleAndRedirect = (email: string) => {
-    // Check if user is a veterinarian (contains 'dr.' or 'vet' in email)
-    const isVeterinarian = email.toLowerCase().includes('dr.') || 
-                          email.toLowerCase().includes('vet') ||
-                          email.toLowerCase().includes('doctor');
-    
-    if (isVeterinarian) {
-      router.replace('/vet-mobile-dashboard');
-    } else {
-      router.replace('/client/dashboard');
-    }
-  };
+
 
   if (loading || !isReady) {
     return (
