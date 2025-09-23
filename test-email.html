@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EmailJS Test</title>
+</head>
+<body>
+    <h1>EmailJS Test</h1>
+    <button onclick="testEmail()">Send Test Email</button>
+    <div id="result"></div>
+
+    <script>
+        async function testEmail() {
+            const result = document.getElementById('result');
+            result.innerHTML = 'Sending...';
+            
+            try {
+                const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        service_id: 'service_n0fmulh',
+                        template_id: 'template_5vubis9',
+                        user_id: '7nYFwpZOJE87ZXU45',
+                        template_params: {
+                            to_email: 'test@example.com',
+                            to_name: 'Test User',
+                            login_email: 'test@example.com',
+                            login_password: 'TestPass123!',
+                            login_url: 'https://yourapp.com/login',
+                            system_name: 'Veterinary Management System'
+                        }
+                    })
+                });
+
+                const responseText = await response.text();
+                console.log('Status:', response.status);
+                console.log('Response:', responseText);
+                
+                if (response.ok) {
+                    result.innerHTML = '✅ Email sent successfully!';
+                } else {
+                    result.innerHTML = `❌ Error: ${response.status} - ${responseText}`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                result.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

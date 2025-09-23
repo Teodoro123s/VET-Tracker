@@ -1,26 +1,35 @@
 {
   "expo": {
-    "name": "MyApp",
-    "slug": "MyApp",
+    "name": "VetClinic Staff",
+    "slug": "vetclinic-staff",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "vetclinic",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vetclinic.staff",
+      "requireFullScreen": false,
+      "statusBarStyle": "dark"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "package": "com.vetclinic.staff",
+      "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "pan",
+      "statusBarStyle": "dark",
+      "compileSdkVersion": 54,
+      "targetSdkVersion": 54,
+      "buildToolsVersion": "35.0.0"
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
+      "output": "server",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -35,8 +44,9 @@
         }
       ]
     ],
+
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": false
     }
   }
 }
