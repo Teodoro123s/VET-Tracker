@@ -33,7 +33,7 @@ export default function VetProfile() {
     <ScrollView style={styles.container}>
       <View style={styles.profileHeader}>
         <View style={styles.avatar}>
-          <Ionicons name="person" size={48} color="#fff" />
+          <Ionicons name="person" size={30} color="#fff" />
         </View>
         <Text style={styles.profileName}>{vetData?.name || getDisplayName(userEmail)}</Text>
         <Text style={styles.profileEmail}>{vetData?.email || userEmail}</Text>
@@ -96,26 +96,26 @@ const styles = StyleSheet.create({
   profileHeader: {
     backgroundColor: '#2c5aa0',
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 20,
     paddingHorizontal: 20,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   profileName: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   profileEmail: {
-    fontSize: 16,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
   },
   profileDetails: {

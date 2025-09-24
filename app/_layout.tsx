@@ -14,6 +14,36 @@ SplashScreen.preventAutoHideAsync();
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { TenantProvider } from '@/contexts/TenantContext';
+import React, { createContext, useContext } from 'react';
+
+const CustomerContext = createContext();
+
+export const useCustomer = () => {
+  const context = useContext(CustomerContext);
+  if (!context) {
+    return { selectedCustomer: null, setSelectedCustomer: () => {} };
+  }
+  return context;
+};
+
+function CustomerProvider({ children }) {
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [showPetsView, setShowPetsView] = useState(false);
+  const [selectedPet, setSelectedPet] = useState(null);
+  const [showMedicalView, setShowMedicalView] = useState(false);
+  const [selectedMedicalRecord, setSelectedMedicalRecord] = useState(null);
+  return (
+    <CustomerContext.Provider value={{ 
+      selectedCustomer, setSelectedCustomer, 
+      showPetsView, setShowPetsView,
+      selectedPet, setSelectedPet,
+      showMedicalView, setShowMedicalView,
+      selectedMedicalRecord, setSelectedMedicalRecord
+    }}>
+      {children}
+    </CustomerContext.Provider>
+  );
+}
 import Sidebar from '@/components/Sidebar';
 import VetBottomMenu from '@/components/VetBottomMenu';
 import VetMobileHeader from '@/components/VetMobileHeader';
@@ -32,12 +62,38 @@ function AppContent() {
   const showBottomMenu = isVetRoute;
   const showMobileHeader = isVetRoute;
   
+  const { selectedCustomer, showPetsView, selectedPet, showMedicalView, selectedMedicalRecord } = useCustomer();
+  
+  // Get page title and determine if should show back button
+  const getHeaderProps = () => {
+    if (pathname === '/veterinarian/vet-mobile') {
+      return { showBackButton: false, title: '' };
+    }
+    if (pathname === '/veterinarian/vet-customers') {
+      return { 
+        showBackButton: true, 
+        title: selectedMedicalRecord ? 'Medical Record Details' :
+               showMedicalView ? 'Medical History' : 
+               selectedPet ? 'Pet Details' : 
+               showPetsView ? 'Pets' : 
+               selectedCustomer ? 'Customer Details' : 'Customers' 
+      };
+    }
+    if (pathname === '/veterinarian/vet-calendar') {
+      return { showBackButton: true, title: 'Calendar' };
+    }
+    if (pathname === '/veterinarian/vet-appointments') {
+      return { showBackButton: true, title: 'Appointments' };
+    }
+    return { showBackButton: true, title: 'Veterinarian' };
+  };
+  
   return (
     <NavigationThemeProvider value={DefaultTheme}>
       <View style={styles.container}>
         {showMainSidebar && <Sidebar />}
         <View style={!showMainSidebar ? styles.fullContent : styles.content}>
-          {showMobileHeader && <VetMobileHeader />}
+          {showMobileHeader && <VetMobileHeader {...getHeaderProps()} onBackPress={() => {}} />}
           <View style={showBottomMenu ? styles.contentWithMenu : styles.fullHeight}>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
@@ -103,7 +159,9 @@ export default function RootLayout() {
     <AuthProvider>
       <TenantProvider>
         <NotificationProvider>
-          <AppContent />
+          <CustomerProvider>
+            <AppContent />
+          </CustomerProvider>
         </NotificationProvider>
       </TenantProvider>
     </AuthProvider>

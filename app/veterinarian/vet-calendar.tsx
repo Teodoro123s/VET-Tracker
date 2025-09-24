@@ -15,6 +15,7 @@ export default function VetCalendarScreen() {
   const [selectedDay, setSelectedDay] = useState(null);
   const [showDayView, setShowDayView] = useState(false);
   const [statusFilter, setStatusFilter] = useState('All');
+  const [translateX] = useState(new Animated.Value(0));
   
   useEffect(() => {
     fetchAppointments();
@@ -37,6 +38,26 @@ export default function VetCalendarScreen() {
     return filtered;
   };
   
+
+  
+  const navigateMonth = (direction) => {
+    if (direction === -1) {
+      if (selectedMonth === 0) {
+        setSelectedMonth(11);
+        setSelectedYear(selectedYear - 1);
+      } else {
+        setSelectedMonth(selectedMonth - 1);
+      }
+    } else {
+      if (selectedMonth === 11) {
+        setSelectedMonth(0);
+        setSelectedYear(selectedYear + 1);
+      } else {
+        setSelectedMonth(selectedMonth + 1);
+      }
+    }
+  };
+  
   return (
     <View style={styles.container}>
       <View style={styles.filterHeader}>
@@ -56,29 +77,15 @@ export default function VetCalendarScreen() {
       </View>
       <View style={styles.content}>
         {!showDayView ? (
-          <View style={styles.calendarContainer}>
+            <View style={styles.calendarContainer}>
             <View style={styles.calendarHeader}>
-              <TouchableOpacity style={styles.navButton} onPress={() => {
-                if (selectedMonth === 0) {
-                  setSelectedMonth(11);
-                  setSelectedYear(selectedYear - 1);
-                } else {
-                  setSelectedMonth(selectedMonth - 1);
-                }
-              }}>
+              <TouchableOpacity style={styles.navButton} onPress={() => navigateMonth(-1)}>
                 <Text style={styles.navButtonText}>‹</Text>
               </TouchableOpacity>
               <Text style={styles.monthTitle}>
                 {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][selectedMonth]} {selectedYear}
               </Text>
-              <TouchableOpacity style={styles.navButton} onPress={() => {
-                if (selectedMonth === 11) {
-                  setSelectedMonth(0);
-                  setSelectedYear(selectedYear + 1);
-                } else {
-                  setSelectedMonth(selectedMonth + 1);
-                }
-              }}>
+              <TouchableOpacity style={styles.navButton} onPress={() => navigateMonth(1)}>
                 <Text style={styles.navButtonText}>›</Text>
               </TouchableOpacity>
             </View>
@@ -168,7 +175,7 @@ export default function VetCalendarScreen() {
                 });
               })()}
             </View>
-          </View>
+            </View>
         ) : (
           <View style={styles.dayViewContainer}>
             <View style={styles.dayViewHeader}>

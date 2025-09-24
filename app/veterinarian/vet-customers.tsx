@@ -6,16 +6,27 @@ import { ThemedText } from '@/components/ThemedText';
 import { getCustomers, addCustomer } from '@/lib/services/firebaseService';
 import { useTenant } from '../../contexts/TenantContext';
 import { useRouter } from 'expo-router';
+import { useCustomer } from '../_layout';
 
 export default function VetCustomers() {
   const { userEmail } = useTenant();
   const router = useRouter();
+  const { 
+    selectedCustomer, setSelectedCustomer, 
+    showPetsView, setShowPetsView, 
+    selectedPet, setSelectedPet, 
+    showMedicalView, setShowMedicalView,
+    selectedMedicalRecord, setSelectedMedicalRecord
+  } = useCustomer();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [detailSearchTerm, setDetailSearchTerm] = useState('');
+  const [petsSearchTerm, setPetsSearchTerm] = useState('');
+  const [customerPets, setCustomerPets] = useState([]);
+  const [medicalSearchTerm, setMedicalSearchTerm] = useState('');
+  const [medicalRecords, setMedicalRecords] = useState([]);
   const [newCustomer, setNewCustomer] = useState({
     firstname: '',
     lastname: '',
@@ -26,7 +37,58 @@ export default function VetCustomers() {
 
   useEffect(() => {
     loadCustomers();
+    // Reset navigation states to show customer list by default
+    setSelectedCustomer(null);
+    setShowPetsView(false);
+    setSelectedPet(null);
+    setShowMedicalView(false);
+    setSelectedMedicalRecord(null);
   }, []);
+  
+  useEffect(() => {
+    if (selectedCustomer) {
+      // Load pets for selected customer
+      const mockPets = [
+        { id: 1, name: 'Max', type: 'Dog', breed: 'Golden Retriever' },
+        { id: 2, name: 'Bella', type: 'Cat', breed: 'Persian' }
+      ];
+      setCustomerPets(mockPets);
+    }
+  }, [selectedCustomer]);
+  
+  useEffect(() => {
+    if (selectedPet) {
+      // Load medical records for selected pet
+      const mockRecords = [
+        { 
+          id: 1, 
+          formType: 'Vaccination Record', 
+          date: 'Dec 10, 2023',
+          formData: {
+            vaccineType: 'DHPP (Distemper, Hepatitis, Parvovirus, Parainfluenza)',
+            administrationDate: 'Dec 10, 2023',
+            nextDueDate: 'Dec 10, 2024',
+            veterinarian: 'Dr. Smith',
+            notes: 'Annual vaccines updated - pet showed no adverse reactions'
+          }
+        },
+        { 
+          id: 2, 
+          formType: 'Health Checkup', 
+          date: 'Nov 15, 2023',
+          formData: {
+            weight: '25 kg',
+            temperature: '38.5°C',
+            heartRate: '120 bpm',
+            veterinarian: 'Dr. Johnson',
+            findings: 'Pet is in excellent health',
+            recommendations: 'Continue current diet and exercise routine'
+          }
+        }
+      ];
+      setMedicalRecords(mockRecords);
+    }
+  }, [selectedPet]);
 
   const loadCustomers = async () => {
     try {
@@ -72,38 +134,153 @@ export default function VetCustomers() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#2c5aa0" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Customers</Text>
-        <View style={styles.rightSection}>
-          <TouchableOpacity style={styles.notificationButton}>
-            <Ionicons name="notifications-outline" size={24} color="#2c5aa0" />
-            <View style={styles.notificationBadge}>
-              <Text style={styles.badgeText}>3</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.settingsButton}>
-            <Ionicons name="ellipsis-vertical" size={24} color="#2c5aa0" />
-          </TouchableOpacity>
+      {!selectedCustomer && !selectedPet && (
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#666" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search customers..."
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+          />
         </View>
-      </View>
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#666" />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search customers..."
-          value={searchTerm}
-          onChangeText={setSearchTerm}
-        />
-      </View>
+      )}
 
       <View style={styles.listContainer}>
         <ScrollView style={styles.scrollableList} showsVerticalScrollIndicator={false}>
           {loading ? (
             <View style={styles.loadingContainer}>
               <ThemedText>Loading customers...</ThemedText>
+            </View>
+          ) : selectedPet && !showMedicalView && !selectedMedicalRecord ? (
+            <View style={styles.petDetailsView}>
+              {console.log('SHOWING PET DETAILS VIEW - selectedPet:', selectedPet, 'showMedicalView:', showMedicalView)}
+              <View style={styles.detailTable}>
+                {[
+                  { label: 'Name', value: selectedPet.name },
+                  { label: 'Type', value: selectedPet.type },
+                  { label: 'Breed', value: selectedPet.breed },
+                  { label: 'Age', value: '3 years' },
+                  { label: 'Weight', value: '25 kg' },
+                  { label: 'See Medical History', value: 'View Records', isAction: true }
+                ].map((item, index) => (
+                  <View key={index} style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>{item.label}</Text>
+                    {item.isAction ? (
+                      <TouchableOpacity onPress={() => setShowMedicalView(true)}>
+                        <Text style={styles.detailActionValue}>{item.value}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={styles.detailValue}>{item.value}</Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : showPetsView ? (
+            <View style={styles.petsView}>
+              <View style={styles.searchContainer}>
+                <Ionicons name="search" size={20} color="#666" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search pets..."
+                  value={petsSearchTerm}
+                  onChangeText={setPetsSearchTerm}
+                />
+              </View>
+              
+              <View style={styles.petsList}>
+                {customerPets.filter(pet => 
+                  pet.name.toLowerCase().includes(petsSearchTerm.toLowerCase())
+                ).map((pet, index) => (
+                  <TouchableOpacity key={pet.id || index} style={styles.petRow} onPress={() => {
+                    setSelectedPet(pet);
+                    setShowPetsView(false);
+                  }}>
+                    <Text style={styles.petName}>{pet.name}</Text>
+                    <Text style={styles.petDetails}>{pet.type} - {pet.breed}</Text>
+                  </TouchableOpacity>
+                ))}
+                {customerPets.length === 0 && (
+                  <View style={styles.emptyContainer}>
+                    <ThemedText style={styles.emptyText}>No pets found</ThemedText>
+                  </View>
+                )}
+              </View>
+            </View>
+          ) : showMedicalView ? (
+            <View style={styles.medicalView}>
+              <View style={styles.searchContainer}>
+                <Ionicons name="search" size={20} color="#666" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search medical records..."
+                  value={medicalSearchTerm}
+                  onChangeText={setMedicalSearchTerm}
+                />
+              </View>
+              
+              <View style={styles.medicalList}>
+                {medicalRecords.filter(record => 
+                  record.formType.toLowerCase().includes(medicalSearchTerm.toLowerCase())
+                ).map((record, index) => (
+                  <TouchableOpacity key={record.id || index} style={styles.medicalRow} onPress={() => {
+                    setSelectedMedicalRecord(record);
+                    setShowMedicalView(false);
+                  }}>
+                    <Text style={styles.medicalType}>{record.formType}</Text>
+                    <Text style={styles.medicalDate}>{record.date}</Text>
+                  </TouchableOpacity>
+                ))}
+                {medicalRecords.length === 0 && (
+                  <View style={styles.emptyContainer}>
+                    <ThemedText style={styles.emptyText}>No medical records found</ThemedText>
+                  </View>
+                )}
+              </View>
+            </View>
+          ) : selectedCustomer && !showPetsView && !selectedPet ? (
+            <View style={styles.customerDetailsView}>
+              <View style={styles.detailTable}>
+                {[
+                  { label: 'Name', value: selectedCustomer.name },
+                  { label: 'Phone', value: selectedCustomer.contact },
+                  { label: 'Email', value: selectedCustomer.email || 'Not provided' },
+                  { label: 'Address', value: selectedCustomer.address || 'Not provided' },
+                  { label: 'City', value: selectedCustomer.city || 'Not specified' },
+                  { label: 'Number of Pets', value: selectedCustomer.pets?.toString() || '0' },
+                  { label: 'See Pets', value: 'View Pet Details', isAction: true }
+                ].map((item, index) => (
+                  <View key={index} style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>{item.label}</Text>
+                    {item.isAction ? (
+                      <TouchableOpacity onPress={() => setShowPetsView(true)}>
+                        <Text style={styles.detailActionValue}>{item.value}</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <Text style={styles.detailValue}>{item.value}</Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          ) : selectedMedicalRecord ? (
+            <View style={styles.customerDetailsView}>
+              <View style={styles.detailTable}>
+                {[
+                  { label: 'Form Type', value: selectedMedicalRecord.formType },
+                  { label: 'Date', value: selectedMedicalRecord.date },
+                  ...Object.entries(selectedMedicalRecord.formData || {}).map(([key, value]) => ({
+                    label: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'),
+                    value: value
+                  }))
+                ].map((item, index) => (
+                  <View key={index} style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>{item.label}</Text>
+                    <Text style={styles.detailValue}>{item.value}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           ) : filteredCustomers.length === 0 ? (
             <View style={styles.emptyContainer}>
@@ -123,12 +300,32 @@ export default function VetCustomers() {
         </ScrollView>
       </View>
 
-      <TouchableOpacity 
-        style={styles.addButton}
-        onPress={() => setShowAddModal(true)}
-      >
-        <Ionicons name="add" size={24} color="#fff" />
-      </TouchableOpacity>
+      {!selectedCustomer && (
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={() => setShowAddModal(true)}
+        >
+          <Ionicons name="add" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
+      
+      {showPetsView && (
+        <TouchableOpacity 
+          style={styles.addPetButton}
+          onPress={() => {}}
+        >
+          <Ionicons name="paw" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
+      
+      {showMedicalView && (
+        <TouchableOpacity 
+          style={styles.addRecordButton}
+          onPress={() => {}}
+        >
+          <Ionicons name="medical" size={24} color="#fff" />
+        </TouchableOpacity>
+      )}
 
       <Modal
         visible={showAddModal}
@@ -220,55 +417,7 @@ export default function VetCustomers() {
         </View>
       </Modal>
 
-      {/* Customer Detail Modal */}
-      <Modal
-        visible={!!selectedCustomer}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setSelectedCustomer(null)}
-      >
-        <View style={styles.detailModalOverlay}>
-          <View style={styles.detailModalContent}>
-            <View style={styles.detailHeader}>
-              <TouchableOpacity onPress={() => setSelectedCustomer(null)}>
-                <Ionicons name="arrow-back" size={24} color="#333" />
-              </TouchableOpacity>
-              <ThemedText type="subtitle" style={styles.detailTitle}>Customer Details</ThemedText>
-              <View style={{ width: 24 }} />
-            </View>
 
-            <View style={styles.detailSearchContainer}>
-              <Ionicons name="search" size={20} color="#666" />
-              <TextInput
-                style={styles.detailSearchInput}
-                placeholder="Search customer info..."
-                value={detailSearchTerm}
-                onChangeText={setDetailSearchTerm}
-              />
-            </View>
-
-            <ScrollView style={styles.detailTable}>
-              {selectedCustomer && [
-                { label: 'Name', value: selectedCustomer.name },
-                { label: 'Phone', value: selectedCustomer.contact },
-                { label: 'Email', value: selectedCustomer.email || 'Not provided' },
-                { label: 'Address', value: selectedCustomer.address || 'Not provided' },
-                { label: 'City', value: selectedCustomer.city || 'Not specified' },
-                { label: 'Number of Pets', value: selectedCustomer.pets?.toString() || '0' }
-              ].filter(item => 
-                detailSearchTerm === '' || 
-                item.label.toLowerCase().includes(detailSearchTerm.toLowerCase()) ||
-                item.value.toLowerCase().includes(detailSearchTerm.toLowerCase())
-              ).map((item, index) => (
-                <View key={index} style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{item.label}</Text>
-                  <Text style={styles.detailValue}>{item.value}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </ThemedView>
   );
 }
@@ -300,6 +449,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },
+  addPetButton: {
+    position: 'absolute',
+    bottom: 35,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#4CAF50',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -307,6 +472,8 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingHorizontal: 12,
     paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
   },
   searchInput: {
     flex: 1,
@@ -425,16 +592,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'white',
   },
-  detailModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  detailModalContent: {
+  customerDetailsView: {
     flex: 1,
     backgroundColor: 'white',
-    marginTop: 50,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
   },
   detailHeader: {
     flexDirection: 'row',
@@ -464,8 +624,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   detailTable: {
-    flex: 1,
     paddingHorizontal: 16,
+    paddingBottom: 100,
   },
   detailRow: {
     flexDirection: 'row',
@@ -484,65 +644,95 @@ const styles = StyleSheet.create({
     color: '#666',
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 50,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
+  detailActionValue: {
+    fontSize: 16,
+    color: '#2196F3',
     flex: 1,
+    textDecorationLine: 'underline',
   },
-  rightSection: {
+  petsView: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  petsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  notificationButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 20,
-  },
-  settingsButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 20,
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: '#ff4444',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 12,
+  petsTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
+    color: '#333',
+    marginLeft: 16,
   },
+  petsList: {
+    flex: 1,
+    paddingBottom: 100,
+  },
+  petRow: {
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  petName: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  petDetails: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  petDetailsView: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  medicalView: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  medicalList: {
+    flex: 1,
+    paddingBottom: 100,
+  },
+  medicalRow: {
+    backgroundColor: '#fff',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  medicalType: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  medicalDate: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  addRecordButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FF9800',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+
+
 });

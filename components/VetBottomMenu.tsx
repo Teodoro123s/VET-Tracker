@@ -10,7 +10,6 @@ export default function VetBottomMenu() {
   const menuItems = [
     { name: 'Home', icon: 'home-outline', route: '/veterinarian/vet-mobile' },
     { name: 'Appointments', icon: 'calendar-outline', route: '/veterinarian/vet-appointments' },
-    { name: 'Search', icon: 'search-outline', route: '/veterinarian/vet-customers' },
     { name: 'Customers', icon: 'people-outline', route: '/veterinarian/vet-customers' },
     { name: 'Calendar', icon: 'calendar-outline', route: '/veterinarian/vet-calendar' }
   ];
