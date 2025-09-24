@@ -523,3 +523,172 @@ export const updateAnimalType = async (animalTypeId, updateData, userEmail?: str
     throw error;
   }
 };
+
+// Breed functions
+export const getBreeds = async (userEmail?: string) => {
+  try {
+    const querySnapshot = await getDocs(getTenantCollection(userEmail || '', 'breeds'));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error fetching breeds:', error);
+    return [];
+  }
+};
+
+export const addBreed = async (breedData, userEmail?: string) => {
+  try {
+    const docRef = await addDoc(getTenantCollection(userEmail || '', 'breeds'), breedData);
+    return { id: docRef.id, ...breedData };
+  } catch (error) {
+    console.error('Error adding breed:', error);
+    throw error;
+  }
+};
+
+export const deleteAnimalType = async (animalTypeId, userEmail?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/animalTypes` : 'animalTypes';
+    await deleteDoc(doc(db, collectionPath, animalTypeId));
+  } catch (error) {
+    console.error('Error deleting animal type:', error);
+    throw error;
+  }
+};
+
+export const deleteBreed = async (breedId, userEmail?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/breeds` : 'breeds';
+    await deleteDoc(doc(db, collectionPath, breedId));
+  } catch (error) {
+    console.error('Error deleting breed:', error);
+    throw error;
+  }
+};
+
+// Password Management Functions
+const generateSecurePassword = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let password = '';
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+};
+
+const generateResetToken = () => {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
+
+const hashPassword = async (password: string) => {
+  // Simple hash for demo - use proper hashing in production
+  return btoa(password);
+};
+
+const verifyPassword = async (password: string, hashedPassword: string) => {
+  return btoa(password) === hashedPassword;
+};
+
+const sendPasswordEmail = async (email: string, newPassword: string) => {
+  // Email service integration - placeholder for now
+  console.log(`Sending password to ${email}: ${newPassword}`);
+  // In production, integrate with email service like SendGrid, AWS SES, etc.
+};
+
+export const generatePassword = async (targetEmail: string, initiatorEmail: string, initiatorType: string) => {
+  const newPassword = generateSecurePassword();
+  const hashedPassword = await hashPassword(newPassword);
+  
+  if (initiatorType === 'veterinarian' && targetEmail !== initiatorEmail) {
+    throw new Error('Veterinarians can only generate their own password');
+  }
+  
+  const tenantId = getTenantId(initiatorEmail || '');
+  const collectionPath = tenantId ? `tenants/${tenantId}/userCredentials` : 'userCredentials';
+  
+  await addDoc(collection(db, collectionPath), {
+    email: targetEmail,
+    pendingPassword: hashedPassword,
+    pendingPasswordCreatedAt: new Date().toISOString(),
+    pendingPasswordExpiresAt: new Date(Date.now() + 24*60*60*1000).toISOString(),
+    passwordResetToken: generateResetToken(),
+    initiatedBy: initiatorEmail,
+    initiatorType: initiatorType
+  });
+  
+  await sendPasswordEmail(targetEmail, newPassword);
+  
+  return { success: true, message: 'New password sent to email' };
+};
+
+export const generateOwnPassword = async (vetEmail: string) => {
+  return await generatePassword(vetEmail, vetEmail, 'veterinarian');
+};
+
+export const requestPasswordReset = async (email: string, userType: string) => {
+  const newPassword = generateSecurePassword();
+  const hashedPassword = await hashPassword(newPassword);
+  const resetToken = generateResetToken();
+  
+  const tenantId = getTenantId(email || '');
+  const collectionPath = tenantId ? `tenants/${tenantId}/userCredentials` : 'userCredentials';
+  
+  await addDoc(collection(db, collectionPath), {
+    email: email,
+    pendingPassword: hashedPassword,
+    pendingPasswordCreatedAt: new Date().toISOString(),
+    pendingPasswordExpiresAt: new Date(Date.now() + 24*60*60*1000).toISOString(),
+    passwordResetToken: resetToken,
+    initiatedBy: email,
+    initiatorType: 'self_reset'
+  });
+  
+  await sendPasswordEmail(email, newPassword);
+  
+  return { success: true, message: 'Password reset email sent' };
+};
+
+export const loginWithCredentialOverlap = async (email: string, password: string) => {
+  try {
+    const tenantId = getTenantId(email || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/userCredentials` : 'userCredentials';
+    const querySnapshot = await getDocs(collection(db, collectionPath));
+    
+    const userCreds = querySnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(cred => cred.email === email)
+      .sort((a, b) => new Date(b.pendingPasswordCreatedAt || 0).getTime() - new Date(a.pendingPasswordCreatedAt || 0).getTime());
+    
+    if (userCreds.length === 0) {
+      return { success: false, error: 'User not found' };
+    }
+    
+    const latestCred = userCreds[0];
+    
+    // Check current password first
+    if (latestCred.currentPassword && await verifyPassword(password, latestCred.currentPassword)) {
+      return { success: true, user: { email: latestCred.email } };
+    }
+    
+    // Check pending password if exists and not expired
+    if (latestCred.pendingPassword && new Date() < new Date(latestCred.pendingPasswordExpiresAt)) {
+      if (await verifyPassword(password, latestCred.pendingPassword)) {
+        // Activate pending password
+        await updateDoc(doc(db, collectionPath, latestCred.id), {
+          currentPassword: latestCred.pendingPassword,
+          pendingPassword: null,
+          pendingPasswordCreatedAt: null,
+          pendingPasswordExpiresAt: null,
+          passwordResetToken: null
+        });
+        return { success: true, user: { email: latestCred.email }, passwordActivated: true };
+      }
+    }
+    
+    return { success: false, error: 'Invalid credentials' };
+  } catch (error) {
+    console.error('Login error:', error);
+    return { success: false, error: 'Login failed' };
+  }
+};

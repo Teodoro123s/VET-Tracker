@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTenant } from '@/contexts/TenantContext';
 import { getVeterinarians } from '@/lib/services/firebaseService';
@@ -59,7 +59,7 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
         )}
       </View>
       <View style={styles.rightSection}>
-        <TouchableOpacity style={styles.notificationButton}>
+        <TouchableOpacity style={styles.notificationButton} onPress={() => router.push('/veterinarian/vet-notifications')}>
           <Ionicons name="notifications-outline" size={24} color="#2c5aa0" />
           <View style={styles.notificationBadge}>
             <Text style={styles.badgeText}>3</Text>
@@ -69,6 +69,7 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
           <Ionicons name="ellipsis-vertical" size={24} color="#2c5aa0" />
         </TouchableOpacity>
       </View>
+
     </View>
   );
 }
@@ -164,4 +165,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
+
 });

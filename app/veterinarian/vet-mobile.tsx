@@ -13,7 +13,8 @@ export default function VetMobile() {
   const router = useRouter();
   const { user } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
+
+  const [showNotifications, setShowNotifications] = useState(false);
   const [vetDetails, setVetDetails] = useState({
     name: 'Loading...',
     email: user?.email || '',
@@ -113,50 +114,14 @@ export default function VetMobile() {
               <Text style={styles.actionText}>Calendar</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="notifications" size={40} color="#2196F3" />
-              <Text style={styles.actionText}>Alerts</Text>
+              <Ionicons name="settings" size={40} color="#2196F3" />
+              <Text style={styles.actionText}>Settings</Text>
             </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
 
-      {/* Hamburger Menu */}
-      <Modal
-        visible={showMenu}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowMenu(false)}
-      >
-        <View style={styles.menuOverlay}>
-          <View style={styles.menuContent}>
-            <View style={styles.menuHeader}>
-              <ThemedText type="subtitle" style={styles.menuTitle}>Menu</ThemedText>
-              <TouchableOpacity onPress={() => setShowMenu(false)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.menuItems}>
-              <TouchableOpacity style={styles.menuItem}>
-                <Ionicons name="calendar" size={20} color="#2196F3" />
-                <Text style={styles.menuItemText}>Appointments</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem}>
-                <Ionicons name="document-text" size={20} color="#2196F3" />
-                <Text style={styles.menuItemText}>Medical Records</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem}>
-                <Ionicons name="people" size={20} color="#2196F3" />
-                <Text style={styles.menuItemText}>Patients</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.menuItem}>
-                <Ionicons name="settings" size={20} color="#2196F3" />
-                <Text style={styles.menuItemText}>Settings</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+
 
       {/* Profile Modal */}
       <Modal
@@ -211,6 +176,54 @@ export default function VetMobile() {
               <Ionicons name="log-out" size={20} color="white" style={{ marginRight: 8 }} />
               <Text style={styles.logoutText}>Logout</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Notifications Modal */}
+      <Modal
+        visible={showNotifications}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowNotifications(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.notificationModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.notificationTitle}>Notifications</Text>
+              <TouchableOpacity onPress={() => setShowNotifications(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.notificationList}>
+              <View style={styles.notificationItem}>
+                <Ionicons name="time" size={20} color="#FFA500" />
+                <View style={styles.notificationContent}>
+                  <Text style={styles.notificationItemTitle}>Appointment Pending</Text>
+                  <Text style={styles.notificationText}>John Smith - Buddy needs approval</Text>
+                  <Text style={styles.notificationTime}>Today at 2:00 PM</Text>
+                </View>
+              </View>
+              
+              <View style={styles.notificationItem}>
+                <Ionicons name="alert-circle" size={20} color="#FF6B6B" />
+                <View style={styles.notificationContent}>
+                  <Text style={styles.notificationItemTitle}>Appointment Due</Text>
+                  <Text style={styles.notificationText}>Sarah Johnson - Max appointment is due</Text>
+                  <Text style={styles.notificationTime}>Today at 3:30 PM</Text>
+                </View>
+              </View>
+              
+              <View style={styles.notificationItem}>
+                <Ionicons name="calendar" size={20} color="#4ECDC4" />
+                <View style={styles.notificationContent}>
+                  <Text style={styles.notificationItemTitle}>Upcoming Appointment</Text>
+                  <Text style={styles.notificationText}>Mike Davis - Luna scheduled tomorrow</Text>
+                  <Text style={styles.notificationTime}>Tomorrow at 10:00 AM</Text>
+                </View>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -337,44 +350,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
   },
-  menuOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  menuContent: {
-    backgroundColor: 'white',
-    width: '80%',
-    height: '100%',
-    paddingTop: 50,
-  },
-  menuHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  menuTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  menuItems: {
-    padding: 20,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  menuItemText: {
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 16,
-  },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -427,5 +403,48 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+
+  notificationModal: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 0,
+    width: '90%',
+    maxHeight: '70%',
+  },
+  notificationTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  notificationList: {
+    maxHeight: 400,
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'flex-start',
+  },
+  notificationContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  notificationItemTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  notificationText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  notificationTime: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
   },
 });

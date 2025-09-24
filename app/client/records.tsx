@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView,
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { deleteMedicalCategory, deleteMedicalForm, getMedicalForms, getMedicalCategories, addMedicalForm, addMedicalCategory, getFormFields, addFormField, updateMedicalForm, deleteFormField, updateFormField } from '../../lib/services/firebaseService';
-import { useTenant } from '../../contexts/TenantContext';
+import { useTenant } from '@/contexts/TenantContext';
 
 export default function RecordsScreen() {
   const { userEmail } = useTenant();

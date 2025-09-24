@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/config/firebaseConfig';
+import { loginWithCredentialOverlap } from '../lib/services/firebaseService';
 
 const AuthContext = createContext({});
 
@@ -30,6 +31,38 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      // Try credential overlap login first
+      const credentialResult = await loginWithCredentialOverlap(email.trim(), password);
+      
+      if (credentialResult.success) {
+        // If credential overlap login succeeds, get user data from tenants collection
+        const q = query(collection(db, 'tenants'), where('email', '==', email.trim()));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          const userDoc = querySnapshot.docs[0];
+          const userData = userDoc.data();
+          
+          const user = {
+            email: userData.email,
+            role: userData.role,
+            tenantId: userData.tenantId,
+            clinicName: userData.clinicName
+          };
+          
+          await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+          setUser(user);
+          
+          if (credentialResult.passwordActivated) {
+            // Show success message for password activation
+            console.log('Password updated successfully');
+          }
+          
+          return { success: true, user };
+        }
+      }
+      
+      // Fallback to original login method
       const q = query(collection(db, 'tenants'), where('email', '==', email.trim()));
       const querySnapshot = await getDocs(q);
       

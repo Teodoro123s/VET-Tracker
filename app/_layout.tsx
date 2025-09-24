@@ -85,6 +85,9 @@ function AppContent() {
     if (pathname === '/veterinarian/vet-appointments') {
       return { showBackButton: true, title: 'Appointments' };
     }
+    if (pathname === '/veterinarian/vet-notifications') {
+      return { showBackButton: true, title: 'Notifications' };
+    }
     return { showBackButton: true, title: 'Veterinarian' };
   };
   
@@ -98,6 +101,7 @@ function AppContent() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
 
+            <Stack.Screen name="client/dashboard" />
             <Stack.Screen name="client/appointments" />
             <Stack.Screen name="client/customers" />
             <Stack.Screen name="client/veterinarians" />

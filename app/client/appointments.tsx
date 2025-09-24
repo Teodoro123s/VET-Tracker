@@ -209,11 +209,7 @@ export default function AppointmentsScreen() {
   const [addRecordDrawerAnimation] = useState(new Animated.Value(-350));
   const [newMedicalRecord, setNewMedicalRecord] = useState({
     category: '',
-    formTemplate: '',
-    treatment: '',
-    veterinarian: '',
-    diagnosis: '',
-    date: ''
+    formTemplate: ''
   });
   const [showRecordCategoryDropdown, setShowRecordCategoryDropdown] = useState(false);
   const [showRecordFormDropdown, setShowRecordFormDropdown] = useState(false);
@@ -926,10 +922,10 @@ export default function AppointmentsScreen() {
               <View style={styles.tableContainer}>
                 <View style={styles.petsTable}>
                   <View style={styles.tableHeader}>
-                    <Text style={styles.cellId}>Order</Text>
+                    <Text style={styles.headerCellId}>Order</Text>
                     <Text style={styles.headerCellName}>Date</Text>
-                    <Text style={styles.headerCell}>Treatment</Text>
-                    <Text style={styles.headerCell}>Veterinarian</Text>
+                    <Text style={styles.headerCell}>Category</Text>
+                    <Text style={styles.headerCell}>Medical Form</Text>
                   </View>
                   {(() => {
                     // Find the pet by name from the appointment
@@ -941,8 +937,8 @@ export default function AppointmentsScreen() {
                     const petId = pet?.id;
                     const historyData = petMedicalHistory[petId] || [];
                     const filteredHistory = historyData.filter(record =>
-                      record.treatment.toLowerCase().includes(medicalHistorySearchTerm.toLowerCase()) ||
-                      record.veterinarian.toLowerCase().includes(medicalHistorySearchTerm.toLowerCase())
+                      (record.category || 'General').toLowerCase().includes(medicalHistorySearchTerm.toLowerCase()) ||
+                      (record.formType || '').toLowerCase().includes(medicalHistorySearchTerm.toLowerCase())
                     );
                     const historyTotalPages = Math.ceil(filteredHistory.length / medicalHistoryItemsPerPage);
                     const historyStartIndex = (medicalHistoryCurrentPage - 1) * medicalHistoryItemsPerPage;
@@ -965,8 +961,8 @@ export default function AppointmentsScreen() {
                             <TouchableOpacity key={record.id} style={styles.tableRow} onPress={() => setSelectedMedicalRecord(record)}>
                               <Text style={styles.cellId}>{historyStartIndex + recordIndex + 1}</Text>
                               <Text style={styles.cellName}>{record.date}</Text>
-                              <Text style={styles.cell}>{record.treatment}</Text>
-                              <Text style={styles.cell}>{record.veterinarian}</Text>
+                              <Text style={styles.cell}>{record.category || 'General'}</Text>
+                              <Text style={styles.cell}>{record.formType || 'N/A'}</Text>
                             </TouchableOpacity>
                           ))}
                         </ScrollView>
@@ -976,8 +972,8 @@ export default function AppointmentsScreen() {
                         <TouchableOpacity key={record.id} style={styles.tableRow} onPress={() => setSelectedMedicalRecord(record)}>
                           <Text style={styles.cellId}>{historyStartIndex + recordIndex + 1}</Text>
                           <Text style={styles.cellName}>{record.date}</Text>
-                          <Text style={styles.cell}>{record.treatment}</Text>
-                          <Text style={styles.cell}>{record.veterinarian}</Text>
+                          <Text style={styles.cell}>{record.category || 'General'}</Text>
+                          <Text style={styles.cell}>{record.formType || 'N/A'}</Text>
                         </TouchableOpacity>
                       ));
                     }
@@ -1029,7 +1025,10 @@ export default function AppointmentsScreen() {
                       }}
                     />
                     <Text style={styles.pageOf}>of {Math.ceil((window.currentFilteredHistory || []).length / medicalHistoryItemsPerPage) || 1}</Text>
-                    <TouchableOpacity style={styles.pageBtn}>
+                    <TouchableOpacity style={styles.pageBtn} onPress={() => {
+                      const historyTotalPages = Math.ceil((window.currentFilteredHistory || []).length / medicalHistoryItemsPerPage);
+                      if (medicalHistoryCurrentPage < historyTotalPages) setMedicalHistoryCurrentPage(medicalHistoryCurrentPage + 1);
+                    }}>
                       <Text style={styles.pageBtnText}>Next</Text>
                     </TouchableOpacity>
                   </View>
@@ -1287,41 +1286,68 @@ export default function AppointmentsScreen() {
                     <Text style={styles.editButtonText}>Edit</Text>
                   </TouchableOpacity>
                 </View>
-                <View style={styles.medicalRecordDetails}>
-                  <View style={styles.medicalRecordRow}>
-                    <Text style={styles.medicalRecordLabel}>Form Type:</Text>
-                    <Text style={styles.medicalRecordValue}>{selectedMedicalRecord.formType}</Text>
-                  </View>
-                  <View style={styles.medicalRecordRow}>
-                    <Text style={styles.medicalRecordLabel}>Date:</Text>
-                    <Text style={styles.medicalRecordValue}>{selectedMedicalRecord.date}</Text>
-                  </View>
-                  <View style={styles.medicalRecordRow}>
-                    <Text style={styles.medicalRecordLabel}>Treatment:</Text>
-                    <Text style={styles.medicalRecordValue}>{selectedMedicalRecord.treatment}</Text>
-                  </View>
-                  <View style={styles.medicalRecordRow}>
-                    <Text style={styles.medicalRecordLabel}>Veterinarian:</Text>
-                    <Text style={styles.medicalRecordValue}>{selectedMedicalRecord.veterinarian}</Text>
-                  </View>
-                  
-                  {selectedMedicalRecord.formData && Object.keys(selectedMedicalRecord.formData).length > 0 && (
-                    <>
-                      <Text style={styles.formDataTitle}>Form Data:</Text>
-                      {Object.entries(selectedMedicalRecord.formData).map(([key, value]) => (
-                        <View key={key} style={styles.medicalRecordRow}>
-                          <Text style={styles.medicalRecordLabel}>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}:</Text>
-                          <Text style={styles.medicalRecordValue}>{value}</Text>
-                        </View>
-                      ))}
-                    </>
-                  )}
-                  
-                  <View style={styles.medicalRecordRow}>
-                    <Text style={styles.medicalRecordLabel}>Record Created:</Text>
-                    <Text style={styles.medicalRecordValue}>Jan 15, 2024</Text>
-                  </View>
+                <View style={styles.tableHeader}>
+                  <Text style={styles.headerCellName}>Field</Text>
+                  <Text style={styles.headerCellName}>Value</Text>
                 </View>
+                <View style={styles.tableRow}>
+                  <Text style={styles.cellName}>Form Type</Text>
+                  <Text style={styles.cellName}>{selectedMedicalRecord.formType}</Text>
+                </View>
+                <View style={styles.tableRow}>
+                  <Text style={styles.cellName}>Date</Text>
+                  <Text style={styles.cellName}>{selectedMedicalRecord.date}</Text>
+                </View>
+                <View style={styles.tableRow}>
+                  <Text style={styles.cellName}>Treatment</Text>
+                  <Text style={styles.cellName}>{selectedMedicalRecord.treatment}</Text>
+                </View>
+                <View style={styles.tableRow}>
+                  <Text style={styles.cellName}>Veterinarian</Text>
+                  <Text style={styles.cellName}>{selectedMedicalRecord.veterinarian}</Text>
+                </View>
+                <View style={styles.tableRow}>
+                  <Text style={styles.cellName}>Diagnosis</Text>
+                  <Text style={styles.cellName}>{selectedMedicalRecord.diagnosis}</Text>
+                </View>
+                {selectedMedicalRecord.symptoms && (
+                  <View style={styles.tableRow}>
+                    <Text style={styles.cellName}>Symptoms</Text>
+                    <Text style={styles.cellName}>{selectedMedicalRecord.symptoms}</Text>
+                  </View>
+                )}
+                {selectedMedicalRecord.medications && (
+                  <View style={styles.tableRow}>
+                    <Text style={styles.cellName}>Medications</Text>
+                    <Text style={styles.cellName}>{selectedMedicalRecord.medications}</Text>
+                  </View>
+                )}
+                {selectedMedicalRecord.followUp && (
+                  <View style={styles.tableRow}>
+                    <Text style={styles.cellName}>Follow Up</Text>
+                    <Text style={styles.cellName}>{selectedMedicalRecord.followUp}</Text>
+                  </View>
+                )}
+                {selectedMedicalRecord.cost && (
+                  <View style={styles.tableRow}>
+                    <Text style={styles.cellName}>Cost</Text>
+                    <Text style={styles.cellName}>{selectedMedicalRecord.cost}</Text>
+                  </View>
+                )}
+                {selectedMedicalRecord.formData && Object.entries(selectedMedicalRecord.formData)
+                  .filter(([key]) => !['category', 'formTemplate', 'createdDate'].includes(key))
+                  .map(([key, value]) => (
+                    <View key={key} style={styles.tableRow}>
+                      <Text style={styles.cellName}>{key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}</Text>
+                      <Text style={styles.cellName}>{value || 'N/A'}</Text>
+                    </View>
+                  ))}
+                {selectedMedicalRecord.formData?.createdDate && (
+                  <View style={styles.tableRow}>
+                    <Text style={styles.cellName}>Created Date</Text>
+                    <Text style={styles.cellName}>{new Date(selectedMedicalRecord.formData.createdDate).toLocaleDateString()}</Text>
+                  </View>
+                )}
               </View>
             </View>
           </ScrollView>
@@ -2356,8 +2382,6 @@ export default function AppointmentsScreen() {
                           // Find owner name field and pre-fill
                           const ownerNameField = formFields.find(f => f.label?.toLowerCase().includes('owner'));
                           if (ownerNameField) initialFormData[ownerNameField.id] = customer.name;
-                          
-
                         }
                         
                         setFormFieldValues(initialFormData);
@@ -2512,17 +2536,28 @@ export default function AppointmentsScreen() {
                     const petId = pet?.id;
                     
                     if (petId) {
-                      const recordData = {
-                        petId: petId,
+                      const record = {
+                        category: newMedicalRecord.category || 'General',
+                        createdAt: new Date().toISOString(),
+                        date: new Date().toLocaleDateString(),
+                        diagnosis: formFieldValues.diagnosis || 'Not specified',
+                        formData: formFieldValues,
                         formType: selectedMedicalForm.formTemplate,
-                        ...formFieldValues
+                        petId: petId,
+                        petName: pet.name,
+                        treatment: formFieldValues.treatment || 'Not specified',
+                        veterinarian: userEmail
                       };
                       
-                      addMedicalRecord(recordData, userEmail).then(savedRecord => {
-                        setPetMedicalHistory(prev => ({
-                          ...prev,
-                          [petId]: [...(prev[petId] || []), savedRecord]
-                        }));
+                      addMedicalRecord(record, userEmail).then(savedRecord => {
+                        // Update local medical history - add to beginning for latest first
+                        const updatedHistory = { ...petMedicalHistory };
+                        if (!updatedHistory[petId]) {
+                          updatedHistory[petId] = [];
+                        }
+                        updatedHistory[petId].unshift(savedRecord);
+                        setPetMedicalHistory(updatedHistory);
+                        
                         alert('Medical record added successfully!');
                         setSelectedMedicalForm(null);
                         setFormFieldValues({});
@@ -4430,6 +4465,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     height: 400,
   },
+  medicalRecordDetails: {
+    padding: 20,
+  },
+  medicalRecordRow: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  medicalRecordLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  medicalRecordValue: {
+    flex: 2,
+    fontSize: 14,
+    color: '#555',
+  },
+  formDataTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#800000',
+    marginTop: 20,
+    marginBottom: 10,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -4444,6 +4506,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     outlineStyle: 'none',
   },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 15,
+    fontSize: 12,
+    backgroundColor: '#fafafa',
+  },
+  halfInput: {
+    width: '48%',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -4456,6 +4534,83 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 12,
+  },
+  formPreviewFieldsContainer: {
+    gap: 15,
+  },
+  formPreviewField: {
+    marginBottom: 15,
+    zIndex: -1,
+  },
+  formPreviewFieldLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  formPreviewFieldInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 12,
+    backgroundColor: '#fafafa',
+    maxWidth: 200,
+  },
+  formPreviewFieldDropdown: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fafafa',
+    maxWidth: 200,
+  },
+  formPreviewFieldDropdownText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  formPreviewFieldDatePicker: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fafafa',
+    maxWidth: 200,
+  },
+  formPreviewFieldDateText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  previewDropdownContainer: {
+    position: 'relative',
+    zIndex: 1000000,
+  },
+  previewDropdownMenu: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    zIndex: 1000000,
+    elevation: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    maxHeight: 200,
+    maxWidth: 200,
+  },
+  previewDropdownScroll: {
+    maxHeight: 200,
   },
 
 });
