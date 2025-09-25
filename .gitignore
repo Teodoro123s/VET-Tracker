@@ -40,3 +40,45 @@ serviceAccountKey.json
 *.tsbuildinfo
 
 app-example
+
+# Server-side code (exclude from client/vet push)
+app/server/
+MyApp/app/server/
+api/
+MyApp/api/
+scripts/
+MyApp/scripts/
+
+# Environment and config files
+.env
+.env.local
+.env.example
+MyApp/.env
+MyApp/.env.local
+MyApp/.env.example
+
+# Firebase admin and sensitive files
+firebaseAdmin.ts
+MyApp/lib/firebaseAdmin.ts
+superAdminService.ts
+MyApp/lib/services/superAdminService.ts
+subscriptionService.ts
+MyApp/lib/services/subscriptionService.ts
+
+# Email service files (server-side)
+emailService.ts
+MyApp/lib/utils/emailService.ts
+freeEmailService.ts
+MyApp/lib/utils/freeEmailService.ts
+simpleEmailService.ts
+MyApp/lib/simpleEmailService.ts
+firebaseEmailService.ts
+MyApp/lib/firebaseEmailService.ts
+emailConfig.ts
+MyApp/lib/emailConfig.ts
+telegramService.ts
+MyApp/lib/telegramService.ts
+
+# Batch files
+*.bat
+MyApp/*.bat
