@@ -2,7 +2,7 @@ import { DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-n
 import { useFonts } from 'expo-font';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ImageBackground } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useEffect, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
@@ -47,6 +47,7 @@ function CustomerProvider({ children }) {
 import Sidebar from '@/components/Sidebar';
 import VetBottomMenu from '@/components/VetBottomMenu';
 import VetMobileHeader from '@/components/VetMobileHeader';
+import FloatingChatbot from '@/ai/components/FloatingChatbot';
 import { subscriptionScheduler } from '@/lib/utils/subscriptionScheduler';
 
 function AppContent() {
@@ -54,6 +55,9 @@ function AppContent() {
   
   // Check for veterinarian routes
   const isVetRoute = pathname.startsWith('/veterinarian/') && pathname !== '/veterinarian/mobile-login';
+  
+  // Check for client routes
+  const isClientRoute = pathname.startsWith('/client/');
   
   // Routes that should have no sidebar
   const noSidebarRoutes = pathname === '/server/superadmin' || pathname === '/server/subscriptions' || pathname === '/server/subscription-periods' || pathname === '/server/transaction-history' || pathname === '/server/superadmin-dashboard' || pathname === '/auth/admin-login' || pathname === '/auth/superadmin-login' || pathname === '/veterinarian/mobile-login' || pathname === '/auth/login' || pathname === '/login' || pathname === '/' || pathname.startsWith('/veterinarian/');
@@ -93,7 +97,7 @@ function AppContent() {
   
   return (
     <NavigationThemeProvider value={DefaultTheme}>
-      <View style={styles.container}>
+      <ImageBackground source={require('@/assets/BG.png')} style={styles.container} resizeMode="cover">
         {showMainSidebar && <Sidebar />}
         <View style={!showMainSidebar ? styles.fullContent : styles.content}>
           {showMobileHeader && <VetMobileHeader {...getHeaderProps()} onBackPress={() => {}} />}
@@ -129,7 +133,10 @@ function AppContent() {
           </View>
           {showBottomMenu && <VetBottomMenu />}
         </View>
-      </View>
+        
+        {/* AI Chatbot - Show on client routes */}
+        {isClientRoute && <FloatingChatbot />}
+      </ImageBackground>
       <StatusBar style="dark" translucent backgroundColor="transparent" />
     </NavigationThemeProvider>
   );

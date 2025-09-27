@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function IndexScreen() {
@@ -20,16 +20,26 @@ export default function IndexScreen() {
   useEffect(() => {
     if (!loading && isReady) {
       if (user) {
-        // User is logged in, redirect based on role
+        // User is logged in, redirect based on role and platform
         if (user.email?.includes('superadmin')) {
           router.replace('/server/superadmin');
         } else {
-          // All non-superadmin users go to blue veterinarian interface
-          router.replace('/veterinarian/vet-mobile');
+          // Platform-specific routing
+          if (Platform.OS === 'web') {
+            // Web users go to client interface
+            router.replace('/client/dashboard');
+          } else {
+            // Mobile users go to veterinarian interface
+            router.replace('/veterinarian/vet-mobile');
+          }
         }
       } else {
-        // User not logged in, redirect to mobile login
-        router.replace('/veterinarian/mobile-login');
+        // User not logged in, platform-specific login
+        if (Platform.OS === 'web') {
+          router.replace('/auth/admin-login');
+        } else {
+          router.replace('/veterinarian/mobile-login');
+        }
       }
     }
   }, [user, loading, isReady]);

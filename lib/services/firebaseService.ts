@@ -204,38 +204,54 @@ export const createTenant = async (tenantId: string, clinicData: any) => {
 };
 
 // Delete functions
-export const deleteCustomer = async (id) => {
+export const deleteCustomer = async (id, userEmail?: string) => {
   try {
-    await deleteDoc(doc(db, 'customers', id));
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/customers` : 'customers';
+    await deleteDoc(doc(db, collectionPath, id));
   } catch (error) {
     console.error('Error deleting customer:', error);
     throw error;
   }
 };
 
+// Update a customer (tenant-aware)
+export const updateCustomer = async (customerId, updateData, userEmail?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/customers` : 'customers';
+    await updateDoc(doc(db, collectionPath, customerId), updateData);
+  } catch (error) {
+    console.error('Error updating customer:', error);
+    throw error;
+  }
+};
+
 // Delete customer and all their pets
-export const deleteCustomerWithPets = async (customerId) => {
+export const deleteCustomerWithPets = async (customerId, userEmail?: string) => {
   try {
     // First get all pets for this customer
-    const pets = await getPets();
+    const pets = await getPets(userEmail);
     const customerPets = pets.filter(pet => pet.owner === customerId);
     
     // Delete all pets
     for (const pet of customerPets) {
-      await deletePet(pet.id);
+      await deletePet(pet.id, userEmail);
     }
     
     // Then delete the customer
-    await deleteCustomer(customerId);
+    await deleteCustomer(customerId, userEmail);
   } catch (error) {
     console.error('Error deleting customer with pets:', error);
     throw error;
   }
 };
 
-export const deletePet = async (id) => {
+export const deletePet = async (id, userEmail?: string) => {
   try {
-    await deleteDoc(doc(db, 'pets', id));
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/pets` : 'pets';
+    await deleteDoc(doc(db, collectionPath, id));
   } catch (error) {
     console.error('Error deleting pet:', error);
     throw error;
