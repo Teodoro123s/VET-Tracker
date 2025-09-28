@@ -47,11 +47,15 @@ function CustomerProvider({ children }) {
 import Sidebar from '@/components/Sidebar';
 import VetBottomMenu from '@/components/VetBottomMenu';
 import VetMobileHeader from '@/components/VetMobileHeader';
-import FloatingChatbot from '@/ai/components/FloatingChatbot';
+import ChatBot from '../components/ChatBot';
+
+
 import { subscriptionScheduler } from '@/lib/utils/subscriptionScheduler';
+import { useAuth } from '@/contexts/AuthContext';
 
 function AppContent() {
   const pathname = usePathname();
+  const { user } = useAuth();
   
   // Check for veterinarian routes
   const isVetRoute = pathname.startsWith('/veterinarian/') && pathname !== '/veterinarian/mobile-login';
@@ -136,7 +140,9 @@ function AppContent() {
         </View>
         
         {/* AI Chatbot - Show on client routes */}
-        {isClientRoute && <FloatingChatbot />}
+        {isClientRoute && <ChatBot tenantId="default" />}
+        
+
       </ImageBackground>
       <StatusBar style="dark" translucent backgroundColor="transparent" />
     </NavigationThemeProvider>
@@ -198,4 +204,5 @@ const styles = StyleSheet.create({
   fullHeight: {
     flex: 1,
   },
+
 });

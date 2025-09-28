@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert, Modal, Animated, Image } from 'react-native';
-import { getCustomers, addCustomer, deleteCustomer, getMedicalForms, getMedicalCategories, addMedicalRecord } from '@/lib/services/firebaseService';
+import { getCustomers, addCustomer, deleteCustomer, updateCustomer, getMedicalForms, getMedicalCategories, addMedicalRecord } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
 import { router } from 'expo-router';
 
@@ -10,9 +10,12 @@ export default function CustomersScreen() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
   const [addSlideAnim] = useState(new Animated.Value(-350));
+  const [editSlideAnim] = useState(new Animated.Value(-350));
   const [recordSlideAnim] = useState(new Animated.Value(-350));
+  const [editingCustomer, setEditingCustomer] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [categories, setCategories] = useState([]);
@@ -20,6 +23,13 @@ export default function CustomersScreen() {
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showFormTemplateDropdown, setShowFormTemplateDropdown] = useState(false);
   const [newCustomer, setNewCustomer] = useState({
+    firstname: '',
+    surname: '',
+    email: '',
+    contact: '',
+    address: ''
+  });
+  const [editCustomer, setEditCustomer] = useState({
     firstname: '',
     surname: '',
     email: '',
@@ -151,6 +161,17 @@ export default function CustomersScreen() {
   }, [showAddModal]);
 
   useEffect(() => {
+    if (showEditModal) {
+      editSlideAnim.setValue(-350);
+      Animated.timing(editSlideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [showEditModal]);
+
+  useEffect(() => {
     if (showAddRecordModal) {
       recordSlideAnim.setValue(-350);
       Animated.timing(recordSlideAnim, {
@@ -206,6 +227,42 @@ export default function CustomersScreen() {
     setCurrentPage(1);
   };
 
+  const handleEditCustomer = (customer) => {
+    const [surname, firstname] = customer.name ? customer.name.split(', ') : [customer.surname || '', customer.firstname || ''];
+    setEditingCustomer(customer);
+    setEditCustomer({
+      firstname: firstname || customer.firstname || '',
+      surname: surname || customer.surname || '',
+      email: customer.email || '',
+      contact: customer.contact || '',
+      address: customer.address || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateCustomer = async () => {
+    try {
+      if (!editCustomer.firstname || !editCustomer.surname) {
+        Alert.alert('Error', 'Please fill in first name and surname');
+        return;
+      }
+      
+      await updateCustomer(editingCustomer.id, editCustomer, userEmail);
+      setEditCustomer({ firstname: '', surname: '', email: '', contact: '', address: '' });
+      setEditingCustomer(null);
+      loadCustomers();
+      Alert.alert('Success', 'Customer updated successfully');
+      
+      Animated.timing(editSlideAnim, {
+        toValue: -350,
+        duration: 200,
+        useNativeDriver: false,
+      }).start(() => setShowEditModal(false));
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update customer');
+    }
+  };
+
   const handleDeleteCustomer = (customer) => {
     Alert.alert(
       'Delete Customer',
@@ -240,9 +297,6 @@ export default function CustomersScreen() {
           <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
             <Text style={styles.addButtonText}>+ Add Customer</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.recordButton} onPress={() => setShowAddRecordModal(true)}>
-            <Text style={styles.recordButtonText}>+ Add Record</Text>
-          </TouchableOpacity>
           <View style={styles.searchContainer}>
             <TextInput 
               style={styles.searchInput}
@@ -265,6 +319,7 @@ export default function CustomersScreen() {
               <Text style={styles.headerCell}>Contact</Text>
               <Text style={styles.headerCell}>Email</Text>
               <Text style={styles.headerCell}>Address</Text>
+              <Text style={styles.headerCell}>Actions</Text>
             </View>
             
             {loading ? (
@@ -280,9 +335,41 @@ export default function CustomersScreen() {
             ) : itemsPerPage >= 20 ? (
               <ScrollView style={styles.tableBody}>
                 {currentCustomers.map((customer) => (
+                  <View key={customer.id} style={styles.tableRow}>
+                    <TouchableOpacity 
+                      style={styles.rowContent}
+                      onPress={() => handleRowPress(customer)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.cell}>{customer.name || `${customer.surname || ''}, ${customer.firstname || ''}`}</Text>
+                      <Text style={styles.cell}>{customer.contact || 'N/A'}</Text>
+                      <Text style={styles.cell}>{customer.email || 'N/A'}</Text>
+                      <Text style={styles.cell}>{customer.address || 'N/A'}</Text>
+                    </TouchableOpacity>
+                    <View style={styles.actionsCell}>
+                      <View style={styles.actionButtons}>
+                        <TouchableOpacity 
+                          style={styles.editButton} 
+                          onPress={() => handleEditCustomer(customer)}
+                        >
+                          <Text style={styles.editButtonText}>Edit</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.deleteButton} 
+                          onPress={() => handleDeleteCustomer(customer)}
+                        >
+                          <Text style={styles.deleteButtonText}>Del</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              currentCustomers.map((customer) => (
+                <View key={customer.id} style={styles.tableRow}>
                   <TouchableOpacity 
-                    key={customer.id} 
-                    style={styles.tableRow}
+                    style={styles.rowContent}
                     onPress={() => handleRowPress(customer)}
                     activeOpacity={0.7}
                   >
@@ -291,21 +378,23 @@ export default function CustomersScreen() {
                     <Text style={styles.cell}>{customer.email || 'N/A'}</Text>
                     <Text style={styles.cell}>{customer.address || 'N/A'}</Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
-            ) : (
-              currentCustomers.map((customer) => (
-                <TouchableOpacity 
-                  key={customer.id} 
-                  style={styles.tableRow}
-                  onPress={() => handleRowPress(customer)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.cell}>{customer.name || `${customer.surname || ''}, ${customer.firstname || ''}`}</Text>
-                  <Text style={styles.cell}>{customer.contact || 'N/A'}</Text>
-                  <Text style={styles.cell}>{customer.email || 'N/A'}</Text>
-                  <Text style={styles.cell}>{customer.address || 'N/A'}</Text>
-                </TouchableOpacity>
+                  <View style={styles.actionsCell}>
+                    <View style={styles.actionButtons}>
+                      <TouchableOpacity 
+                        style={styles.editButton} 
+                        onPress={() => handleEditCustomer(customer)}
+                      >
+                        <Text style={styles.editButtonText}>Edit</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={styles.deleteButton} 
+                        onPress={() => handleDeleteCustomer(customer)}
+                      >
+                        <Text style={styles.deleteButtonText}>Del</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
               ))
             )}
           </View>
@@ -416,6 +505,87 @@ export default function CustomersScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.drawerSaveButton} onPress={handleAddCustomer}>
                   <Text style={styles.drawerSaveText}>Add Customer</Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          </View>
+        </Modal>
+      )}
+
+      {showEditModal && (
+        <Modal visible={true} transparent animationType="none">
+          <View style={styles.drawerOverlay}>
+            <Animated.View style={[styles.drawer, { left: editSlideAnim }]}>
+              <View style={styles.drawerHeader}>
+                <Text style={styles.drawerTitle}>Edit Customer</Text>
+                <TouchableOpacity style={styles.drawerCloseButton} onPress={() => {
+                  Animated.timing(editSlideAnim, {
+                    toValue: -350,
+                    duration: 200,
+                    useNativeDriver: false,
+                  }).start(() => setShowEditModal(false));
+                }}>
+                  <Text style={styles.drawerCloseText}>×</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.drawerForm}>
+                <Text style={styles.fieldLabel}>First Name *</Text>
+                <TextInput
+                  style={styles.drawerInput}
+                  placeholder="Enter first name"
+                  value={editCustomer.firstname}
+                  onChangeText={(text) => setEditCustomer({...editCustomer, firstname: text})}
+                />
+                
+                <Text style={styles.fieldLabel}>Surname *</Text>
+                <TextInput
+                  style={styles.drawerInput}
+                  placeholder="Enter surname"
+                  value={editCustomer.surname}
+                  onChangeText={(text) => setEditCustomer({...editCustomer, surname: text})}
+                />
+                
+                <Text style={styles.fieldLabel}>Email</Text>
+                <TextInput
+                  style={styles.drawerInput}
+                  placeholder="Enter email address"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={editCustomer.email}
+                  onChangeText={(text) => setEditCustomer({...editCustomer, email: text})}
+                />
+                
+                <Text style={styles.fieldLabel}>Contact</Text>
+                <TextInput
+                  style={styles.drawerInput}
+                  placeholder="Enter contact number"
+                  keyboardType="phone-pad"
+                  value={editCustomer.contact}
+                  onChangeText={(text) => setEditCustomer({...editCustomer, contact: text})}
+                />
+                
+                <Text style={styles.fieldLabel}>Address</Text>
+                <TextInput
+                  style={styles.drawerInput}
+                  placeholder="Enter address"
+                  value={editCustomer.address}
+                  onChangeText={(text) => setEditCustomer({...editCustomer, address: text})}
+                />
+              </ScrollView>
+              
+              <View style={styles.drawerButtons}>
+                <TouchableOpacity style={styles.drawerCancelButton} onPress={() => {
+                  Animated.timing(editSlideAnim, {
+                    toValue: -350,
+                    duration: 200,
+                    useNativeDriver: false,
+                  }).start(() => setShowEditModal(false));
+                }}>
+                  <Text style={styles.drawerCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.drawerSaveButton} onPress={handleUpdateCustomer}>
+                  <Text style={styles.drawerSaveText}>Update Customer</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>
@@ -632,15 +802,30 @@ const styles = StyleSheet.create({
     flex: 0.3,
     alignItems: 'center',
   },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  editButton: {
+    backgroundColor: '#007bff',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 3,
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
   deleteButton: {
     backgroundColor: '#dc3545',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 3,
   },
   deleteButtonText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
   },
   headerCell: {

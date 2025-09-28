@@ -1,16 +1,19 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useNotifications } from '../../contexts/NotificationContext';
-import { getAppointments } from '../../lib/services/firebaseService';
+import { getAppointments, getCustomers, getPets, getMedicalHistory } from '../../lib/services/firebaseService';
+import { useTenant } from '../../contexts/TenantContext';
 
 export default function NotificationsScreen() {
   const { notifications, markAsRead, markAllAsRead } = useNotifications();
+  const { userEmail } = useTenant();
   
   const [activeFilter, setActiveFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -40,7 +43,9 @@ export default function NotificationsScreen() {
 
 
 
-  const filteredNotifications = notifications.filter(notification => {
+  const allNotifications = notifications;
+  
+  const filteredNotifications = allNotifications.filter(notification => {
     const matchesSearch = notification.message.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          notification.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = activeFilter === 'All' || 
