@@ -1,5 +1,5 @@
 import { db, auth } from '../config/firebaseConfig';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // Get tenant ID from user email
@@ -64,7 +64,14 @@ export const updateVeterinarian = async (vetId, updateData, userEmail?: string) 
 // Get all customers (tenant-aware)
 export const getCustomers = async (userEmail?: string) => {
   try {
-    const querySnapshot = await getDocs(getTenantCollection(userEmail || '', 'customers'));
+    const tenantId = getTenantId(userEmail || '');
+    if (!tenantId) {
+      console.log('No tenant ID found for:', userEmail);
+      return [];
+    }
+    
+    const customersRef = collection(db, 'tenants', tenantId, 'customers');
+    const querySnapshot = await getDocs(customersRef);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error('Error fetching customers:', error);
@@ -72,10 +79,38 @@ export const getCustomers = async (userEmail?: string) => {
   }
 };
 
+// Get customer by ID (tenant-aware)
+export const getCustomerById = async (userEmail?: string, customerId?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    if (!tenantId || !customerId) {
+      return null;
+    }
+    
+    const docRef = doc(db, 'tenants', tenantId, 'customers', customerId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() };
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching customer by ID:', error);
+    return null;
+  }
+};
+
 // Add a new customer (tenant-aware)
 export const addCustomer = async (customerData, userEmail?: string) => {
   try {
-    const docRef = await addDoc(getTenantCollection(userEmail || '', 'customers'), customerData);
+    const tenantId = getTenantId(userEmail || '');
+    if (!tenantId) {
+      throw new Error('No tenant ID found');
+    }
+    
+    const customersRef = collection(db, 'tenants', tenantId, 'customers');
+    const docRef = await addDoc(customersRef, customerData);
     return { id: docRef.id, ...customerData };
   } catch (error) {
     console.error('Error adding customer:', error);
@@ -161,6 +196,28 @@ export const getMedicalForms = async (userEmail?: string) => {
   }
 };
 
+// Get medical form by ID (tenant-aware)
+export const getMedicalFormById = async (userEmail?: string, formId?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    if (!tenantId || !formId) {
+      return null;
+    }
+    
+    const docRef = doc(db, 'tenants', tenantId, 'medicalForms', formId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() };
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching medical form by ID:', error);
+    return null;
+  }
+};
+
 // Get all medical records (tenant-aware)
 export const getMedicalRecords = async (userEmail?: string) => {
   try {
@@ -168,6 +225,52 @@ export const getMedicalRecords = async (userEmail?: string) => {
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error('Error fetching medical records:', error);
+    return [];
+  }
+};
+
+// Get pet by ID (tenant-aware)
+export const getPetById = async (userEmail?: string, petId?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    if (!tenantId || !petId) {
+      return null;
+    }
+    
+    const docRef = doc(db, 'tenants', tenantId, 'pets', petId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() };
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching pet by ID:', error);
+    return null;
+  }
+};
+
+// Update a pet (tenant-aware)
+export const updatePet = async (petId, updateData, userEmail?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/pets` : 'pets';
+    await updateDoc(doc(db, collectionPath, petId), updateData);
+  } catch (error) {
+    console.error('Error updating pet:', error);
+    throw error;
+  }
+};
+
+// Get medical history for a specific pet (tenant-aware)
+export const getMedicalHistory = async (userEmail?: string, petId?: string) => {
+  try {
+    const querySnapshot = await getDocs(getTenantCollection(userEmail || '', 'medicalRecords'));
+    const allRecords = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return allRecords.filter(record => record.petId === petId);
+  } catch (error) {
+    console.error('Error fetching medical history:', error);
     return [];
   }
 };
@@ -280,9 +383,11 @@ export const deleteAppointment = async (id, userEmail) => {
   }
 };
 
-export const deleteMedicalRecord = async (id) => {
+export const deleteMedicalRecord = async (id, userEmail?: string) => {
   try {
-    await deleteDoc(doc(db, 'medicalRecords', id));
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/medicalRecords` : 'medicalRecords';
+    await deleteDoc(doc(db, collectionPath, id));
   } catch (error) {
     console.error('Error deleting medical record:', error);
     throw error;

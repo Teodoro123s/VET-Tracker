@@ -108,6 +108,7 @@ function AppContent() {
             <Stack.Screen name="client/dashboard" />
             <Stack.Screen name="client/appointments" />
             <Stack.Screen name="client/customers" />
+            <Stack.Screen name="client/customer-detail" />
             <Stack.Screen name="client/veterinarians" />
             <Stack.Screen name="client/records" />
             <Stack.Screen name="client/notifications" />

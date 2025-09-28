@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, Modal, Animated } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-import { deleteMedicalCategory, deleteMedicalForm, getMedicalForms, getMedicalCategories, addMedicalForm, addMedicalCategory, getFormFields, addFormField, updateMedicalForm, deleteFormField, updateFormField } from '../../lib/services/firebaseService';
+import { deleteMedicalCategory, deleteMedicalForm, getMedicalForms, getMedicalCategories, addMedicalForm, addMedicalCategory, getFormFields, addFormField, updateMedicalForm, deleteFormField, updateFormField, addMedicalRecord } from '../../lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
 
 export default function RecordsScreen() {
@@ -22,7 +22,9 @@ export default function RecordsScreen() {
   const [addCategorySlideAnim] = useState(new Animated.Value(-350));
   const [showAddFormDrawer, setShowAddFormDrawer] = useState(false);
   const [addFormSlideAnim] = useState(new Animated.Value(-350));
-  const [newRecord, setNewRecord] = useState({
+  const [showAddRecordDrawer, setShowAddRecordDrawer] = useState(false);
+  const [addRecordSlideAnim] = useState(new Animated.Value(-350));
+  const [newCategory, setNewCategory] = useState({
     category: ''
   });
   const [recordList, setRecordList] = useState([]);
@@ -36,6 +38,8 @@ export default function RecordsScreen() {
   // Load data from Firebase on component mount
   useEffect(() => {
     const loadData = async () => {
+      if (!userEmail) return;
+      
       try {
         const [forms, categories] = await Promise.all([
           getMedicalForms(userEmail),
@@ -84,7 +88,7 @@ export default function RecordsScreen() {
     };
     
     loadData();
-  }, []);
+  }, [userEmail]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedForm, setSelectedForm] = useState(null);
   const [selectedFormPreview, setSelectedFormPreview] = useState(null);
@@ -115,6 +119,12 @@ export default function RecordsScreen() {
     category: 'No Category'
   });
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [newRecord, setNewRecord] = useState({
+    category: 'No Category',
+    formTemplate: ''
+  });
+  const [showRecordCategoryDropdown, setShowRecordCategoryDropdown] = useState(false);
+  const [showFormTemplateDropdown, setShowFormTemplateDropdown] = useState(false);
   
   useEffect(() => {
     if (showAddFieldDrawer) {
@@ -159,6 +169,17 @@ export default function RecordsScreen() {
       }).start();
     }
   }, [showAddFormDrawer]);
+  
+  useEffect(() => {
+    if (showAddRecordDrawer) {
+      addRecordSlideAnim.setValue(-350);
+      Animated.timing(addRecordSlideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [showAddRecordDrawer]);
   
   const categoryForms = {};
   
@@ -206,24 +227,24 @@ export default function RecordsScreen() {
   const dropdownOptions = [10, 20, 50, 100];
   
   const handleAddRecord = async () => {
-    if (newRecord.category.trim()) {
+    if (newCategory.category.trim()) {
       try {
         const categoryData = {
-          name: newRecord.category,
-          description: `Category for ${newRecord.category} forms`,
+          name: newCategory.category,
+          description: `Category for ${newCategory.category} forms`,
           createdAt: new Date().toISOString()
         };
         
         const savedCategory = await addMedicalCategory(categoryData, userEmail);
         
-        const formCount = medicalFormsList.filter(form => form.category === newRecord.category).length;
+        const formCount = medicalFormsList.filter(form => form.category === newCategory.category).length;
         const record = {
           id: savedCategory.id,
-          category: newRecord.category,
+          category: newCategory.category,
           formCount: formCount
         };
         setRecordList([...recordList, record]);
-        setNewRecord({ category: '' });
+        setNewCategory({ category: '' });
         Animated.timing(addCategorySlideAnim, {
           toValue: -350,
           duration: 200,
@@ -378,6 +399,7 @@ export default function RecordsScreen() {
               <Image source={require('@/assets/ic_round-plus.png')} style={styles.addIcon} />
               <Text style={styles.formAddButtonText}>Add Form</Text>
             </TouchableOpacity>
+
             <View style={styles.formSearchContainer}>
               <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
               <TextInput 
@@ -1101,6 +1123,131 @@ export default function RecordsScreen() {
         </Modal>
       )}
       
+      {/* Add Record Drawer */}
+      {showAddRecordDrawer && (
+        <Modal visible={true} transparent animationType="none">
+          <View style={styles.drawerOverlay}>
+            <Animated.View style={[styles.drawer, { left: addRecordSlideAnim }]}>
+              <View style={styles.drawerHeader}>
+                <Text style={styles.drawerTitle}>Add New Record</Text>
+                <TouchableOpacity style={styles.drawerCloseButton} onPress={() => {
+                  Animated.timing(addRecordSlideAnim, {
+                    toValue: -350,
+                    duration: 200,
+                    useNativeDriver: false,
+                  }).start(() => setShowAddRecordDrawer(false));
+                }}>
+                  <Text style={styles.drawerCloseText}>×</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.drawerContent} showsVerticalScrollIndicator={false}>
+                <Text style={styles.fieldLabel}>Category *</Text>
+                <View style={styles.categoryDropdownContainer}>
+                  <TouchableOpacity style={styles.drawerDropdown} onPress={() => {
+                    setShowRecordCategoryDropdown(!showRecordCategoryDropdown);
+                    setShowFormTemplateDropdown(false);
+                  }}>
+                    <Text style={styles.drawerDropdownText}>{newRecord.category}</Text>
+                    <Text style={styles.dropdownArrow}>▼</Text>
+                  </TouchableOpacity>
+                  {showRecordCategoryDropdown && (
+                    <View style={styles.categoryDropdownMenu}>
+                      <ScrollView style={styles.categoryDropdownScroll} showsVerticalScrollIndicator={false}>
+                        {recordList.map((record) => (
+                          <TouchableOpacity
+                            key={record.id}
+                            style={styles.dropdownOption}
+                            onPress={() => {
+                              setNewRecord({...newRecord, category: record.category, formTemplate: ''});
+                              setShowRecordCategoryDropdown(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownOptionText}>{record.category}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+                
+                <Text style={styles.fieldLabel}>Form Template *</Text>
+                <View style={styles.categoryDropdownContainer}>
+                  <TouchableOpacity style={styles.drawerDropdown} onPress={() => {
+                    setShowFormTemplateDropdown(!showFormTemplateDropdown);
+                    setShowRecordCategoryDropdown(false);
+                  }}>
+                    <Text style={styles.drawerDropdownText}>{newRecord.formTemplate || 'Select form template'}</Text>
+                    <Text style={styles.dropdownArrow}>▼</Text>
+                  </TouchableOpacity>
+                  {showFormTemplateDropdown && (
+                    <View style={styles.categoryDropdownMenu}>
+                      <ScrollView style={styles.categoryDropdownScroll} showsVerticalScrollIndicator={false}>
+                        {medicalFormsList
+                          .filter(form => form.category === newRecord.category)
+                          .sort((a, b) => a.formName.localeCompare(b.formName))
+                          .map((form) => (
+                          <TouchableOpacity
+                            key={form.id}
+                            style={styles.dropdownOption}
+                            onPress={() => {
+                              setNewRecord({...newRecord, formTemplate: form.formName});
+                              setShowFormTemplateDropdown(false);
+                            }}
+                          >
+                            <Text style={styles.dropdownOptionText}>{form.formName}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+              </ScrollView>
+              <View style={styles.drawerButtons}>
+                <TouchableOpacity style={styles.drawerCancelButton} onPress={() => {
+                  Animated.timing(addRecordSlideAnim, {
+                    toValue: -350,
+                    duration: 200,
+                    useNativeDriver: false,
+                  }).start(() => setShowAddRecordDrawer(false));
+                }}>
+                  <Text style={styles.drawerCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.drawerSaveButton} onPress={async () => {
+                  if (newRecord.category && newRecord.formTemplate) {
+                    try {
+                      const recordData = {
+                        category: newRecord.category,
+                        formTemplate: newRecord.formTemplate,
+                        createdAt: new Date().toISOString(),
+                        data: {}
+                      };
+                      
+                      await addMedicalRecord(recordData, userEmail);
+                      
+                      setNewRecord({ category: 'No Category', formTemplate: '' });
+                      Animated.timing(addRecordSlideAnim, {
+                        toValue: -350,
+                        duration: 200,
+                        useNativeDriver: false,
+                      }).start(() => setShowAddRecordDrawer(false));
+                      
+                      alert('Record added successfully!');
+                    } catch (error) {
+                      console.error('Error adding record:', error);
+                      alert('Error adding record');
+                    }
+                  } else {
+                    alert('Please select both category and form template');
+                  }
+                }}>
+                  <Text style={styles.drawerSaveText}>Add Record</Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          </View>
+        </Modal>
+      )}
+      
       {/* Add Category Drawer */}
       {showAddCategoryDrawer && (
         <Modal visible={true} transparent animationType="none">
@@ -1124,8 +1271,8 @@ export default function RecordsScreen() {
                   style={styles.modalInput}
                   placeholder="Enter category name"
                   placeholderTextColor="#ccc"
-                  value={newRecord.category}
-                  onChangeText={(text) => setNewRecord({...newRecord, category: text})}
+                  value={newCategory.category}
+                  onChangeText={(text) => setNewCategory({...newCategory, category: text})}
                 />
               </ScrollView>
               <View style={styles.drawerButtons}>
