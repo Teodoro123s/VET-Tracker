@@ -6,6 +6,7 @@ import { db } from '../lib/config/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../contexts/AuthContext';
+import ForgotPasswordModal from './ForgotPasswordModal';
 
 export default function LoginWeb() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function LoginWeb() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleLogin = async () => {
     setErrorMessage('');
@@ -166,13 +168,20 @@ export default function LoginWeb() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.forgotPassword} onPress={() => {
-            Alert.alert('Forgot Password', 'Please contact your system administrator to reset your password.');
-          }}>
+          <TouchableOpacity 
+            style={styles.forgotPassword} 
+            onPress={() => setShowForgotPassword(true)}
+          >
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
         </View>
       </View>
+      
+      <ForgotPasswordModal
+        visible={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        userType="admin"
+      />
     </View>
   );
 }

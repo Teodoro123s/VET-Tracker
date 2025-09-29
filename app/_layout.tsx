@@ -2,7 +2,7 @@ import { DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-n
 import { useFonts } from 'expo-font';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ImageBackground } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useEffect, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
@@ -47,13 +47,21 @@ function CustomerProvider({ children }) {
 import Sidebar from '@/components/Sidebar';
 import VetBottomMenu from '@/components/VetBottomMenu';
 import VetMobileHeader from '@/components/VetMobileHeader';
+import ChatBot from '../components/ChatBot';
+
+
 import { subscriptionScheduler } from '@/lib/utils/subscriptionScheduler';
+import { useAuth } from '@/contexts/AuthContext';
 
 function AppContent() {
   const pathname = usePathname();
+  const { user } = useAuth();
   
   // Check for veterinarian routes
   const isVetRoute = pathname.startsWith('/veterinarian/') && pathname !== '/veterinarian/mobile-login';
+  
+  // Check for client routes
+  const isClientRoute = pathname.startsWith('/client/');
   
   // Routes that should have no sidebar
   const noSidebarRoutes = pathname === '/server/superadmin' || pathname === '/server/subscriptions' || pathname === '/server/subscription-periods' || pathname === '/server/transaction-history' || pathname === '/server/superadmin-dashboard' || pathname === '/auth/admin-login' || pathname === '/auth/superadmin-login' || pathname === '/veterinarian/mobile-login' || pathname === '/auth/login' || pathname === '/login' || pathname === '/' || pathname.startsWith('/veterinarian/');
@@ -85,12 +93,15 @@ function AppContent() {
     if (pathname === '/veterinarian/vet-appointments') {
       return { showBackButton: true, title: 'Appointments' };
     }
+    if (pathname === '/veterinarian/vet-notifications') {
+      return { showBackButton: true, title: 'Notifications' };
+    }
     return { showBackButton: true, title: 'Veterinarian' };
   };
   
   return (
     <NavigationThemeProvider value={DefaultTheme}>
-      <View style={styles.container}>
+      <ImageBackground source={require('@/assets/BG.png')} style={styles.container} resizeMode="cover">
         {showMainSidebar && <Sidebar />}
         <View style={!showMainSidebar ? styles.fullContent : styles.content}>
           {showMobileHeader && <VetMobileHeader {...getHeaderProps()} onBackPress={() => {}} />}
@@ -98,8 +109,10 @@ function AppContent() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
 
+            <Stack.Screen name="client/dashboard" />
             <Stack.Screen name="client/appointments" />
             <Stack.Screen name="client/customers" />
+            <Stack.Screen name="client/customer-detail" />
             <Stack.Screen name="client/veterinarians" />
             <Stack.Screen name="client/records" />
             <Stack.Screen name="client/notifications" />
@@ -125,7 +138,12 @@ function AppContent() {
           </View>
           {showBottomMenu && <VetBottomMenu />}
         </View>
-      </View>
+        
+        {/* AI Chatbot - Show on client routes */}
+        {isClientRoute && <ChatBot tenantId="default" />}
+        
+
+      </ImageBackground>
       <StatusBar style="dark" translucent backgroundColor="transparent" />
     </NavigationThemeProvider>
   );
@@ -186,4 +204,5 @@ const styles = StyleSheet.create({
   fullHeight: {
     flex: 1,
   },
+
 });

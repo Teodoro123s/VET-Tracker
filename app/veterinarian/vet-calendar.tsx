@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Animated, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,10 +12,10 @@ export default function VetCalendarScreen() {
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedDay, setSelectedDay] = useState(null);
-  const [showDayView, setShowDayView] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
   const [statusFilter, setStatusFilter] = useState('All');
   const [translateX] = useState(new Animated.Value(0));
+  const [showNotifications, setShowNotifications] = useState(false);
   
   useEffect(() => {
     fetchAppointments();
@@ -76,8 +76,7 @@ export default function VetCalendarScreen() {
         </ScrollView>
       </View>
       <View style={styles.content}>
-        {!showDayView ? (
-            <View style={styles.calendarContainer}>
+        <View style={styles.calendarContainer}>
             <View style={styles.calendarHeader}>
               <TouchableOpacity style={styles.navButton} onPress={() => navigateMonth(-1)}>
                 <Text style={styles.navButtonText}>‹</Text>
@@ -85,9 +84,25 @@ export default function VetCalendarScreen() {
               <Text style={styles.monthTitle}>
                 {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][selectedMonth]} {selectedYear}
               </Text>
-              <TouchableOpacity style={styles.navButton} onPress={() => navigateMonth(1)}>
-                <Text style={styles.navButtonText}>›</Text>
-              </TouchableOpacity>
+              <View style={styles.headerRight}>
+                <TouchableOpacity style={styles.notificationButton} onPress={() => {
+                  console.log('Bell clicked!');
+                  Alert.alert('Test', 'Bell clicked');
+                  setShowNotifications(true);
+                }}>
+                  <Ionicons name="notifications" size={20} color="#2c5aa0" />
+                  {(getVetAppointments().filter(apt => apt.status === 'Pending' || apt.status === 'Due').length + 3) > 0 && (
+                    <View style={styles.notificationBadge}>
+                      <Text style={styles.notificationBadgeText}>
+                        {getVetAppointments().filter(apt => apt.status === 'Pending' || apt.status === 'Due').length + 3}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.navButton} onPress={() => navigateMonth(1)}>
+                  <Text style={styles.navButtonText}>›</Text>
+                </TouchableOpacity>
+              </View>
             </View>
             
             <View style={styles.weekHeader}>
@@ -142,6 +157,8 @@ export default function VetCalendarScreen() {
                   const hasAppointments = dayAppointments.length > 0;
                   const isTodayBox = isCurrentMonth && day === todayDate.getDate() && selectedMonth === todayDate.getMonth() && selectedYear === todayDate.getFullYear();
                   
+                  const isSelected = selectedDate && selectedDate.day === day && selectedDate.month === selectedMonth && selectedDate.year === selectedYear;
+                  
                   return (
                     <TouchableOpacity 
                       key={index} 
@@ -149,19 +166,20 @@ export default function VetCalendarScreen() {
                         styles.dayBox, 
                         hasAppointments && styles.dayWithAppt, 
                         isTodayBox && styles.todayBox, 
-                        !isCurrentMonth && styles.otherMonthBox
+                        !isCurrentMonth && styles.otherMonthBox,
+                        isSelected && styles.selectedDayBox
                       ]} 
                       onPress={() => {
                         if (isCurrentMonth) {
-                          setSelectedDay(day);
-                          setShowDayView(true);
+                          setSelectedDate({ day, month: selectedMonth, year: selectedYear });
                         }
                       }}
                     >
                       <Text style={[
                         styles.dayText, 
                         isTodayBox && styles.todayText, 
-                        !isCurrentMonth && styles.otherMonthText
+                        !isCurrentMonth && styles.otherMonthText,
+                        isSelected && styles.selectedDayText
                       ]}>
                         {day}
                       </Text>
@@ -175,74 +193,104 @@ export default function VetCalendarScreen() {
                 });
               })()}
             </View>
-            </View>
-        ) : (
-          <View style={styles.dayViewContainer}>
-            <View style={styles.dayViewHeader}>
-              <TouchableOpacity style={styles.backToDayButton} onPress={() => setShowDayView(false)}>
-                <Ionicons name="arrow-back" size={20} color="#2196F3" />
+        </View>
+        
+      </View>
+      
+      <Modal visible={showNotifications} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.notificationModal}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Notifications</Text>
+              <TouchableOpacity onPress={() => setShowNotifications(false)}>
+                <Text style={styles.closeText}>✕</Text>
               </TouchableOpacity>
-              <Text style={styles.dayViewTitle}>
-                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][selectedMonth]} {selectedDay}, {selectedYear}
-              </Text>
             </View>
             
-            <ScrollView style={styles.scheduleView}>
-              {Array.from({length: 24}, (_, i) => {
-                const hour = i;
+            <View style={styles.notificationItem}>
+              <Text style={styles.itemTitle}>🔔 Appointment Pending</Text>
+              <Text style={styles.itemText}>John Smith - Buddy needs approval</Text>
+              <Text style={styles.itemTime}>Today at 2:00 PM</Text>
+            </View>
+            
+            <View style={styles.notificationItem}>
+              <Text style={styles.itemTitle}>⚠️ Appointment Due</Text>
+              <Text style={styles.itemText}>Sarah Johnson - Max appointment is due</Text>
+              <Text style={styles.itemTime}>Today at 3:30 PM</Text>
+            </View>
+            
+            <View style={styles.notificationItem}>
+              <Text style={styles.itemTitle}>📅 Upcoming Appointment</Text>
+              <Text style={styles.itemText}>Mike Davis - Luna scheduled tomorrow</Text>
+              <Text style={styles.itemTime}>Tomorrow at 10:00 AM</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+        
+        {selectedDate && (
+          <View style={styles.scheduleContainer}>
+            <View style={styles.scheduleHeader}>
+              <Text style={styles.scheduleTitle}>
+                Schedule for {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][selectedDate.month]} {selectedDate.day}, {selectedDate.year}
+              </Text>
+              <TouchableOpacity onPress={() => setSelectedDate(null)} style={styles.closeButton}>
+                <Ionicons name="close" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.timeSlotsList} showsVerticalScrollIndicator={false}>
+              {(() => {
                 const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                const selectedMonthName = monthNames[selectedMonth];
+                const selectedMonthName = monthNames[selectedDate.month];
                 const vetAppointments = getVetAppointments();
                 
-                const hourAppts = vetAppointments.filter(apt => {
+                const dayAppointments = vetAppointments.filter(apt => {
                   const currentDate = new Date();
                   const currentDay = currentDate.getDate();
                   const currentMonth = currentDate.getMonth();
                   const currentYear = currentDate.getFullYear();
-                  const timeMatch = apt.dateTime.includes(`${hour}:`) || apt.dateTime.includes(`${hour === 0 ? 12 : hour > 12 ? hour - 12 : hour}:`);
-                  const isCurrentMonthAppt = apt.dateTime.includes(`${selectedMonthName} ${selectedDay}`);
-                  const isToday = selectedDay === currentDay && selectedMonth === currentMonth && selectedYear === currentYear && apt.dateTime.includes('Today');
-                  const isTomorrow = selectedDay === (currentDay + 1) && selectedMonth === currentMonth && selectedYear === currentYear && apt.dateTime.includes('Tomorrow');
-                  const isYesterday = selectedDay === (currentDay - 1) && selectedMonth === currentMonth && selectedYear === currentYear && apt.dateTime.includes('Yesterday');
+                  const isCurrentMonthAppt = apt.dateTime.includes(`${selectedMonthName} ${selectedDate.day}`);
+                  const isToday = selectedDate.day === currentDay && selectedDate.month === currentMonth && selectedDate.year === currentYear && apt.dateTime.includes('Today');
+                  const isTomorrow = selectedDate.day === (currentDay + 1) && selectedDate.month === currentMonth && selectedDate.year === currentYear && apt.dateTime.includes('Tomorrow');
+                  const isYesterday = selectedDate.day === (currentDay - 1) && selectedDate.month === currentMonth && selectedDate.year === currentYear && apt.dateTime.includes('Yesterday');
                   const daysAgoMatch = apt.dateTime.match(/([0-9]+) days ago/);
-                  const isDaysAgo = daysAgoMatch && selectedDay === (currentDay - parseInt(daysAgoMatch[1])) && selectedMonth === currentMonth && selectedYear === currentYear;
-                  const dayMatch = isCurrentMonthAppt || isToday || isTomorrow || isYesterday || isDaysAgo;
-                  return timeMatch && dayMatch;
+                  const isDaysAgo = daysAgoMatch && selectedDate.day === (currentDay - parseInt(daysAgoMatch[1])) && selectedDate.month === currentMonth && selectedDate.year === currentYear;
+                  return isCurrentMonthAppt || isToday || isTomorrow || isYesterday || isDaysAgo;
                 });
                 
-                return (
-                  <View key={hour} style={styles.timeSlot}>
-                    <Text style={styles.timeLabel}>
-                      {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
-                    </Text>
-                    <View style={styles.apptSlot}>
-                      {hourAppts.map((apt) => (
-                        <View key={apt.id} style={[styles.apptCard, {
-                          borderLeftColor: apt.status === 'Pending' ? '#FFA500' : 
-                                         apt.status === 'Due' ? '#FF6B6B' :
-                                         apt.status === 'Completed' ? '#4ECDC4' : '#6c757d'
-                        }]}>
-                          <View style={styles.apptHeader}>
-                            <Text style={styles.apptName}>{apt.name}</Text>
-                            <View style={[styles.statusBadge, {
-                              backgroundColor: apt.status === 'Pending' ? '#FFA500' : 
-                                             apt.status === 'Due' ? '#FF6B6B' :
-                                             apt.status === 'Completed' ? '#4ECDC4' : '#6c757d'
-                            }]}>
-                              <Text style={styles.statusBadgeText}>{apt.status}</Text>
-                            </View>
-                          </View>
-                          <Text style={styles.apptDetails}>{apt.petName} - {apt.service}</Text>
-                        </View>
-                      ))}
+                if (dayAppointments.length === 0) {
+                  return (
+                    <View style={styles.noAppointments}>
+                      <Text style={styles.noAppointmentsText}>No appointments scheduled for this day</Text>
                     </View>
+                  );
+                }
+                
+                return dayAppointments.map((apt) => (
+                  <View key={apt.id} style={[styles.appointmentCard, {
+                    borderLeftColor: apt.status === 'Pending' ? '#FFA500' : 
+                                   apt.status === 'Due' ? '#FF6B6B' :
+                                   apt.status === 'Completed' ? '#4ECDC4' : '#6c757d'
+                  }]}>
+                    <View style={styles.appointmentHeader}>
+                      <Text style={styles.appointmentTime}>{apt.dateTime.split(' at ')[1] || 'Time not specified'}</Text>
+                      <View style={[styles.statusBadge, {
+                        backgroundColor: apt.status === 'Pending' ? '#FFA500' : 
+                                       apt.status === 'Due' ? '#FF6B6B' :
+                                       apt.status === 'Completed' ? '#4ECDC4' : '#6c757d'
+                      }]}>
+                        <Text style={styles.statusBadgeText}>{apt.status}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.appointmentName}>{apt.name}</Text>
+                    <Text style={styles.appointmentDetails}>{apt.petName} - {apt.service}</Text>
                   </View>
-                );
-              })}
+                ));
+              })()}
             </ScrollView>
           </View>
         )}
-      </View>
     </View>
   );
 }
@@ -465,5 +513,267 @@ const styles = StyleSheet.create({
   apptDetails: {
     fontSize: 11,
     color: '#666',
+  },
+  selectedDayBox: {
+    backgroundColor: '#e3f2fd',
+    borderWidth: 2,
+    borderColor: '#2196F3',
+  },
+  selectedDayText: {
+    color: '#2196F3',
+    fontWeight: 'bold',
+  },
+  scheduleContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginTop: 15,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    maxHeight: 300,
+  },
+  scheduleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  scheduleTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2c5aa0',
+    flex: 1,
+  },
+  closeButton: {
+    padding: 5,
+  },
+  timeSlotsList: {
+    flex: 1,
+  },
+  noAppointments: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  noAppointmentsText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  appointmentCard: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 10,
+    borderLeftWidth: 4,
+  },
+  appointmentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  appointmentTime: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#2c5aa0',
+  },
+  appointmentName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 3,
+  },
+  appointmentDetails: {
+    fontSize: 14,
+    color: '#666',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  notificationButton: {
+    padding: 8,
+    marginRight: 10,
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#FF6B6B',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationBadgeText: {
+    fontSize: 10,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  notificationPanel: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    maxHeight: 350,
+  },
+  notificationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  notificationTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2c5aa0',
+  },
+  notificationList: {
+    padding: 15,
+  },
+  noNotifications: {
+    padding: 30,
+    alignItems: 'center',
+  },
+  noNotificationsText: {
+    fontSize: 14,
+    color: '#999',
+    marginTop: 10,
+    fontStyle: 'italic',
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    padding: 12,
+    marginBottom: 8,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#2c5aa0',
+  },
+  notificationIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  notificationContent: {
+    flex: 1,
+  },
+  notificationItemTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 2,
+  },
+  notificationMessage: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 4,
+  },
+  notificationTime: {
+    fontSize: 11,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  notificationOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  notificationFullPanel: {
+    backgroundColor: '#fff',
+    width: '90%',
+    maxHeight: '80%',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  notificationScrollList: {
+    flex: 1,
+  },
+  notificationRow: {
+    flexDirection: 'row',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'flex-start',
+  },
+  notificationText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  notificationRowTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  notificationRowMessage: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  notificationModal: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  closeText: {
+    fontSize: 20,
+    color: '#666',
+  },
+  notificationItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  itemTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  itemText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 3,
+  },
+  itemTime: {
+    fontSize: 12,
+    color: '#999',
   },
 });

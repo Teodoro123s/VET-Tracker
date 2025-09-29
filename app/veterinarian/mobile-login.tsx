@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'reac
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import ForgotPasswordModal from '@/components/ForgotPasswordModal';
 
 export default function MobileLogin() {
   const router = useRouter();
@@ -10,6 +11,7 @@ export default function MobileLogin() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -78,8 +80,21 @@ export default function MobileLogin() {
               {loading ? 'Signing in...' : 'Sign In'}
             </Text>
           </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.forgotPasswordButton}
+            onPress={() => setShowForgotPassword(true)}
+          >
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+          </TouchableOpacity>
         </View>
       </View>
+      
+      <ForgotPasswordModal
+        visible={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        userType="veterinarian"
+      />
     </View>
   );
 }
@@ -164,5 +179,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  forgotPasswordButton: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  forgotPasswordText: {
+    color: '#2c5aa0',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

@@ -1,5 +1,5 @@
 import { db, auth } from '../config/firebaseConfig';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // Get tenant ID from user email
@@ -64,7 +64,14 @@ export const updateVeterinarian = async (vetId, updateData, userEmail?: string) 
 // Get all customers (tenant-aware)
 export const getCustomers = async (userEmail?: string) => {
   try {
-    const querySnapshot = await getDocs(getTenantCollection(userEmail || '', 'customers'));
+    const tenantId = getTenantId(userEmail || '');
+    if (!tenantId) {
+      console.log('No tenant ID found for:', userEmail);
+      return [];
+    }
+    
+    const customersRef = collection(db, 'tenants', tenantId, 'customers');
+    const querySnapshot = await getDocs(customersRef);
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error('Error fetching customers:', error);
@@ -72,10 +79,38 @@ export const getCustomers = async (userEmail?: string) => {
   }
 };
 
+// Get customer by ID (tenant-aware)
+export const getCustomerById = async (userEmail?: string, customerId?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    if (!tenantId || !customerId) {
+      return null;
+    }
+    
+    const docRef = doc(db, 'tenants', tenantId, 'customers', customerId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() };
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching customer by ID:', error);
+    return null;
+  }
+};
+
 // Add a new customer (tenant-aware)
 export const addCustomer = async (customerData, userEmail?: string) => {
   try {
-    const docRef = await addDoc(getTenantCollection(userEmail || '', 'customers'), customerData);
+    const tenantId = getTenantId(userEmail || '');
+    if (!tenantId) {
+      throw new Error('No tenant ID found');
+    }
+    
+    const customersRef = collection(db, 'tenants', tenantId, 'customers');
+    const docRef = await addDoc(customersRef, customerData);
     return { id: docRef.id, ...customerData };
   } catch (error) {
     console.error('Error adding customer:', error);
@@ -161,6 +196,28 @@ export const getMedicalForms = async (userEmail?: string) => {
   }
 };
 
+// Get medical form by ID (tenant-aware)
+export const getMedicalFormById = async (userEmail?: string, formId?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    if (!tenantId || !formId) {
+      return null;
+    }
+    
+    const docRef = doc(db, 'tenants', tenantId, 'medicalForms', formId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() };
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching medical form by ID:', error);
+    return null;
+  }
+};
+
 // Get all medical records (tenant-aware)
 export const getMedicalRecords = async (userEmail?: string) => {
   try {
@@ -168,6 +225,52 @@ export const getMedicalRecords = async (userEmail?: string) => {
     return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error('Error fetching medical records:', error);
+    return [];
+  }
+};
+
+// Get pet by ID (tenant-aware)
+export const getPetById = async (userEmail?: string, petId?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    if (!tenantId || !petId) {
+      return null;
+    }
+    
+    const docRef = doc(db, 'tenants', tenantId, 'pets', petId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() };
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching pet by ID:', error);
+    return null;
+  }
+};
+
+// Update a pet (tenant-aware)
+export const updatePet = async (petId, updateData, userEmail?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/pets` : 'pets';
+    await updateDoc(doc(db, collectionPath, petId), updateData);
+  } catch (error) {
+    console.error('Error updating pet:', error);
+    throw error;
+  }
+};
+
+// Get medical history for a specific pet (tenant-aware)
+export const getMedicalHistory = async (userEmail?: string, petId?: string) => {
+  try {
+    const querySnapshot = await getDocs(getTenantCollection(userEmail || '', 'medicalRecords'));
+    const allRecords = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return allRecords.filter(record => record.petId === petId);
+  } catch (error) {
+    console.error('Error fetching medical history:', error);
     return [];
   }
 };
@@ -204,38 +307,54 @@ export const createTenant = async (tenantId: string, clinicData: any) => {
 };
 
 // Delete functions
-export const deleteCustomer = async (id) => {
+export const deleteCustomer = async (id, userEmail?: string) => {
   try {
-    await deleteDoc(doc(db, 'customers', id));
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/customers` : 'customers';
+    await deleteDoc(doc(db, collectionPath, id));
   } catch (error) {
     console.error('Error deleting customer:', error);
     throw error;
   }
 };
 
+// Update a customer (tenant-aware)
+export const updateCustomer = async (customerId, updateData, userEmail?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/customers` : 'customers';
+    await updateDoc(doc(db, collectionPath, customerId), updateData);
+  } catch (error) {
+    console.error('Error updating customer:', error);
+    throw error;
+  }
+};
+
 // Delete customer and all their pets
-export const deleteCustomerWithPets = async (customerId) => {
+export const deleteCustomerWithPets = async (customerId, userEmail?: string) => {
   try {
     // First get all pets for this customer
-    const pets = await getPets();
+    const pets = await getPets(userEmail);
     const customerPets = pets.filter(pet => pet.owner === customerId);
     
     // Delete all pets
     for (const pet of customerPets) {
-      await deletePet(pet.id);
+      await deletePet(pet.id, userEmail);
     }
     
     // Then delete the customer
-    await deleteCustomer(customerId);
+    await deleteCustomer(customerId, userEmail);
   } catch (error) {
     console.error('Error deleting customer with pets:', error);
     throw error;
   }
 };
 
-export const deletePet = async (id) => {
+export const deletePet = async (id, userEmail?: string) => {
   try {
-    await deleteDoc(doc(db, 'pets', id));
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/pets` : 'pets';
+    await deleteDoc(doc(db, collectionPath, id));
   } catch (error) {
     console.error('Error deleting pet:', error);
     throw error;
@@ -264,9 +383,11 @@ export const deleteAppointment = async (id, userEmail) => {
   }
 };
 
-export const deleteMedicalRecord = async (id) => {
+export const deleteMedicalRecord = async (id, userEmail?: string) => {
   try {
-    await deleteDoc(doc(db, 'medicalRecords', id));
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/medicalRecords` : 'medicalRecords';
+    await deleteDoc(doc(db, collectionPath, id));
   } catch (error) {
     console.error('Error deleting medical record:', error);
     throw error;
@@ -521,5 +642,174 @@ export const updateAnimalType = async (animalTypeId, updateData, userEmail?: str
   } catch (error) {
     console.error('Error updating animal type:', error);
     throw error;
+  }
+};
+
+// Breed functions
+export const getBreeds = async (userEmail?: string) => {
+  try {
+    const querySnapshot = await getDocs(getTenantCollection(userEmail || '', 'breeds'));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error fetching breeds:', error);
+    return [];
+  }
+};
+
+export const addBreed = async (breedData, userEmail?: string) => {
+  try {
+    const docRef = await addDoc(getTenantCollection(userEmail || '', 'breeds'), breedData);
+    return { id: docRef.id, ...breedData };
+  } catch (error) {
+    console.error('Error adding breed:', error);
+    throw error;
+  }
+};
+
+export const deleteAnimalType = async (animalTypeId, userEmail?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/animalTypes` : 'animalTypes';
+    await deleteDoc(doc(db, collectionPath, animalTypeId));
+  } catch (error) {
+    console.error('Error deleting animal type:', error);
+    throw error;
+  }
+};
+
+export const deleteBreed = async (breedId, userEmail?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/breeds` : 'breeds';
+    await deleteDoc(doc(db, collectionPath, breedId));
+  } catch (error) {
+    console.error('Error deleting breed:', error);
+    throw error;
+  }
+};
+
+// Password Management Functions
+const generateSecurePassword = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  let password = '';
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
+};
+
+const generateResetToken = () => {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
+
+const hashPassword = async (password: string) => {
+  // Simple hash for demo - use proper hashing in production
+  return btoa(password);
+};
+
+const verifyPassword = async (password: string, hashedPassword: string) => {
+  return btoa(password) === hashedPassword;
+};
+
+const sendPasswordEmail = async (email: string, newPassword: string) => {
+  // Email service integration - placeholder for now
+  console.log(`Sending password to ${email}: ${newPassword}`);
+  // In production, integrate with email service like SendGrid, AWS SES, etc.
+};
+
+export const generatePassword = async (targetEmail: string, initiatorEmail: string, initiatorType: string) => {
+  const newPassword = generateSecurePassword();
+  const hashedPassword = await hashPassword(newPassword);
+  
+  if (initiatorType === 'veterinarian' && targetEmail !== initiatorEmail) {
+    throw new Error('Veterinarians can only generate their own password');
+  }
+  
+  const tenantId = getTenantId(initiatorEmail || '');
+  const collectionPath = tenantId ? `tenants/${tenantId}/userCredentials` : 'userCredentials';
+  
+  await addDoc(collection(db, collectionPath), {
+    email: targetEmail,
+    pendingPassword: hashedPassword,
+    pendingPasswordCreatedAt: new Date().toISOString(),
+    pendingPasswordExpiresAt: new Date(Date.now() + 24*60*60*1000).toISOString(),
+    passwordResetToken: generateResetToken(),
+    initiatedBy: initiatorEmail,
+    initiatorType: initiatorType
+  });
+  
+  await sendPasswordEmail(targetEmail, newPassword);
+  
+  return { success: true, message: 'New password sent to email' };
+};
+
+export const generateOwnPassword = async (vetEmail: string) => {
+  return await generatePassword(vetEmail, vetEmail, 'veterinarian');
+};
+
+export const requestPasswordReset = async (email: string, userType: string) => {
+  const newPassword = generateSecurePassword();
+  const hashedPassword = await hashPassword(newPassword);
+  const resetToken = generateResetToken();
+  
+  const tenantId = getTenantId(email || '');
+  const collectionPath = tenantId ? `tenants/${tenantId}/userCredentials` : 'userCredentials';
+  
+  await addDoc(collection(db, collectionPath), {
+    email: email,
+    pendingPassword: hashedPassword,
+    pendingPasswordCreatedAt: new Date().toISOString(),
+    pendingPasswordExpiresAt: new Date(Date.now() + 24*60*60*1000).toISOString(),
+    passwordResetToken: resetToken,
+    initiatedBy: email,
+    initiatorType: 'self_reset'
+  });
+  
+  await sendPasswordEmail(email, newPassword);
+  
+  return { success: true, message: 'Password reset email sent' };
+};
+
+export const loginWithCredentialOverlap = async (email: string, password: string) => {
+  try {
+    const tenantId = getTenantId(email || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/userCredentials` : 'userCredentials';
+    const querySnapshot = await getDocs(collection(db, collectionPath));
+    
+    const userCreds = querySnapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(cred => cred.email === email)
+      .sort((a, b) => new Date(b.pendingPasswordCreatedAt || 0).getTime() - new Date(a.pendingPasswordCreatedAt || 0).getTime());
+    
+    if (userCreds.length === 0) {
+      return { success: false, error: 'User not found' };
+    }
+    
+    const latestCred = userCreds[0];
+    
+    // Check current password first
+    if (latestCred.currentPassword && await verifyPassword(password, latestCred.currentPassword)) {
+      return { success: true, user: { email: latestCred.email } };
+    }
+    
+    // Check pending password if exists and not expired
+    if (latestCred.pendingPassword && new Date() < new Date(latestCred.pendingPasswordExpiresAt)) {
+      if (await verifyPassword(password, latestCred.pendingPassword)) {
+        // Activate pending password
+        await updateDoc(doc(db, collectionPath, latestCred.id), {
+          currentPassword: latestCred.pendingPassword,
+          pendingPassword: null,
+          pendingPasswordCreatedAt: null,
+          pendingPasswordExpiresAt: null,
+          passwordResetToken: null
+        });
+        return { success: true, user: { email: latestCred.email }, passwordActivated: true };
+      }
+    }
+    
+    return { success: false, error: 'Invalid credentials' };
+  } catch (error) {
+    console.error('Login error:', error);
+    return { success: false, error: 'Login failed' };
   }
 };
