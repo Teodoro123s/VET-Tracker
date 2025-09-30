@@ -152,7 +152,7 @@ export const getAppointments = async (userEmail?: string) => {
 };
 
 // Add a new appointment (tenant-aware)
-export const addAppointment = async (appointmentData, userEmail?: string) => {
+export const addAppointment = async (userEmail?: string, appointmentData?: any) => {
   try {
     const docRef = await addDoc(getTenantCollection(userEmail || '', 'appointments'), appointmentData);
     return { id: docRef.id, ...appointmentData };
@@ -811,5 +811,48 @@ export const loginWithCredentialOverlap = async (email: string, password: string
   } catch (error) {
     console.error('Login error:', error);
     return { success: false, error: 'Login failed' };
+  }
+};
+
+// Reason options functions
+export const getReasonOptions = async (userEmail?: string) => {
+  try {
+    const querySnapshot = await getDocs(getTenantCollection(userEmail || '', 'reasonOptions'));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error fetching reason options:', error);
+    return [];
+  }
+};
+
+export const addReasonOption = async (reasonData, userEmail?: string) => {
+  try {
+    const docRef = await addDoc(getTenantCollection(userEmail || '', 'reasonOptions'), reasonData);
+    return { id: docRef.id, ...reasonData };
+  } catch (error) {
+    console.error('Error adding reason option:', error);
+    throw error;
+  }
+};
+
+export const updateReasonOption = async (reasonId, updateData, userEmail?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/reasonOptions` : 'reasonOptions';
+    await updateDoc(doc(db, collectionPath, reasonId), updateData);
+  } catch (error) {
+    console.error('Error updating reason option:', error);
+    throw error;
+  }
+};
+
+export const deleteReasonOption = async (reasonId, userEmail?: string) => {
+  try {
+    const tenantId = getTenantId(userEmail || '');
+    const collectionPath = tenantId ? `tenants/${tenantId}/reasonOptions` : 'reasonOptions';
+    await deleteDoc(doc(db, collectionPath, reasonId));
+  } catch (error) {
+    console.error('Error deleting reason option:', error);
+    throw error;
   }
 };
