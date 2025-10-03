@@ -9,6 +9,7 @@ import { getCustomers, getPets, getVeterinarians, getAppointments, addAppointmen
 import { useTenant } from '../../contexts/TenantContext';
 
 
+
 export default function AppointmentsScreen() {
   const router = useRouter();
   const { openDrawer } = useLocalSearchParams();
@@ -38,8 +39,7 @@ export default function AppointmentsScreen() {
       ]);
       
       setCustomers(customersData);
-      const vetNames = vetsData.filter(vet => vet.role !== 'staff').map(vet => vet.name);
-      setVeterinarians(vetNames);
+      setVeterinarians(vetsData.map(vet => vet.name));
       setAppointments(appointmentsData);
       
       // Group pets by owner - try both ID and name
@@ -220,6 +220,8 @@ export default function AppointmentsScreen() {
   const [selectedMedicalForm, setSelectedMedicalForm] = useState(null);
   const [formFieldValues, setFormFieldValues] = useState({});
   const [selectedMedicalRecord, setSelectedMedicalRecord] = useState(null);
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [showAiInsights, setShowAiInsights] = useState(false);
   
   const formFieldsData = {
     'Dog Vaccination Form': [
@@ -428,6 +430,15 @@ export default function AppointmentsScreen() {
   const handleAddAppointment = async () => {
     if (newAppointment.customer && newAppointment.pet && newAppointment.service && newAppointment.staff && newAppointment.date && newAppointment.time) {
       try {
+        // AI Analysis - temporarily disabled
+        const analysis = {
+          urgency: 'medium',
+          suggestedTimeSlot: 'morning',
+          estimatedDuration: 30,
+          recommendations: ['Standard appointment'],
+          riskFactors: []
+        };
+        
         const appointment = {
           order: `A${String(appointmentList.length + 1).padStart(3, '0')}`,
           customerName: newAppointment.customer,
@@ -436,7 +447,8 @@ export default function AppointmentsScreen() {
           veterinarian: newAppointment.staff,
           dateTime: `${newAppointment.date}\n${newAppointment.time}`,
           status: 'Pending',
-          notes: 'New appointment'
+          notes: 'New appointment',
+          aiAnalysis: analysis
         };
         
         // Add to Firebase
@@ -468,14 +480,7 @@ export default function AppointmentsScreen() {
     }
   };
 
-  const appointmentColumns = [
-    { key: 'customerName', title: 'Customer', render: (apt) => apt.customerName || apt.name },
-    { key: 'petName', title: 'Pet' },
-    { key: 'service', title: 'Service' },
-    { key: 'veterinarian', title: 'Veterinarian', render: (apt) => apt.veterinarian || apt.staff },
-    { key: 'dateTime', title: 'Schedule' },
-    { key: 'status', title: 'Status' },
-  ];
+
 
   return (
     <View style={styles.container}>
@@ -551,13 +556,11 @@ export default function AppointmentsScreen() {
               </View>
           <View style={styles.table}>
             <View style={styles.tableHeader}>
-              <Text style={styles.headerCellId}>Order</Text>
-              <Text style={styles.headerCellName}>Name</Text>
-              <Text style={styles.headerCellPet}>Pet Name</Text>
-              <Text style={styles.headerCellService}>Service</Text>
-              <Text style={styles.headerCellVet}>Veterinarian</Text>
-              <Text style={styles.headerCellSchedule}>Schedule</Text>
-              <Text style={styles.headerCellActions}>Actions</Text>
+              <Text style={styles.headerCellSchedule}>Time</Text>
+              <Text style={styles.headerCellName}>Customer Name</Text>
+              <Text style={styles.headerCellPet}>Pet</Text>
+              <Text style={styles.headerCellService}>Reason</Text>
+              <Text style={styles.headerCellActions}>Action</Text>
             </View>
             <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={false}>
               {currentAppointments.length === 0 ? (
@@ -567,12 +570,10 @@ export default function AppointmentsScreen() {
               ) : (
                 currentAppointments.map((appointment, index) => (
                   <TouchableOpacity key={appointment.id} style={styles.tableRow} onPress={() => setSelectedAppointment(appointment)}>
-                    <Text style={styles.cellId} numberOfLines={1}>{startIndex + index + 1}</Text>
+                    <Text style={styles.cellSchedule} numberOfLines={1}>{appointment.dateTime?.split('\n')[1] || 'N/A'}</Text>
                     <Text style={styles.cellName} numberOfLines={1}>{appointment.customerName || appointment.name}</Text>
                     <Text style={styles.cellPet} numberOfLines={1}>{appointment.petName}</Text>
                     <Text style={styles.cellService} numberOfLines={1}>{appointment.service}</Text>
-                    <Text style={styles.cellVet} numberOfLines={1}>{appointment.veterinarian || appointment.staff}</Text>
-                    <Text style={styles.cellSchedule} numberOfLines={1}>{appointment.dateTime}</Text>
                     <View style={styles.actionsCell}>
                     {appointment.status === 'Pending' && (
                       <>
@@ -801,6 +802,25 @@ export default function AppointmentsScreen() {
                       setShowCalendar(true);
                     }}>
                       <Text style={styles.calendarButtonText}>📅 Calendar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.aiButton} onPress={async () => {
+                      if (selectedAppointment.aiAnalysis) {
+                        setAiAnalysis(selectedAppointment.aiAnalysis);
+                        setShowAiInsights(true);
+                      } else {
+                        // AI Analysis - temporarily disabled
+                        const analysis = {
+                          urgency: 'medium',
+                          suggestedTimeSlot: 'morning',
+                          estimatedDuration: 30,
+                          recommendations: ['Standard appointment analysis'],
+                          riskFactors: []
+                        };
+                        setAiAnalysis(analysis);
+                        setShowAiInsights(true);
+                      }
+                    }}>
+                      <Text style={styles.aiButtonText}>AI Insights</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.editButton} onPress={() => {
                       const customer = customers.find(c => c.name === selectedAppointment.name);
@@ -1471,19 +1491,34 @@ export default function AppointmentsScreen() {
                 />
                 
                 <Text style={styles.fieldLabel}>Veterinarian *</Text>
-                <SearchableDropdown
-                  options={veterinarians.map((vet, index) => ({
-                    id: index,
-                    label: vet,
-                    value: vet
-                  }))}
-                  placeholder="Select Veterinarian"
-                  selectedValue={newAppointment.staff}
-                  onSelect={(option) => {
-                    setNewAppointment({...newAppointment, staff: option.value});
-                  }}
-                  zIndex={1501}
-                />
+                <View style={styles.editStaffDropdownContainer}>
+                  <TouchableOpacity style={styles.modalDropdown} onPress={() => {
+                    setShowCustomerDropdown(false);
+                    setShowPetDropdown(false);
+                    setShowStaffDropdown(!showStaffDropdown);
+                  }}>
+                    <Text style={styles.modalDropdownText}>{newAppointment.staff || 'Select Veterinarian'}</Text>
+                    <Text style={styles.dropdownArrow}>▼</Text>
+                  </TouchableOpacity>
+                  {showStaffDropdown && (
+                    <View style={styles.modalDropdownMenu}>
+                      <ScrollView style={styles.dropdownScrollView} showsVerticalScrollIndicator={false}>
+                        {veterinarians.map((vet, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.modalDropdownOption}
+                            onPress={() => {
+                              setNewAppointment({...newAppointment, staff: vet});
+                              setShowStaffDropdown(false);
+                            }}
+                          >
+                            <Text style={styles.modalDropdownOptionText}>{vet}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
                 
                 <Text style={styles.fieldLabel}>Date & Time *</Text>
                 <View style={styles.inputRow}>
@@ -2645,6 +2680,38 @@ export default function AppointmentsScreen() {
                   })()}
                 </View>
               </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+      
+      {showAiInsights && aiAnalysis && (
+        <Modal visible={true} transparent animationType="none">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>AI Analysis</Text>
+                <TouchableOpacity style={styles.closeButton} onPress={() => setShowAiInsights(false)}>
+                  <Image source={require('@/assets/exit button.png')} style={styles.closeButtonIcon} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalForm}>
+                <Text style={styles.aiSectionTitle}>Urgency Level: {aiAnalysis.urgency.toUpperCase()}</Text>
+                <Text style={styles.aiText}>Suggested Time: {aiAnalysis.suggestedTimeSlot}</Text>
+                <Text style={styles.aiText}>Duration: {aiAnalysis.estimatedDuration} minutes</Text>
+                <Text style={styles.aiSectionTitle}>Recommendations:</Text>
+                {aiAnalysis.recommendations.map((rec, index) => (
+                  <Text key={index} style={styles.aiText}>• {rec}</Text>
+                ))}
+                {aiAnalysis.riskFactors.length > 0 && (
+                  <>
+                    <Text style={styles.aiSectionTitle}>Risk Factors:</Text>
+                    {aiAnalysis.riskFactors.map((risk, index) => (
+                      <Text key={index} style={styles.aiRiskText}>⚠️ {risk}</Text>
+                    ))}
+                  </>
+                )}
+              </ScrollView>
             </View>
           </View>
         </Modal>
@@ -4021,6 +4088,37 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 12,
+  },
+  aiButton: {
+    backgroundColor: '#FF6B35',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginRight: 10,
+  },
+  aiButtonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  aiSectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#800000',
+    marginTop: 15,
+    marginBottom: 8,
+  },
+  aiText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 5,
+    lineHeight: 20,
+  },
+  aiRiskText: {
+    fontSize: 14,
+    color: '#dc3545',
+    marginBottom: 5,
+    fontWeight: 'bold',
   },
   drawerOverlay: {
     position: 'absolute',

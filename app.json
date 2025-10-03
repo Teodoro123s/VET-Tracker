@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "vetclinic",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.vetclinic.staff",
