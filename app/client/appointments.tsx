@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Animated, StyleSheet, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
-import { addAppointment, getAppointments, deleteAppointment, getCustomers, getPets, getVeterinarians, getReasonOptions, addReasonOption, updateReasonOption, deleteReasonOption } from '../../lib/services/firebaseService';
+import { addAppointment, getAppointments, deleteAppointment, updateAppointment, getCustomers, getPets, getVeterinarians, getReasonOptions, addReasonOption, updateReasonOption, deleteReasonOption } from '../../lib/services/firebaseService';
 import { notificationService } from '../../lib/services/notificationService';
 
 interface Appointment {
@@ -44,16 +44,8 @@ export default function AppointmentsScreen() {
   const [showEditReasonModal, setShowEditReasonModal] = useState(false);
   const [newReasonText, setNewReasonText] = useState('');
   const [editingReason, setEditingReason] = useState<any>(null);
-  const [showServiceTypeDropdown, setShowServiceTypeDropdown] = useState(false);
-  
-  const serviceTypes = [
-    { id: 1, name: 'Checkup', duration: 30, icon: '🩺' },
-    { id: 2, name: 'Vaccination', duration: 15, icon: '💉' },
-    { id: 3, name: 'Surgery', duration: 120, icon: '🔪' },
-    { id: 4, name: 'Dental', duration: 60, icon: '🦷' },
-    { id: 5, name: 'Emergency', duration: 45, icon: '🚨' },
-    { id: 6, name: 'Grooming', duration: 90, icon: '✂️' },
-  ];
+
+
   const [slideAnim] = useState(new Animated.Value(-350));
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -62,10 +54,15 @@ export default function AppointmentsScreen() {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
   const [calendarDate, setCalendarDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [statusFilter, setStatusFilter] = useState('all');
   const [vetFilter, setVetFilter] = useState('all');
   const [showStatusFilter, setShowStatusFilter] = useState(false);
   const [showVetFilter, setShowVetFilter] = useState(false);
+  const [showMonthFilter, setShowMonthFilter] = useState(false);
+  const [showYearFilter, setShowYearFilter] = useState(false);
+  const [customYear, setCustomYear] = useState('');
+  const [activeStatusFilter, setActiveStatusFilter] = useState('pending');
   const [newAppointment, setNewAppointment] = useState({
     customerId: '',
     customerName: '',
@@ -74,8 +71,6 @@ export default function AppointmentsScreen() {
     appointmentDate: '',
     appointmentTime: '',
     reason: '',
-    serviceType: '',
-    duration: 30,
     veterinarian: '',
     status: 'scheduled' as const,
     notes: ''
@@ -108,7 +103,29 @@ export default function AppointmentsScreen() {
     if (!user?.email) return;
     try {
       const appointmentsList = await getAppointments(user.email);
-      setAppointments(appointmentsList);
+      const now = new Date();
+      
+      const smartSortedAppointments = appointmentsList.map(appointment => {
+        if (appointment.status === 'completed') {
+          return appointment;
+        }
+        
+        let appointmentDateTime;
+        if (appointment.appointmentDate?.seconds) {
+          appointmentDateTime = new Date(appointment.appointmentDate.seconds * 1000);
+        } else {
+          appointmentDateTime = new Date(appointment.appointmentDate);
+        }
+        
+        if (isNaN(appointmentDateTime.getTime())) {
+          return { ...appointment, status: 'pending' };
+        }
+        
+        const newStatus = appointmentDateTime <= now ? 'due' : 'pending';
+        return { ...appointment, status: newStatus };
+      });
+      
+      setAppointments(smartSortedAppointments);
     } catch (error) {
       console.error('Failed to load appointments:', error);
     }
@@ -186,8 +203,6 @@ export default function AppointmentsScreen() {
       const appointmentData = {
         ...newAppointment,
         appointmentDate: new Date(`${newAppointment.appointmentDate}T${newAppointment.appointmentTime}`),
-        serviceType: newAppointment.serviceType,
-        duration: newAppointment.duration,
         createdAt: new Date()
       };
 
@@ -347,7 +362,7 @@ export default function AppointmentsScreen() {
   
   const getYears = () => {
     const currentYear = new Date().getFullYear();
-    return Array.from({length: 5}, (_, i) => currentYear + i);
+    return Array.from({length: 10}, (_, i) => currentYear - 5 + i);
   };
   
   const formatSelectedDate = () => {
@@ -417,15 +432,38 @@ export default function AppointmentsScreen() {
     );
   };
 
-  // Filter and paginate appointments with status priority
-  const filteredAppointments = appointments.filter(appointment =>
-    appointment.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    appointment.petName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    appointment.reason.toLowerCase().includes(searchTerm.toLowerCase())
-  ).sort((a, b) => {
-    const statusPriority = { 'due': 1, 'pending': 2, 'scheduled': 3, 'completed': 4, 'cancelled': 5 };
-    return (statusPriority[a.status] || 3) - (statusPriority[b.status] || 3);
-  });
+  // Filter appointments by active status and search term
+  const filteredAppointments = appointments
+    .filter(appointment => {
+      const matchesSearch = appointment.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        appointment.petName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        appointment.reason.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = appointment.status === activeStatusFilter;
+      
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      let dateA, dateB;
+      
+      if (a.appointmentDate?.seconds) {
+        dateA = new Date(a.appointmentDate.seconds * 1000);
+      } else {
+        dateA = new Date(a.appointmentDate);
+      }
+      
+      if (b.appointmentDate?.seconds) {
+        dateB = new Date(b.appointmentDate.seconds * 1000);
+      } else {
+        dateB = new Date(b.appointmentDate);
+      }
+      
+      if (activeStatusFilter === 'pending') {
+        return dateA.getTime() - dateB.getTime();
+      } else {
+        return dateB.getTime() - dateA.getTime();
+      }
+    });
 
   const totalPages = Math.ceil(filteredAppointments.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -479,12 +517,70 @@ export default function AppointmentsScreen() {
               </TouchableOpacity>
               <Text style={styles.formDetailTitle}>Appointment Details</Text>
               <View style={styles.categoryActions}>
-                <TouchableOpacity 
-                  style={styles.deleteCategoryButton} 
-                  onPress={() => handleDeleteAppointment(selectedAppointment.id)}
-                >
-                  <Text style={styles.deleteCategoryButtonText}>Delete</Text>
-                </TouchableOpacity>
+                {(selectedAppointment.status === 'pending' || selectedAppointment.status === 'due' || selectedAppointment.status === 'scheduled') && (
+                  <TouchableOpacity 
+                    style={styles.doneCategoryButton} 
+                    onPress={async () => {
+                      try {
+                        if (!user?.email || !selectedAppointment?.id) {
+                          Alert.alert('Error', 'Missing required information');
+                          return;
+                        }
+                        await updateAppointment(user.email, selectedAppointment.id, { 
+                          status: 'completed',
+                          completedAt: new Date()
+                        });
+                        setSelectedAppointment({
+                          ...selectedAppointment,
+                          status: 'completed',
+                          completedAt: new Date()
+                        });
+                        await loadAppointments();
+                        Alert.alert('Success', 'Appointment marked as done');
+                      } catch (error) {
+                        console.error('Failed to mark appointment as done:', error);
+                        Alert.alert('Error', 'Failed to mark appointment as done');
+                      }
+                    }}
+                  >
+                    <Text style={styles.doneCategoryButtonText}>Done</Text>
+                  </TouchableOpacity>
+                )}
+                {selectedAppointment.status !== 'completed' && (
+                  <TouchableOpacity 
+                    style={styles.deleteCategoryButton} 
+                    onPress={() => {
+                      Alert.alert(
+                        'Delete Appointment',
+                        'Are you sure you want to delete this appointment?',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Delete',
+                            style: 'destructive',
+                            onPress: async () => {
+                              try {
+                                if (!user?.email || !selectedAppointment?.id) {
+                                  Alert.alert('Error', 'Missing required information');
+                                  return;
+                                }
+                                await deleteAppointment(user.email, selectedAppointment.id);
+                                setSelectedAppointment(null);
+                                await loadAppointments();
+                                Alert.alert('Success', 'Appointment deleted successfully');
+                              } catch (error) {
+                                console.error('Failed to delete appointment:', error);
+                                Alert.alert('Error', 'Failed to delete appointment');
+                              }
+                            }
+                          }
+                        ]
+                      );
+                    }}
+                  >
+                    <Text style={styles.deleteCategoryButtonText}>Delete</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
             <ScrollView style={styles.detailTable} showsVerticalScrollIndicator={false}>
@@ -509,14 +605,6 @@ export default function AppointmentsScreen() {
                 <Text style={styles.detailCell}>{formatDateTime(selectedAppointment.appointmentDate).time}</Text>
               </View>
               <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Service Type</Text>
-                <Text style={styles.detailCell}>{selectedAppointment.serviceType || 'Not specified'}</Text>
-              </View>
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Duration</Text>
-                <Text style={styles.detailCell}>{selectedAppointment.duration || 30} minutes</Text>
-              </View>
-              <View style={styles.detailTableRow}>
                 <Text style={styles.detailCell}>Reason</Text>
                 <Text style={styles.detailCell}>{selectedAppointment.reason}</Text>
               </View>
@@ -534,6 +622,12 @@ export default function AppointmentsScreen() {
                   <Text style={styles.detailCell}>{selectedAppointment.notes}</Text>
                 </View>
               )}
+              {selectedAppointment.completedAt && (
+                <View style={styles.detailTableRow}>
+                  <Text style={styles.detailCell}>Completed At</Text>
+                  <Text style={styles.detailCell}>{formatDateTime(selectedAppointment.completedAt).date} at {formatDateTime(selectedAppointment.completedAt).time}</Text>
+                </View>
+              )}
             </ScrollView>
           </View>
         </View>
@@ -546,157 +640,314 @@ export default function AppointmentsScreen() {
       <View style={styles.header}>
         <Text style={styles.headerText}>Appointments</Text>
         <View style={styles.headerActions}>
-          <View style={styles.viewToggle}>
+          {viewMode === 'table' && (
             <TouchableOpacity 
-              style={[styles.toggleButton, viewMode === 'table' && styles.activeToggle]}
-              onPress={() => setViewMode('table')}
-            >
-              <Text style={[styles.toggleText, viewMode === 'table' && styles.activeToggleText]}>📋 Table</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.toggleButton, viewMode === 'calendar' && styles.activeToggle]}
+              style={styles.calendarButton}
               onPress={() => setViewMode('calendar')}
             >
-              <Text style={[styles.toggleText, viewMode === 'calendar' && styles.activeToggleText]}>📅 Calendar</Text>
+              <Text style={styles.calendarButtonText}>📅 Calendar</Text>
             </TouchableOpacity>
-          </View>
-          
-          {viewMode === 'calendar' && (
-            <View style={styles.calendarFilters}>
-              <View style={styles.filterDropdown}>
-                <TouchableOpacity 
-                  style={styles.filterButton}
-                  onPress={() => setShowStatusFilter(!showStatusFilter)}
-                >
-                  <Text style={styles.filterText}>{statusFilter === 'all' ? 'All Status' : statusFilter}</Text>
-                  <Text style={styles.dropdownArrow}>▼</Text>
-                </TouchableOpacity>
-                {showStatusFilter && (
-                  <View style={styles.filterMenu}>
-                    {['all', 'pending', 'scheduled', 'completed', 'cancelled'].map((status) => (
-                      <TouchableOpacity
-                        key={status}
-                        style={styles.filterOption}
-                        onPress={() => {
-                          setStatusFilter(status);
-                          setShowStatusFilter(false);
-                        }}
-                      >
-                        <Text style={styles.filterOptionText}>{status === 'all' ? 'All Status' : status}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
-              
-              <View style={styles.filterDropdown}>
-                <TouchableOpacity 
-                  style={styles.filterButton}
-                  onPress={() => setShowVetFilter(!showVetFilter)}
-                >
-                  <Text style={styles.filterText}>{vetFilter === 'all' ? 'All Vets' : vetFilter}</Text>
-                  <Text style={styles.dropdownArrow}>▼</Text>
-                </TouchableOpacity>
-                {showVetFilter && (
-                  <View style={styles.filterMenu}>
-                    <TouchableOpacity
-                      style={styles.filterOption}
-                      onPress={() => {
-                        setVetFilter('all');
-                        setShowVetFilter(false);
-                      }}
-                    >
-                      <Text style={styles.filterOptionText}>All Vets</Text>
-                    </TouchableOpacity>
-                    {veterinarians.map((vet) => (
-                      <TouchableOpacity
-                        key={vet.id}
-                        style={styles.filterOption}
-                        onPress={() => {
-                          setVetFilter(vet.name || `${vet.firstname} ${vet.surname}`);
-                          setShowVetFilter(false);
-                        }}
-                      >
-                        <Text style={styles.filterOptionText}>{vet.name || `${vet.firstname} ${vet.surname}`}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
-            </View>
           )}
           
-          <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-            <Text style={styles.addButtonText}>+ Add</Text>
-          </TouchableOpacity>
+
           
           {viewMode === 'table' && (
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search..."
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-              />
-            </View>
+            <>
+              <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
+                <Text style={styles.addButtonText}>+ Add Appointment</Text>
+              </TouchableOpacity>
+              
+              <View style={styles.searchContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChangeText={setSearchTerm}
+                />
+              </View>
+            </>
           )}
         </View>
       </View>
 
       <View style={styles.content}>
         {viewMode === 'calendar' ? (
-          <View style={styles.calendarContainer}>
-            <View style={styles.calendarHeader}>
-              <TouchableOpacity 
-                style={styles.navButton}
-                onPress={() => {
-                  const newDate = new Date(calendarDate);
-                  newDate.setMonth(newDate.getMonth() - 1);
-                  setCalendarDate(newDate);
-                }}
-              >
-                <Text style={styles.navButtonText}>‹</Text>
+          <>
+            <View style={styles.returnRow}>
+              <TouchableOpacity style={styles.returnIconButton} onPress={() => setViewMode('table')}>
+                <Text style={styles.returnIcon}>←</Text>
               </TouchableOpacity>
-              
-              <Text style={styles.calendarTitle}>
-                {calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </Text>
-              
-              <TouchableOpacity 
-                style={styles.navButton}
-                onPress={() => {
-                  const newDate = new Date(calendarDate);
-                  newDate.setMonth(newDate.getMonth() + 1);
-                  setCalendarDate(newDate);
-                }}
-              >
-                <Text style={styles.navButtonText}>›</Text>
-              </TouchableOpacity>
+              <Text style={styles.returnLabel}>Appointment table</Text>
+              <View style={styles.returnRowVetFilter}>
+                <View style={[styles.filterDropdown, styles.vetFilterDropdown]}>
+                  <TouchableOpacity 
+                    style={styles.filterButton}
+                    onPress={() => setShowVetFilter(!showVetFilter)}
+                  >
+                    <Text style={styles.filterText}>{vetFilter === 'all' ? 'All Vets' : vetFilter}</Text>
+                    <Text style={styles.dropdownArrow}>▼</Text>
+                  </TouchableOpacity>
+                  {showVetFilter && (
+                    <View style={[styles.filterMenu, { zIndex: 99999999, elevation: 100 }]}>
+                      <ScrollView showsVerticalScrollIndicator={false}>
+                        <TouchableOpacity
+                          style={styles.filterOption}
+                          onPress={() => {
+                            setVetFilter('all');
+                            setShowVetFilter(false);
+                          }}
+                        >
+                          <Text style={styles.filterOptionText}>All Vets</Text>
+                        </TouchableOpacity>
+                        {veterinarians.map((vet) => (
+                          <TouchableOpacity
+                            key={vet.id}
+                            style={styles.filterOption}
+                            onPress={() => {
+                              setVetFilter(vet.name || `${vet.firstname} ${vet.surname}`);
+                              setShowVetFilter(false);
+                            }}
+                          >
+                            <Text style={styles.filterOptionText}>{vet.name || `${vet.firstname} ${vet.surname}`}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+              </View>
             </View>
-            
-            <View style={styles.calendarGrid}>
-              <View style={styles.weekHeader}>
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                  <Text key={day} style={styles.weekDay}>{day}</Text>
-                ))}
+            <View style={styles.calendarViewContainer}>
+            <View style={styles.calendarContainer}>
+              <View style={styles.calendarFilters}>
+                <View style={styles.filterDropdown}>
+                  <TouchableOpacity 
+                    style={styles.filterButton}
+                    onPress={() => setShowMonthFilter(!showMonthFilter)}
+                  >
+                    <Text style={styles.filterText}>{calendarDate.toLocaleDateString('en-US', { month: 'long' })}</Text>
+                    <Text style={styles.dropdownArrow}>▼</Text>
+                  </TouchableOpacity>
+                  {showMonthFilter && (
+                    <View style={styles.filterMenu}>
+                      <ScrollView showsVerticalScrollIndicator={false}>
+                        {getMonths().map((month) => (
+                          <TouchableOpacity
+                            key={month.value}
+                            style={styles.filterOption}
+                            onPress={() => {
+                              const newDate = new Date(calendarDate);
+                              newDate.setMonth(month.value - 1);
+                              setCalendarDate(newDate);
+                              setShowMonthFilter(false);
+                            }}
+                          >
+                            <Text style={styles.filterOptionText}>{month.name}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+                
+                <View style={styles.filterDropdown}>
+                  <TouchableOpacity 
+                    style={styles.filterButton}
+                    onPress={() => setShowYearFilter(!showYearFilter)}
+                  >
+                    <Text style={styles.filterText}>{calendarDate.getFullYear()}</Text>
+                    <Text style={styles.dropdownArrow}>▼</Text>
+                  </TouchableOpacity>
+                  {showYearFilter && (
+                    <View style={styles.filterMenu}>
+                      <ScrollView showsVerticalScrollIndicator={false}>
+                        {getYears().map((year) => (
+                          <TouchableOpacity
+                            key={year}
+                            style={styles.filterOption}
+                            onPress={() => {
+                              const newDate = new Date(calendarDate);
+                              newDate.setFullYear(year);
+                              setCalendarDate(newDate);
+                              setShowYearFilter(false);
+                            }}
+                          >
+                            <Text style={styles.filterOptionText}>{year}</Text>
+                          </TouchableOpacity>
+                        ))}
+                        <View style={styles.customYearContainer}>
+                          <TextInput
+                            style={styles.customYearInput}
+                            placeholder="Custom year"
+                            value={customYear}
+                            onChangeText={setCustomYear}
+                            keyboardType="numeric"
+                            onSubmitEditing={() => {
+                              const year = parseInt(customYear);
+                              if (year && year > 1900 && year < 2100) {
+                                const newDate = new Date(calendarDate);
+                                newDate.setFullYear(year);
+                                setCalendarDate(newDate);
+                                setCustomYear('');
+                                setShowYearFilter(false);
+                              }
+                            }}
+                          />
+                          <TouchableOpacity
+                            style={styles.customYearButton}
+                            onPress={() => {
+                              const year = parseInt(customYear);
+                              if (year && year > 1900 && year < 2100) {
+                                const newDate = new Date(calendarDate);
+                                newDate.setFullYear(year);
+                                setCalendarDate(newDate);
+                                setCustomYear('');
+                                setShowYearFilter(false);
+                              }
+                            }}
+                          >
+                            <Text style={styles.customYearButtonText}>Go</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+                
+                <View style={styles.legend}>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#dc3545' }]} />
+                    <Text style={styles.legendText}>Due</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#28a745' }]} />
+                    <Text style={styles.legendText}>Pending</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#007bff' }]} />
+                    <Text style={styles.legendText}>Done</Text>
+                  </View>
+                </View>
               </View>
               
-              {(() => {
-                const year = calendarDate.getFullYear();
-                const month = calendarDate.getMonth();
-                const firstDay = new Date(year, month, 1).getDay();
-                const daysInMonth = new Date(year, month + 1, 0).getDate();
-                const days = [];
+              <View style={styles.calendarHeader}>
+                <TouchableOpacity 
+                  style={styles.navButton}
+                  onPress={() => {
+                    const newDate = new Date(calendarDate);
+                    newDate.setMonth(newDate.getMonth() - 1);
+                    setCalendarDate(newDate);
+                  }}
+                >
+                  <Text style={styles.navButtonText}>‹</Text>
+                </TouchableOpacity>
                 
-                // Empty cells for days before month starts
-                for (let i = 0; i < firstDay; i++) {
-                  days.push(<View key={`empty-${i}`} style={styles.emptyDay} />);
-                }
+                <Text style={styles.calendarTitle}>
+                  {calendarDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </Text>
                 
-                // Days of the month
-                for (let day = 1; day <= daysInMonth; day++) {
-                  const dayDate = new Date(year, month, day);
-                  const dayAppointments = appointments.filter(apt => {
+                <TouchableOpacity 
+                  style={styles.navButton}
+                  onPress={() => {
+                    const newDate = new Date(calendarDate);
+                    newDate.setMonth(newDate.getMonth() + 1);
+                    setCalendarDate(newDate);
+                  }}
+                >
+                  <Text style={styles.navButtonText}>›</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.calendarGrid}>
+                <View style={styles.weekHeader}>
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                    <Text key={day} style={styles.weekDay}>{day}</Text>
+                  ))}
+                </View>
+                
+                {(() => {
+                  const year = calendarDate.getFullYear();
+                  const month = calendarDate.getMonth();
+                  const firstDay = new Date(year, month, 1).getDay();
+                  const daysInMonth = new Date(year, month + 1, 0).getDate();
+                  const days = [];
+                  
+                  for (let i = 0; i < firstDay; i++) {
+                    days.push(<View key={`empty-${i}`} style={styles.emptyDay} />);
+                  }
+                  
+                  for (let day = 1; day <= daysInMonth; day++) {
+                    const dayDate = new Date(year, month, day);
+                    const dayAppointments = appointments.filter(apt => {
+                      try {
+                        let aptDate;
+                        if (apt.appointmentDate?.seconds) {
+                          aptDate = new Date(apt.appointmentDate.seconds * 1000);
+                        } else {
+                          aptDate = new Date(apt.appointmentDate);
+                        }
+                        
+                        if (isNaN(aptDate.getTime())) return false;
+                        
+                        if (aptDate.toDateString() !== dayDate.toDateString()) return false;
+                        
+                        if (vetFilter !== 'all' && apt.veterinarian !== vetFilter) return false;
+                        
+                        return true;
+                      } catch (error) {
+                        return false;
+                      }
+                    });
+                    
+                    days.push(
+                      <TouchableOpacity 
+                        key={day} 
+                        style={[styles.calendarDay, selectedDate.toDateString() === dayDate.toDateString() && styles.selectedCalendarDay]}
+                        onPress={() => setSelectedDate(dayDate)}
+                      >
+                        <Text style={[styles.dayNumber, selectedDate.toDateString() === dayDate.toDateString() && styles.selectedDayNumber]}>{day}</Text>
+                        <View style={styles.appointmentDots}>
+                          {dayAppointments.slice(0, 3).map((apt, idx) => {
+                            const getStatusColor = () => {
+                              switch(apt.status) {
+                                case 'completed': return '#007bff';
+                                case 'cancelled': return '#dc3545';
+                                case 'pending': return '#28a745';
+                                case 'due': return '#dc3545';
+                                case 'scheduled': return '#dc3545';
+                                default: return '#007bff';
+                              }
+                            };
+                            return (
+                              <TouchableOpacity
+                                key={idx}
+                                style={[styles.appointmentDot, { backgroundColor: getStatusColor() }]}
+                                onPress={() => setSelectedAppointment(apt)}
+                              />
+                            );
+                          })}
+                          {dayAppointments.length > 3 && (
+                            <Text style={styles.moreCount}>+{dayAppointments.length - 3}</Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  }
+                  
+                  return (
+                    <View style={styles.calendarDays}>
+                      {days}
+                    </View>
+                  );
+                })()}
+              </View>
+            </View>
+            
+            <View style={styles.appointmentListContainer}>
+              <Text style={styles.listTitle}>{selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
+              <ScrollView style={styles.appointmentList} showsVerticalScrollIndicator={true}>
+                {appointments
+                  .filter(apt => {
                     try {
                       let aptDate;
                       if (apt.appointmentDate?.seconds) {
@@ -706,69 +957,104 @@ export default function AppointmentsScreen() {
                       }
                       
                       if (isNaN(aptDate.getTime())) return false;
-                      
-                      // Check if same day
-                      if (aptDate.toDateString() !== dayDate.toDateString()) return false;
-                      
-                      // Apply filters
-                      if (statusFilter !== 'all' && apt.status !== statusFilter) return false;
+                      if (aptDate.toDateString() !== selectedDate.toDateString()) return false;
                       if (vetFilter !== 'all' && apt.veterinarian !== vetFilter) return false;
-                      
                       return true;
-                    } catch (error) {
+                    } catch {
                       return false;
                     }
-                  });
-                  
-                  days.push(
-                    <View key={day} style={styles.calendarDay}>
-                      <Text style={styles.dayNumber}>{day}</Text>
-                      <View style={styles.appointmentDots}>
-                        {dayAppointments.slice(0, 3).map((apt, idx) => {
-                          const getStatusColor = () => {
-                            switch(apt.status) {
-                              case 'completed': return '#28a745';
-                              case 'cancelled': return '#dc3545';
-                              case 'pending': return '#ffc107';
-                              default: return '#007bff';
+                  })
+                  .sort((a, b) => {
+                    try {
+                      let dateA = a.appointmentDate?.seconds ? new Date(a.appointmentDate.seconds * 1000) : new Date(a.appointmentDate);
+                      let dateB = b.appointmentDate?.seconds ? new Date(b.appointmentDate.seconds * 1000) : new Date(b.appointmentDate);
+                      return dateA.getTime() - dateB.getTime();
+                    } catch {
+                      return 0;
+                    }
+                  })
+                  .map((appointment) => (
+                    <View key={appointment.id} style={[styles.appointmentListItem, {
+                      backgroundColor: appointment.status === 'pending' ? '#d4edda' : 
+                                     appointment.status === 'due' || appointment.status === 'scheduled' ? '#f8d7da' : 
+                                     appointment.status === 'completed' ? '#d1ecf1' : '#ffffff'
+                    }]}>
+                      <TouchableOpacity 
+                        style={styles.appointmentContent}
+                        onPress={() => setSelectedAppointment(appointment)}
+                      >
+                        <View style={styles.appointmentTime}>
+                          <Text style={styles.timeText}>{formatDateTime(appointment.appointmentDate).time}</Text>
+                          <Text style={styles.dateText}>{formatDateTime(appointment.appointmentDate).date}</Text>
+                        </View>
+                        <View style={styles.appointmentInfo}>
+                          <Text style={styles.customerText}>{appointment.customerName}</Text>
+                          <Text style={styles.petText}>{appointment.petName} - {appointment.reason}</Text>
+                        </View>
+                      </TouchableOpacity>
+                      {(appointment.status === 'pending' || appointment.status === 'due' || appointment.status === 'scheduled') && (
+                        <TouchableOpacity 
+                          style={styles.calendarDoneButton}
+                          onPress={async () => {
+                            try {
+                              await updateAppointment(user.email, appointment.id, { 
+                                status: 'completed',
+                                completedAt: new Date()
+                              });
+                              await loadAppointments();
+                            } catch (error) {
+                              console.error('Failed to update appointment:', error);
                             }
-                          };
-                          return (
-                            <TouchableOpacity
-                              key={idx}
-                              style={[styles.appointmentDot, { backgroundColor: getStatusColor() }]}
-                              onPress={() => setSelectedAppointment(apt)}
-                            />
-                          );
-                        })}
-                        {dayAppointments.length > 3 && (
-                          <Text style={styles.moreCount}>+{dayAppointments.length - 3}</Text>
-                        )}
-                      </View>
+                          }}
+                        >
+                          <Text style={styles.calendarDoneButtonText}>Done</Text>
+                        </TouchableOpacity>
+                      )}
+                      {appointment.status === 'completed' && (
+                        <View style={styles.calendarCompletedBadge}>
+                          <Text style={styles.calendarCompletedText}>✓ Done</Text>
+                        </View>
+                      )}
                     </View>
-                  );
+                  ))
                 }
-                
-                return (
-                  <View style={styles.calendarDays}>
-                    {days}
-                  </View>
-                );
-              })()}
+              </ScrollView>
             </View>
-          </View>
+            </View>
+          </>
         ) : (
         <View style={styles.tableContainer}>
           <View style={styles.table}>
+            <View style={styles.subHeader}>
+              <View style={styles.filterTabs}>
+                {['Pending', 'Due', 'Done'].map((filter) => (
+                  <TouchableOpacity
+                    key={filter}
+                    style={[styles.filterTab, activeStatusFilter === (filter === 'Due' ? 'due' : filter === 'Done' ? 'completed' : 'pending') && styles.activeFilterTab]}
+                    onPress={() => {
+                      const filterValue = filter === 'Due' ? 'due' : filter === 'Done' ? 'completed' : 'pending';
+                      setActiveStatusFilter(filterValue);
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <Text style={[styles.filterTabText, activeStatusFilter === (filter === 'Due' ? 'due' : filter === 'Done' ? 'completed' : 'pending') && styles.activeFilterTabText]}>
+                      {filter}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
             <View style={styles.tableHeader}>
               <Text style={[styles.headerCell, { flex: 0.8, textAlign: 'center', marginLeft: -10, marginRight: 15 }]}>Date & Time</Text>
               <Text style={[styles.headerCell, { flex: 1.9, textAlign: 'left' }]}>Customer</Text>
               <Text style={[styles.headerCell, { flex: 1, textAlign: 'left' }]}>Pet</Text>
               <Text style={[styles.headerCell, { flex: 1.2, textAlign: 'left' }]}>Reason</Text>
-              <Text style={[styles.headerCell, { flex: 0.8 }]}>Status</Text>
+              {(activeStatusFilter === 'pending' || activeStatusFilter === 'due' || activeStatusFilter === 'completed') && (
+                <Text style={[styles.headerCell, { flex: 0.6, textAlign: 'center' }]}>Action</Text>
+              )}
             </View>
             
-            <ScrollView style={styles.tableBody}>
+            <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={true}>
               {paginatedAppointments.length === 0 ? (
                 <View style={styles.noDataContainer}>
                   <Text style={styles.noDataText}>No appointments found</Text>
@@ -783,16 +1069,6 @@ export default function AppointmentsScreen() {
                       case 'pending': return '#e3f2fd';
                       default: return '#ffffff';
                     }
-                  };
-                  
-                  const getServiceIcon = () => {
-                    if (appointment.serviceType?.includes('Checkup')) return '🩺';
-                    if (appointment.serviceType?.includes('Vaccination')) return '💉';
-                    if (appointment.serviceType?.includes('Surgery')) return '🔪';
-                    if (appointment.serviceType?.includes('Emergency')) return '🚨';
-                    if (appointment.serviceType?.includes('Dental')) return '🦷';
-                    if (appointment.serviceType?.includes('Grooming')) return '✂️';
-                    return '📋';
                   };
                   
                   return (
@@ -812,11 +1088,32 @@ export default function AppointmentsScreen() {
                     </View>
                     <Text style={[styles.cell, { flex: 1.9, textAlign: 'left' }]}>{appointment.customerName}</Text>
                     <Text style={[styles.cell, { flex: 1, textAlign: 'left' }]}>{appointment.petName}</Text>
-                    <View style={[styles.cell, { flex: 1.2, flexDirection: 'row', alignItems: 'center' }]}>
-                      <Text style={styles.serviceIcon}>{getServiceIcon()}</Text>
-                      <Text style={[styles.cellText, { marginLeft: 5 }]}>{appointment.reason}</Text>
-                    </View>
-                    <Text style={[styles.cell, { flex: 0.8 }]}>{appointment.status}</Text>
+                    <Text style={[styles.cell, { flex: 1.2, textAlign: 'left' }]}>{appointment.reason}</Text>
+                    {(activeStatusFilter === 'pending' || activeStatusFilter === 'due') && (
+                      <View style={[styles.cell, { flex: 0.6, alignItems: 'center' }]}>
+                        <TouchableOpacity 
+                          style={styles.doneButton}
+                          onPress={async () => {
+                            try {
+                              await updateAppointment(user.email, appointment.id, { 
+                                status: 'completed',
+                                completedAt: new Date()
+                              });
+                              await loadAppointments();
+                            } catch (error) {
+                              console.error('Failed to update appointment:', error);
+                            }
+                          }}
+                        >
+                          <Text style={styles.doneButtonText}>Done</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                    {activeStatusFilter === 'completed' && (
+                      <View style={[styles.cell, { flex: 0.6, alignItems: 'center' }]}>
+                        <Text style={styles.completedText}>✓ Done</Text>
+                      </View>
+                    )}
                   </TouchableOpacity>
                   );
                 })
@@ -1038,39 +1335,6 @@ export default function AppointmentsScreen() {
                             </Text>
                           </View>
                         )}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-
-                <Text style={styles.fieldLabel}>Service Type</Text>
-                <View style={styles.serviceTypeSelector}>
-                  <TouchableOpacity 
-                    style={styles.dropdownButton}
-                    onPress={() => setShowServiceTypeDropdown(!showServiceTypeDropdown)}
-                  >
-                    <Text style={styles.selectedCustomer}>
-                      {newAppointment.serviceType || 'Select Service Type'}
-                    </Text>
-                    <Text style={styles.dropdownArrow}>▼</Text>
-                  </TouchableOpacity>
-                  {showServiceTypeDropdown && (
-                    <View style={styles.dropdownMenu}>
-                      <ScrollView style={styles.customerList} showsVerticalScrollIndicator={false}>
-                        {serviceTypes.map((service) => (
-                          <TouchableOpacity
-                            key={service.id}
-                            style={styles.customerOption}
-                            onPress={() => {
-                              setNewAppointment({...newAppointment, serviceType: service.name, duration: service.duration});
-                              setShowServiceTypeDropdown(false);
-                            }}
-                          >
-                            <Text style={styles.customerOptionText}>
-                              {service.icon} {service.name} ({service.duration}min)
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
                       </ScrollView>
                     </View>
                   )}
@@ -1563,16 +1827,25 @@ const styles = StyleSheet.create({
   cell: {
     fontSize: 12,
     color: '#555',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   dateText: {
     fontSize: 12,
     color: '#555',
     textAlign: 'center',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   timeText: {
     fontSize: 12,
     color: '#555',
     textAlign: 'center',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   tableBody: {
     flex: 1,
@@ -2148,6 +2421,36 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 12,
   },
+  doneCategoryButton: {
+    backgroundColor: '#28a745',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  doneCategoryButtonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  completedText: {
+    color: '#28a745',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  calendarCompletedBadge: {
+    backgroundColor: '#28a745',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginLeft: 10,
+  },
+  calendarCompletedText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
   detailTable: {
     backgroundColor: '#fff',
   },
@@ -2174,47 +2477,90 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     color: '#555',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
-  serviceTypeSelector: {
-    position: 'relative',
-    zIndex: 996,
-  },
-  serviceIcon: {
-    fontSize: 14,
-  },
+
   cellText: {
     fontSize: 12,
     color: '#555',
   },
-  viewToggle: {
-    flexDirection: 'row',
-    backgroundColor: '#f0f0f0',
-    borderRadius: 5,
-    padding: 2,
-  },
-  toggleButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 3,
-  },
-  activeToggle: {
+  calendarButton: {
     backgroundColor: '#800000',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  toggleText: {
-    fontSize: 11,
-    color: '#666',
+  calendarButtonText: {
+    color: '#ffffff',
     fontWeight: 'bold',
-  },
-  activeToggleText: {
-    color: '#fff',
+    fontSize: 12,
   },
   calendarFilters: {
     flexDirection: 'row',
-    gap: 10,
+    flexWrap: 'wrap',
+    gap: 5,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    position: 'relative',
+    zIndex: 1,
   },
   filterDropdown: {
     position: 'relative',
-    zIndex: 1003,
+    zIndex: 999999,
+  },
+  vetFilterDropdown: {
+    zIndex: 1000000,
+  },
+  legend: {
+    flexDirection: 'row',
+    gap: 15,
+    marginLeft: 20,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 10,
+    color: '#333',
+  },
+  customYearContainer: {
+    flexDirection: 'row',
+    padding: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    alignItems: 'center',
+    gap: 5,
+  },
+  customYearInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    fontSize: 10,
+  },
+  customYearButton: {
+    backgroundColor: '#800000',
+    borderRadius: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  customYearButtonText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   filterButton: {
     flexDirection: 'row',
@@ -2241,9 +2587,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 5,
-    zIndex: 1004,
-    elevation: 10,
-    maxHeight: 150,
+    zIndex: 1000001,
+    elevation: 50,
+    maxHeight: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
   },
   filterOption: {
     padding: 8,
@@ -2254,11 +2604,135 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#333',
   },
-  calendarContainer: {
-    backgroundColor: '#fff',
+  calendarViewContainer: {
+    flexDirection: 'row',
+    height: 500,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: '#ddd',
+    backgroundColor: '#fff',
+    position: 'relative',
+    zIndex: 1,
+    overflow: 'visible',
+  },
+  calendarContainer: {
+    flex: 1,
+    borderRightWidth: 1,
+    borderRightColor: '#ddd',
+    position: 'relative',
+    zIndex: 1,
+  },
+  appointmentListContainer: {
+    flex: 1,
+    zIndex: 1,
+  },
+  selectedCalendarDay: {
+    backgroundColor: '#800000',
+  },
+  selectedDayNumber: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  returnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    overflow: 'visible',
+    zIndex: 10000000,
+  },
+  returnIconButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#800000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  returnIcon: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  returnLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#800000',
+    marginLeft: 15,
+    flex: 1,
+  },
+  returnRowVetFilter: {
+    marginLeft: 'auto',
+    zIndex: 9999999,
+    position: 'relative',
+  },
+  listTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#800000',
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    backgroundColor: '#f8f9fa',
+  },
+  appointmentList: {
+    flex: 1,
+  },
+  appointmentListItem: {
+    flexDirection: 'row',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  appointmentContent: {
+    flexDirection: 'row',
+    flex: 1,
+  },
+  appointmentTime: {
+    width: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appointmentInfo: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  customerText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  petText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
+  doneButton: {
+    backgroundColor: '#28a745',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  doneButtonText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  calendarDoneButton: {
+    backgroundColor: '#28a745',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginLeft: 10,
+  },
+  calendarDoneButtonText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -2339,5 +2813,38 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: '#666',
     fontWeight: 'bold',
+  },
+  subHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    paddingVertical: 5,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  filterTabs: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  filterTab: {
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    alignItems: 'flex-start',
+    marginRight: 5,
+  },
+  activeFilterTab: {
+    backgroundColor: '#800000',
+  },
+  filterTabText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#666',
+    textAlign: 'left',
+  },
+  activeFilterTabText: {
+    color: '#fff',
   },
 });

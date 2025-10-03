@@ -86,7 +86,7 @@ export default function VetAppointments() {
 
   const updateAppointmentStatus = async (appointmentId, newStatus) => {
     try {
-      await updateAppointment(appointmentId, { status: newStatus }, userEmail);
+      await updateAppointment(userEmail, appointmentId, { status: newStatus });
       loadAppointments();
       Alert.alert('Success', `Appointment ${newStatus.toLowerCase()}`);
     } catch (error) {

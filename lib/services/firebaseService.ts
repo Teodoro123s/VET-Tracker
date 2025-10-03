@@ -163,7 +163,7 @@ export const addAppointment = async (userEmail?: string, appointmentData?: any) 
 };
 
 // Update an appointment (tenant-aware)
-export const updateAppointment = async (appointmentId, updateData, userEmail) => {
+export const updateAppointment = async (userEmail, appointmentId, updateData) => {
   try {
     const tenantId = getTenantId(userEmail || '');
     const collectionPath = tenantId ? `tenants/${tenantId}/appointments` : 'appointments';
@@ -372,7 +372,7 @@ export const deleteVeterinarian = async (id, userEmail?: string) => {
   }
 };
 
-export const deleteAppointment = async (id, userEmail) => {
+export const deleteAppointment = async (userEmail, id) => {
   try {
     const tenantId = getTenantId(userEmail || '');
     const collectionPath = tenantId ? `tenants/${tenantId}/appointments` : 'appointments';

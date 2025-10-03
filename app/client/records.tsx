@@ -1545,6 +1545,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     paddingRight: 10,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   cellName: {
     flex: 2,
@@ -1552,6 +1555,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     paddingRight: 10,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   pagination: {
     backgroundColor: '#f8f9fa',
@@ -1848,6 +1854,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     paddingRight: 10,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   medicalFormsCellName: {
     flex: 2,
@@ -1855,6 +1864,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     paddingRight: 10,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   medicalFormsTableBody: {
     flex: 1,
@@ -2046,6 +2058,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     paddingRight: 10,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   detailHeaderCellName: {
     flex: 2,
@@ -2061,6 +2076,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     paddingRight: 10,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   detailTableBody: {
     flex: 1,

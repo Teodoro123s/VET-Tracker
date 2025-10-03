@@ -445,6 +445,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     color: '#555',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   actionsCell: {
     flex: 0.3,

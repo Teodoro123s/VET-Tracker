@@ -868,6 +868,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     paddingRight: 10,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   cellName: {
     flex: 2,
@@ -875,6 +878,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     paddingRight: 10,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   pagination: {
     backgroundColor: '#f8f9fa',
@@ -1161,6 +1167,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     color: '#555',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   drawerOverlay: {
     position: 'absolute',

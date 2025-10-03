@@ -319,7 +319,7 @@ export default function CustomersScreen() {
               <Text style={styles.headerCell}>Contact</Text>
               <Text style={styles.headerCell}>Email</Text>
               <Text style={styles.headerCell}>Address</Text>
-              <Text style={styles.headerCell}>Actions</Text>
+              <Text style={[styles.headerCell, { textAlign: 'center' }]}>Actions</Text>
             </View>
             
             {loading ? (
@@ -350,13 +350,19 @@ export default function CustomersScreen() {
                       <View style={styles.actionButtons}>
                         <TouchableOpacity 
                           style={styles.editButton} 
-                          onPress={() => handleEditCustomer(customer)}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleEditCustomer(customer);
+                          }}
                         >
                           <Text style={styles.editButtonText}>Edit</Text>
                         </TouchableOpacity>
                         <TouchableOpacity 
                           style={styles.deleteButton} 
-                          onPress={() => handleDeleteCustomer(customer)}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeleteCustomer(customer);
+                          }}
                         >
                           <Text style={styles.deleteButtonText}>Del</Text>
                         </TouchableOpacity>
@@ -382,13 +388,19 @@ export default function CustomersScreen() {
                     <View style={styles.actionButtons}>
                       <TouchableOpacity 
                         style={styles.editButton} 
-                        onPress={() => handleEditCustomer(customer)}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleEditCustomer(customer);
+                        }}
                       >
                         <Text style={styles.editButtonText}>Edit</Text>
                       </TouchableOpacity>
                       <TouchableOpacity 
                         style={styles.deleteButton} 
-                        onPress={() => handleDeleteCustomer(customer)}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCustomer(customer);
+                        }}
                       >
                         <Text style={styles.deleteButtonText}>Del</Text>
                       </TouchableOpacity>
@@ -838,6 +850,9 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     color: '#555',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   tableBody: {
     flex: 1,
