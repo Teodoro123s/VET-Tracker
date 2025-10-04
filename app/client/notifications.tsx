@@ -84,7 +84,7 @@ export default function NotificationsScreen() {
     setShowDropdown(false);
   };
 
-  const dropdownOptions = [10, 20, 50, 100];
+  const dropdownOptions = [5, 10, 25, 50];
 
   return (
     <View style={styles.container}>
@@ -160,39 +160,52 @@ export default function NotificationsScreen() {
           
           <View style={styles.pagination}>
             <View style={styles.paginationControls}>
-              <Text style={styles.paginationLabel}>Show:</Text>
-              <View style={styles.dropdownContainer}>
-                <TouchableOpacity style={styles.dropdown} onPress={() => setShowDropdown(!showDropdown)}>
+              <Text style={styles.paginationLabel}>Rows per page:</Text>
+              <View style={styles.dropdown}>
+                <TouchableOpacity
+                  style={styles.dropdownButton}
+                  onPress={() => setShowDropdown(!showDropdown)}
+                >
                   <Text style={styles.dropdownText}>{itemsPerPage}</Text>
                   <Text style={styles.dropdownArrow}>▼</Text>
                 </TouchableOpacity>
                 {showDropdown && (
                   <View style={styles.dropdownMenu}>
-                    {dropdownOptions.map((option) => (
+                    {dropdownOptions.map((size) => (
                       <TouchableOpacity
-                        key={option}
+                        key={size}
                         style={styles.dropdownOption}
-                        onPress={() => handleItemsPerPageChange(option)}
+                        onPress={() => {
+                          setItemsPerPage(size);
+                          setCurrentPage(1);
+                          setShowDropdown(false);
+                        }}
                       >
-                        <Text style={styles.dropdownOptionText}>{option}</Text>
+                        <Text style={styles.dropdownOptionText}>{size}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
               </View>
-              <Text style={styles.paginationLabel}>entries</Text>
               
-              <TouchableOpacity style={styles.pageBtn} onPress={handlePrevious}>
-                <Text style={styles.pageBtnText}>Prev</Text>
+              <TouchableOpacity
+                style={styles.pageBtn}
+                onPress={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+              >
+                <Text style={styles.pageBtnText}>‹</Text>
               </TouchableOpacity>
-              <input 
-                style={styles.pageInput}
-                value={currentPage.toString()}
-                onChange={(e) => handlePageChange(e.target.value)}
-              />
-              <Text style={styles.pageOf}>of {totalPages}</Text>
-              <TouchableOpacity style={styles.pageBtn} onPress={handleNext}>
-                <Text style={styles.pageBtnText}>Next</Text>
+              
+              <Text style={styles.pageOf}>
+                {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredNotifications.length)} of {filteredNotifications.length}
+              </Text>
+              
+              <TouchableOpacity
+                style={styles.pageBtn}
+                onPress={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <Text style={styles.pageBtnText}>›</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -240,7 +253,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   searchInput: {
-    width: 200,
+    width: 150,
     fontSize: 12,
     outlineStyle: 'none',
   },
@@ -401,51 +414,56 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#666',
   },
-  dropdownContainer: {
-    position: 'relative',
-    zIndex: 100,
-  },
   dropdown: {
+    position: 'relative',
+    zIndex: 1001,
+  },
+
+  dropdownButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 2,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    minWidth: 35,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minWidth: 50,
   },
   dropdownText: {
     fontSize: 10,
-    marginRight: 2,
+    marginRight: 4,
   },
   dropdownArrow: {
-    fontSize: 8,
+    fontSize: 6,
     color: '#666',
-    fontWeight: 'bold',
   },
   dropdownMenu: {
     position: 'absolute',
-    top: 0,
-    left: 40,
+    top: -120,
+    left: 0,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 2,
-    zIndex: 101,
-    minWidth: 35,
-    elevation: 5,
+    borderRadius: 4,
+    zIndex: 10000,
+    minWidth: 50,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   dropdownOption: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
   dropdownOptionText: {
-    fontSize: 10,
+    fontSize: 12,
     textAlign: 'center',
+    color: '#333',
   },
   pageBtn: {
     backgroundColor: '#800000',

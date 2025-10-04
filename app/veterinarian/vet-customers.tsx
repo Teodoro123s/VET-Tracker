@@ -96,25 +96,7 @@ export default function VetCustomers() {
   
   const fetchTenantEmail = async () => {
     if (!user?.email) return;
-    
-    try {
-      const vetQuery = query(
-        collection(db, 'veterinarians'),
-        where('email', '==', user.email)
-      );
-      
-      const vetSnapshot = await getDocs(vetQuery);
-      
-      if (!vetSnapshot.empty) {
-        const vetData = vetSnapshot.docs[0].data();
-        setTenantEmail(vetData.tenantEmail || user.email);
-      } else {
-        setTenantEmail(user.email);
-      }
-    } catch (error) {
-      console.error('Error fetching tenant email:', error);
-      setTenantEmail(user.email);
-    }
+    setTenantEmail(user.email);
   };
   
   useEffect(() => {
@@ -126,7 +108,18 @@ export default function VetCustomers() {
   const loadCustomerPets = async () => {
     try {
       const allPets = await getPets(tenantEmail);
-      const customerPetsList = allPets.filter(pet => pet.owner === selectedCustomer.name);
+      console.log('VET MOBILE - All pets:', allPets);
+      console.log('VET MOBILE - Selected customer:', selectedCustomer);
+      
+      const customerName = selectedCustomer.name || `${selectedCustomer.firstname || ''} ${selectedCustomer.surname || ''}`.trim();
+      const customerPetsList = allPets.filter(pet => 
+        pet.owner === customerName || 
+        pet.owner === selectedCustomer.name ||
+        pet.owner === selectedCustomer.id ||
+        pet.ownerId === selectedCustomer.id
+      );
+      
+      console.log('VET MOBILE - Customer pets found:', customerPetsList);
       setCustomerPets(customerPetsList);
     } catch (error) {
       console.error('Error loading pets:', error);
@@ -152,6 +145,8 @@ export default function VetCustomers() {
   };
 
   const loadCustomers = async () => {
+    console.log('VET MOBILE - Loading customers with tenantEmail:', tenantEmail);
+    console.log('VET MOBILE - User email:', user?.email);
     try {
       const [customersData, animalTypesData, breedsData] = await Promise.all([
         getCustomers(tenantEmail),
@@ -159,6 +154,10 @@ export default function VetCustomers() {
         getBreeds(tenantEmail)
       ]);
       
+      console.log('VET MOBILE - Customers loaded:', customersData.length, customersData);
+      console.log('VET MOBILE - First customer data:', customersData[0]);
+      console.log('VET MOBILE - Animal types loaded:', animalTypesData);
+      console.log('VET MOBILE - Breeds loaded:', breedsData);
       setCustomers(customersData);
       
       // Load animal types from Firebase or initialize with defaults
@@ -269,13 +268,16 @@ export default function VetCustomers() {
     }
 
     try {
+      const ownerName = selectedCustomer.name || `${selectedCustomer.firstname || ''} ${selectedCustomer.surname || ''}`.trim();
       const pet = {
         name: newPet.name,
-        type: newPet.type,
+        species: newPet.type,
         breed: newPet.breed,
-        owner: selectedCustomer.name
+        owner: ownerName,
+        ownerId: selectedCustomer.id
       };
 
+      console.log('VET MOBILE - Adding pet with owner:', ownerName, 'ownerId:', selectedCustomer.id);
       await addPet(pet, tenantEmail);
       await loadCustomerPets();
       setNewPet({ name: '', type: '', breed: '' });
@@ -399,9 +401,12 @@ export default function VetCustomers() {
     );
   };
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCustomers = customers.filter(customer => {
+    const name = customer.name || customer.firstname || `${customer.firstname} ${customer.surname}` || 'Unknown';
+    return name.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+  
+  console.log('VET MOBILE - Filtered customers:', filteredCustomers.length, filteredCustomers);
 
   return (
     <ThemedView style={styles.container}>
@@ -451,10 +456,11 @@ export default function VetCustomers() {
             {console.log('SHOWING PET DETAILS VIEW - selectedPet:', selectedPet, 'showMedicalView:', showMedicalView)}
             <ScrollView style={styles.scrollableList} showsVerticalScrollIndicator={false}>
               <View style={styles.detailTable}>
+                {console.log('VET MOBILE - Selected pet data:', selectedPet)}
                 {[
-                  { label: 'Name', value: selectedPet.name },
-                  { label: 'Type', value: selectedPet.type },
-                  { label: 'Breed', value: selectedPet.breed },
+                  { label: 'Name', value: selectedPet.name || 'N/A' },
+                  { label: 'Type', value: selectedPet.type || selectedPet.species || 'N/A' },
+                  { label: 'Breed', value: selectedPet.breed || 'N/A' },
                   { label: 'See Medical History', value: 'View Records', isAction: true }
                 ].map((item, index) => (
                   <View key={index} style={styles.detailRow}>
@@ -496,7 +502,7 @@ export default function VetCustomers() {
           <View style={styles.medicalView}>
             <ScrollView style={styles.scrollableList} showsVerticalScrollIndicator={false}>
               {medicalRecords.filter(record => 
-                record.formType.toLowerCase().includes(medicalSearchTerm.toLowerCase())
+                record.formType?.toLowerCase().includes(medicalSearchTerm.toLowerCase())
               ).map((record, index) => (
                 <TouchableOpacity key={record.id || index} style={styles.medicalRow} onPress={() => {
                   setSelectedMedicalRecord(record);
@@ -571,7 +577,9 @@ export default function VetCustomers() {
                 style={styles.customerRow}
                 onPress={() => setSelectedCustomer(customer)}
               >
-                <Text style={styles.customerName}>{customer.name}</Text>
+                <Text style={styles.customerName}>
+                  {customer.name || `${customer.firstname || ''} ${customer.surname || ''}`.trim() || 'Unknown Customer'}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -601,7 +609,7 @@ export default function VetCustomers() {
           style={styles.addRecordButton}
           onPress={() => setShowAddRecordModal(true)}
         >
-          <Ionicons name="medical" size={24} color="#fff" />
+          <Ionicons name="document-text" size={24} color="#fff" />
         </TouchableOpacity>
       )}
 
@@ -622,16 +630,6 @@ export default function VetCustomers() {
 
             <ScrollView style={styles.modalForm}>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Surname *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newCustomer.surname}
-                  onChangeText={(text) => setNewCustomer({...newCustomer, surname: text})}
-                  placeholder="Enter surname"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>First Name *</Text>
                 <TextInput
                   style={styles.input}
@@ -642,23 +640,12 @@ export default function VetCustomers() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Middle Name</Text>
+                <Text style={styles.inputLabel}>Surname *</Text>
                 <TextInput
                   style={styles.input}
                   value={newCustomer.middlename}
                   onChangeText={(text) => setNewCustomer({...newCustomer, middlename: text})}
-                  placeholder="Enter middle name (optional)"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Contact Number *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newCustomer.contact}
-                  onChangeText={(text) => setNewCustomer({...newCustomer, contact: text})}
-                  placeholder="Enter contact number"
-                  keyboardType="phone-pad"
+                  placeholder="Enter surname"
                 />
               </View>
 
@@ -675,12 +662,23 @@ export default function VetCustomers() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Complete Address *</Text>
+                <Text style={styles.inputLabel}>Contact Number *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newCustomer.contact}
+                  onChangeText={(text) => setNewCustomer({...newCustomer, contact: text})}
+                  placeholder="Enter contact number"
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Address *</Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   value={newCustomer.address}
                   onChangeText={(text) => setNewCustomer({...newCustomer, address: text})}
-                  placeholder="Enter complete address"
+                  placeholder="Enter address"
                   multiline
                   numberOfLines={3}
                 />
@@ -1121,7 +1119,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#2196F3',
+    backgroundColor: '#28a745',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
@@ -1137,7 +1135,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#28a745',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
@@ -1405,7 +1403,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#FF9800',
+    backgroundColor: '#28a745',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,

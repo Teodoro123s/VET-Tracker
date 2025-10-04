@@ -27,7 +27,7 @@ export default function Sidebar() {
   return (
     <View style={styles['sidebar-container']}>
       <View style={styles['sidebar-logo-section']}>
-        <Image source={require('@/assets/Group 20.png')} style={styles['sidebar-logo']} />
+        <Image source={require('@/assets/logo.png')} style={styles['sidebar-logo']} />
         <TouchableOpacity 
           style={styles['sidebar-email-clickable']}
           onPress={() => router.push('/client/admin-details')}

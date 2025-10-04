@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,6 +39,9 @@ export default function MobileLogin() {
   return (
     <View style={styles.container}>
       <View style={styles.loginCard}>
+        <View style={styles.logoContainer}>
+          <Image source={require('@/assets/logo.png')} style={styles.logo} />
+        </View>
         <Text style={styles.title}>Vet Clinic Mobile</Text>
         <Text style={styles.subtitle}>Sign in to continue</Text>
         
@@ -115,6 +118,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 5,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    resizeMode: 'contain',
   },
   title: {
     fontSize: 28,

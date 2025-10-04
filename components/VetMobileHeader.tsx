@@ -42,7 +42,7 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
         {showBackButton ? (
           <>
             <TouchableOpacity style={styles.backButton} onPress={() => router.push('/veterinarian/vet-mobile')}>
-              <Ionicons name="arrow-back" size={24} color="#2c5aa0" />
+              <Ionicons name="arrow-back" size={24} color="#800020" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>{title}</Text>
           </>
@@ -60,13 +60,13 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
       </View>
       <View style={styles.rightSection}>
         <TouchableOpacity style={styles.notificationButton} onPress={() => router.push('/veterinarian/vet-notifications')}>
-          <Ionicons name="notifications-outline" size={24} color="#2c5aa0" />
+          <Ionicons name="notifications-outline" size={24} color="#800020" />
           <View style={styles.notificationBadge}>
             <Text style={styles.badgeText}>3</Text>
           </View>
         </TouchableOpacity>
         <TouchableOpacity style={styles.settingsButton}>
-          <Ionicons name="ellipsis-vertical" size={24} color="#2c5aa0" />
+          <Ionicons name="ellipsis-vertical" size={24} color="#800020" />
         </TouchableOpacity>
       </View>
 
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#2c5aa0',
+    backgroundColor: '#800020',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,

@@ -13,6 +13,7 @@ export default function PetDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [showDropdown, setShowDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
@@ -62,11 +63,22 @@ export default function PetDetailScreen() {
         getMedicalForms(userEmail)
       ]);
       
+      console.log('Categories loaded:', categoriesData);
       setPet(petData);
       setSpecies(speciesData);
       setBreeds(breedsData);
-      setCategories([{ id: 'no-category', name: 'No Category' }, ...categoriesData]);
-      setFormTemplates(formsData.length > 0 ? formsData : [{ id: 'default', name: 'Basic Form' }]);
+      const mappedCategories = categoriesData.map(cat => ({ id: cat.id, name: cat.name || cat.category }));
+      if (!mappedCategories.find(cat => cat.name === 'No Category')) {
+        mappedCategories.unshift({ id: 'no-category', name: 'No Category' });
+      }
+      setCategories(mappedCategories);
+      console.log('Mapped categories:', mappedCategories);
+      const formTemplatesList = formsData.map(form => ({
+        id: form.id,
+        formName: form.formName || form.type || form.name,
+        category: form.category || 'No Category'
+      }));
+      setFormTemplates(formTemplatesList);
       
       if (petData?.owner) {
         const ownerData = await getCustomerById(userEmail, petData.owner);
@@ -83,9 +95,8 @@ export default function PetDetailScreen() {
   };
 
   const filteredHistory = medicalHistory.filter(record => 
-    record.diagnosis?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    record.treatment?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    record.notes?.toLowerCase().includes(searchTerm.toLowerCase())
+    record.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    record.formTemplate?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
@@ -153,6 +164,7 @@ export default function PetDetailScreen() {
   };
 
   const handleAddRecord = () => {
+    console.log('Add Record button clicked');
     setNewRecord({
       category: '',
       formTemplate: '',
@@ -382,17 +394,30 @@ export default function PetDetailScreen() {
             <View style={styles.table}>
               <View style={styles.tableHeader}>
                 <Text style={styles.headerCell}>Date</Text>
-                <Text style={styles.headerCell}>Diagnosis</Text>
-                <Text style={styles.headerCell}>Treatment</Text>
-                <Text style={styles.headerCell}>Notes</Text>
+                <Text style={styles.headerCell}>Category</Text>
+                <Text style={styles.headerCell}>Form Template</Text>
               </View>
-              
               {filteredHistory.length === 0 ? (
                 <View style={styles.noDataContainer}>
                   <Text style={styles.noDataText}>
                     {medicalHistory.length === 0 ? 'No medical records' : 'No records found'}
                   </Text>
                 </View>
+              ) : itemsPerPage >= 20 ? (
+                <ScrollView style={styles.tableBody}>
+                  {currentRecords.map((record) => (
+                    <TouchableOpacity 
+                      key={record.id} 
+                      style={styles.tableRow} 
+                      activeOpacity={0.7}
+                      onPress={() => router.push(`/client/medical-record-detail?id=${record.id}`)}
+                    >
+                      <Text style={styles.cell}>{record.date}</Text>
+                      <Text style={styles.cell}>{record.category || 'N/A'}</Text>
+                      <Text style={styles.cell}>{record.formTemplate || 'N/A'}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               ) : (
                 currentRecords.map((record) => (
                   <TouchableOpacity 
@@ -402,12 +427,63 @@ export default function PetDetailScreen() {
                     onPress={() => router.push(`/client/medical-record-detail?id=${record.id}`)}
                   >
                     <Text style={styles.cell}>{record.date}</Text>
-                    <Text style={styles.cell}>{record.diagnosis}</Text>
-                    <Text style={styles.cell}>{record.treatment || 'N/A'}</Text>
-                    <Text style={styles.cell}>{record.notes || 'N/A'}</Text>
+                    <Text style={styles.cell}>{record.category || 'N/A'}</Text>
+                    <Text style={styles.cell}>{record.formTemplate || 'N/A'}</Text>
                   </TouchableOpacity>
                 ))
               )}
+            </View>
+            
+            <View style={styles.pagination}>
+              <View style={styles.paginationControls}>
+                <Text style={styles.paginationLabel}>Rows per page:</Text>
+                <View style={styles.dropdown}>
+                  <TouchableOpacity
+                    style={styles.dropdownButton}
+                    onPress={() => setShowDropdown(!showDropdown)}
+                  >
+                    <Text style={styles.dropdownText}>{itemsPerPage}</Text>
+                    <Text style={styles.dropdownArrow}>▼</Text>
+                  </TouchableOpacity>
+                  {showDropdown && (
+                    <View style={styles.dropdownMenu}>
+                      {[5, 10, 25, 50].map((size) => (
+                        <TouchableOpacity
+                          key={size}
+                          style={styles.dropdownOption}
+                          onPress={() => {
+                            setItemsPerPage(size);
+                            setCurrentPage(1);
+                            setShowDropdown(false);
+                          }}
+                        >
+                          <Text style={styles.dropdownOptionText}>{size}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+                
+                <TouchableOpacity
+                  style={styles.pageBtn}
+                  onPress={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <Text style={styles.pageBtnText}>‹</Text>
+                </TouchableOpacity>
+                
+                <Text style={styles.pageOf}>
+                  {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredHistory.length)} of {filteredHistory.length}
+                </Text>
+                
+                <TouchableOpacity
+                  style={styles.pageBtn}
+                  onPress={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  <Text style={styles.pageBtnText}>›</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
@@ -454,35 +530,41 @@ export default function PetDetailScreen() {
                   {showSpeciesDropdown && (
                     <View style={styles.dropdownMenu}>
                       <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-                        {species.sort((a, b) => a.name.localeCompare(b.name)).map((item) => (
-                          <TouchableOpacity 
-                            key={item.id}
-                            style={styles.dropdownOption}
-                            onPress={() => {
-                              setEditPet({...editPet, species: item.name, breed: ''});
-                              setShowSpeciesDropdown(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownOptionText}>{item.name}</Text>
-                            <View style={styles.optionActions}>
-                              <TouchableOpacity 
-                                style={styles.editIcon}
-                                onPress={() => {
-                                  setEditingItem(item);
-                                  setEditValue(item.name);
-                                  setModalType('species');
-                                  setShowSpeciesDropdown(false);
-                                  setShowEditItemModal(true);
-                                }}
-                              >
-                                <Text style={styles.iconText}>✏</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity style={styles.deleteIcon}>
-                                <Text style={styles.iconText}>🗑</Text>
-                              </TouchableOpacity>
-                            </View>
-                          </TouchableOpacity>
-                        ))}
+                        {species.length === 0 ? (
+                          <View style={styles.dropdownOption}>
+                            <Text style={styles.dropdownOptionText}>No species available</Text>
+                          </View>
+                        ) : (
+                          species.sort((a, b) => a.name.localeCompare(b.name)).map((item) => (
+                            <TouchableOpacity 
+                              key={item.id}
+                              style={styles.dropdownOption}
+                              onPress={() => {
+                                setEditPet({...editPet, species: item.name, breed: ''});
+                                setShowSpeciesDropdown(false);
+                              }}
+                            >
+                              <Text style={styles.dropdownOptionText}>{item.name}</Text>
+                              <View style={styles.optionActions}>
+                                <TouchableOpacity 
+                                  style={styles.editIcon}
+                                  onPress={() => {
+                                    setEditingItem(item);
+                                    setEditValue(item.name);
+                                    setModalType('species');
+                                    setShowSpeciesDropdown(false);
+                                    setShowEditItemModal(true);
+                                  }}
+                                >
+                                  <Text style={styles.iconText}>✏</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.deleteIcon}>
+                                  <Text style={styles.iconText}>🗑</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </TouchableOpacity>
+                          ))
+                        )}
                         <TouchableOpacity 
                           style={styles.customOption}
                           onPress={() => {
@@ -514,38 +596,50 @@ export default function PetDetailScreen() {
                   {showBreedsDropdown && (
                     <View style={styles.dropdownMenu}>
                       <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-                        {breeds.filter(breed => {
-                          const selectedSpecies = species.find(s => s.name === editPet.species);
-                          return selectedSpecies && breed.speciesId === selectedSpecies.id;
-                        }).sort((a, b) => a.name.localeCompare(b.name)).map((item) => (
-                          <TouchableOpacity 
-                            key={item.id}
-                            style={styles.dropdownOption}
-                            onPress={() => {
-                              setEditPet({...editPet, breed: item.name});
-                              setShowBreedsDropdown(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownOptionText}>{item.name}</Text>
-                            <View style={styles.optionActions}>
-                              <TouchableOpacity 
-                                style={styles.editIcon}
-                                onPress={() => {
-                                  setEditingItem(item);
-                                  setEditValue(item.name);
-                                  setModalType('breed');
-                                  setShowBreedsDropdown(false);
-                                  setShowEditItemModal(true);
-                                }}
-                              >
-                                <Text style={styles.iconText}>✏</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity style={styles.deleteIcon}>
-                                <Text style={styles.iconText}>🗑</Text>
-                              </TouchableOpacity>
-                            </View>
-                          </TouchableOpacity>
-                        ))}
+                        {(() => {
+                          const filteredBreeds = breeds.filter(breed => {
+                            const selectedSpecies = species.find(s => s.name === editPet.species);
+                            return selectedSpecies && breed.speciesId === selectedSpecies.id;
+                          });
+                          
+                          if (filteredBreeds.length === 0) {
+                            return [
+                              <View key="no-breeds" style={styles.dropdownOption}>
+                                <Text style={styles.dropdownOptionText}>No breeds available for this species</Text>
+                              </View>
+                            ];
+                          }
+                          
+                          return filteredBreeds.sort((a, b) => a.name.localeCompare(b.name)).map((item) => (
+                            <TouchableOpacity 
+                              key={item.id}
+                              style={styles.dropdownOption}
+                              onPress={() => {
+                                setEditPet({...editPet, breed: item.name});
+                                setShowBreedsDropdown(false);
+                              }}
+                            >
+                              <Text style={styles.dropdownOptionText}>{item.name}</Text>
+                              <View style={styles.optionActions}>
+                                <TouchableOpacity 
+                                  style={styles.editIcon}
+                                  onPress={() => {
+                                    setEditingItem(item);
+                                    setEditValue(item.name);
+                                    setModalType('breed');
+                                    setShowBreedsDropdown(false);
+                                    setShowEditItemModal(true);
+                                  }}
+                                >
+                                  <Text style={styles.iconText}>✏</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.deleteIcon}>
+                                  <Text style={styles.iconText}>🗑</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </TouchableOpacity>
+                          ));
+                        })()}
                         <TouchableOpacity 
                           style={styles.customOption}
                           onPress={() => {
@@ -585,7 +679,7 @@ export default function PetDetailScreen() {
       )}
 
       {showAddRecordModal && (
-        <Modal visible={true} transparent animationType="none">
+        <Modal visible={showAddRecordModal} transparent animationType="none">
           <View style={styles.drawerOverlay}>
             <Animated.View style={[styles.drawer, { left: recordSlideAnim }]}>
               <View style={styles.drawerHeader}>
@@ -607,6 +701,7 @@ export default function PetDetailScreen() {
                   <TouchableOpacity 
                     style={styles.petDropdown}
                     onPress={() => {
+                      console.log('Category dropdown clicked, current state:', showCategoryDropdown);
                       setShowCategoryDropdown(!showCategoryDropdown);
                       setShowTemplateDropdown(false);
                     }}
@@ -619,18 +714,24 @@ export default function PetDetailScreen() {
                   {showCategoryDropdown && (
                     <View style={styles.dropdownMenu}>
                       <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-                        {categories.map((category) => (
-                          <TouchableOpacity
-                            key={category.id}
-                            style={styles.dropdownOption}
-                            onPress={() => {
-                              setNewRecord({...newRecord, category: category.name, formTemplate: ''});
-                              setShowCategoryDropdown(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownOptionText}>{category.name}</Text>
-                          </TouchableOpacity>
-                        ))}
+                        {categories.length === 0 ? (
+                          <View style={styles.dropdownOption}>
+                            <Text style={styles.dropdownOptionText}>No categories available</Text>
+                          </View>
+                        ) : (
+                          categories.map((category) => (
+                            <TouchableOpacity
+                              key={category.id}
+                              style={styles.dropdownOption}
+                              onPress={() => {
+                                setNewRecord({...newRecord, category: category.name, formTemplate: ''});
+                                setShowCategoryDropdown(false);
+                              }}
+                            >
+                              <Text style={styles.dropdownOptionText}>{category.name}</Text>
+                            </TouchableOpacity>
+                          ))
+                        )}
                       </ScrollView>
                     </View>
                   )}
@@ -660,6 +761,14 @@ export default function PetDetailScreen() {
                             if (!newRecord.category) return true;
                             return template.category === newRecord.category;
                           });
+                          
+                          if (formTemplates.length === 0) {
+                            return [
+                              <View key="no-templates" style={styles.dropdownOption}>
+                                <Text style={styles.dropdownOptionText}>No form templates available</Text>
+                              </View>
+                            ];
+                          }
                           
                           if (filtered.length === 0 && newRecord.category) {
                             return [
@@ -951,13 +1060,16 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
   },
   returnButton: {
-    flex: 1,
-    alignItems: 'flex-start',
+    backgroundColor: '#800000',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
   },
   returnIcon: {
-    fontSize: 18,
-    color: '#800000',
+    color: '#ffffff',
     fontWeight: 'bold',
+    fontSize: 12,
   },
   returnText: {
     flex: 1,
@@ -986,11 +1098,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   drawerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.3)',
     zIndex: 10000,
   },
@@ -1118,7 +1226,7 @@ const styles = StyleSheet.create({
   },
   dropdownMenu: {
     position: 'absolute',
-    top: '100%',
+    top: 50,
     left: 0,
     right: 0,
     backgroundColor: '#fff',
@@ -1126,13 +1234,12 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     borderRadius: 8,
     maxHeight: 150,
-    zIndex: 3001,
-    elevation: 30,
+    zIndex: 1001,
+    elevation: 5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    marginTop: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   dropdownScroll: {
     maxHeight: 150,
@@ -1330,5 +1437,61 @@ const styles = StyleSheet.create({
   },
   disabledText: {
     color: '#999',
+  },
+  pagination: {
+    backgroundColor: '#f8f9fa',
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+    paddingTop: 12,
+    paddingBottom: 12,
+    paddingLeft: 20,
+    paddingRight: 15,
+  },
+  paginationControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  paginationLabel: {
+    fontSize: 10,
+    color: '#666',
+  },
+  dropdown: {
+    position: 'relative',
+    zIndex: 1001,
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minWidth: 50,
+  },
+  dropdownText: {
+    fontSize: 10,
+    marginRight: 4,
+  },
+  dropdownArrow: {
+    fontSize: 6,
+    color: '#666',
+  },
+  pageBtn: {
+    backgroundColor: '#800000',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 2,
+  },
+  pageBtnText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  pageOf: {
+    fontSize: 10,
+    color: '#666',
   },
 });

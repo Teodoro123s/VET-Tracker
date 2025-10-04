@@ -2,31 +2,28 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTenant } from '@/contexts/TenantContext';
-import { getVeterinarians, generateOwnPassword } from '@/lib/services/firebaseService';
+import { getVeterinarianByEmail, generateOwnPassword } from '@/lib/services/firebaseService';
 import { useRouter } from 'expo-router';
 
 export default function VetProfile() {
   const { userEmail } = useTenant();
   const router = useRouter();
   const [vetData, setVetData] = useState(null);
-  const [showGenerateModal, setShowGenerateModal] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+
 
   useEffect(() => {
     loadVetData();
   }, [userEmail]);
 
   const loadVetData = async () => {
-    // Hardcode the veterinarian data
-    const hardcodedVetData = {
-      name: 'Dr. qwer qwer',
-      email: 'edanel.teodoro@gmail.com',
-      phone: 'qwer',
-      specialization: 'qwer',
-      license: '123'
-    };
-    setVetData(hardcodedVetData);
+    try {
+      if (userEmail) {
+        const vetData = await getVeterinarianByEmail(userEmail, userEmail);
+        setVetData(vetData);
+      }
+    } catch (error) {
+      console.error('Error loading veterinarian data:', error);
+    }
   };
 
   const getDisplayName = (email) => {
@@ -34,19 +31,7 @@ export default function VetProfile() {
     return email.split('@')[0];
   };
 
-  const handleGeneratePassword = async () => {
-    setLoading(true);
-    try {
-      await generateOwnPassword(userEmail);
-      setShowGenerateModal(false);
-      setShowSuccessMessage(true);
-      setTimeout(() => setShowSuccessMessage(false), 3000);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to generate password');
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   return (
     <ScrollView style={styles.container}>
@@ -54,7 +39,7 @@ export default function VetProfile() {
         <View style={styles.avatar}>
           <Ionicons name="person" size={30} color="#fff" />
         </View>
-        <Text style={styles.profileName}>{vetData?.name || getDisplayName(userEmail)}</Text>
+        <Text style={styles.profileName}>{vetData?.name || vetData?.clinicName || getDisplayName(userEmail)}</Text>
         <Text style={styles.profileEmail}>{vetData?.email || userEmail}</Text>
       </View>
 
@@ -63,45 +48,36 @@ export default function VetProfile() {
           <Text style={styles.sectionTitle}>Contact & Professional Information</Text>
           {console.log('Rendering with vetData:', vetData)}
           <View style={styles.detailRow}>
-            <Ionicons name="mail" size={20} color="#2c5aa0" />
+            <Ionicons name="mail" size={20} color="#800020" />
             <View style={styles.detailText}>
               <Text style={styles.detailLabel}>Email</Text>
-              <Text style={styles.detailValue}>{vetData?.email || 'Not provided'}</Text>
+              <Text style={styles.detailValue}>{vetData?.email || userEmail || 'Not provided'}</Text>
             </View>
           </View>
           <View style={styles.detailRow}>
-            <Ionicons name="call" size={20} color="#2c5aa0" />
+            <Ionicons name="call" size={20} color="#800020" />
             <View style={styles.detailText}>
               <Text style={styles.detailLabel}>Phone</Text>
-              <Text style={styles.detailValue}>qwer</Text>
+              <Text style={styles.detailValue}>{vetData?.phone || vetData?.phoneNumber || 'Not provided'}</Text>
             </View>
           </View>
           <View style={styles.detailRow}>
-            <Ionicons name="medical" size={20} color="#2c5aa0" />
+            <Ionicons name="medical" size={20} color="#800020" />
             <View style={styles.detailText}>
               <Text style={styles.detailLabel}>Specialization</Text>
-              <Text style={styles.detailValue}>qwer</Text>
+              <Text style={styles.detailValue}>{vetData?.specialization || vetData?.role || 'Not provided'}</Text>
             </View>
           </View>
           <View style={styles.detailRow}>
-            <Ionicons name="document-text" size={20} color="#2c5aa0" />
+            <Ionicons name="document-text" size={20} color="#800020" />
             <View style={styles.detailText}>
               <Text style={styles.detailLabel}>License</Text>
-              <Text style={styles.detailValue}>123</Text>
+              <Text style={styles.detailValue}>{vetData?.license || vetData?.licenseNumber || vetData?.tenantId || 'Not provided'}</Text>
             </View>
           </View>
         </View>
         
-        <View style={styles.detailCard}>
-          <Text style={styles.sectionTitle}>Security</Text>
-          <TouchableOpacity 
-            style={styles.generatePasswordButton}
-            onPress={() => setShowGenerateModal(true)}
-          >
-            <Ionicons name="key" size={20} color="#fff" />
-            <Text style={styles.generatePasswordText}>Generate New Password</Text>
-          </TouchableOpacity>
-        </View>
+
       </View>
 
       <TouchableOpacity 
@@ -112,53 +88,9 @@ export default function VetProfile() {
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
       
-      {showSuccessMessage && (
-        <View style={styles.successMessage}>
-          <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-          <Text style={styles.successText}>New password sent to your email!</Text>
-        </View>
-      )}
+
       
-      <Modal visible={showGenerateModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Ionicons name="shield-checkmark" size={32} color="#2c5aa0" />
-              <Text style={styles.modalTitle}>Generate New Password</Text>
-            </View>
-            
-            <View style={styles.modalContent}>
-              <Text style={styles.modalMessage}>
-                Generate a new password for your account?
-              </Text>
-              <Text style={styles.modalSubtext}>
-                New credentials will be sent to {userEmail}
-              </Text>
-              <Text style={styles.modalNote}>
-                Your current password will remain valid until you use the new one.
-              </Text>
-            </View>
-            
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => setShowGenerateModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.confirmButton, loading && styles.confirmButtonDisabled]}
-                onPress={handleGeneratePassword}
-                disabled={loading}
-              >
-                <Text style={styles.confirmButtonText}>
-                  {loading ? 'Generating...' : 'Generate'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+
     </ScrollView>
   );
 }
@@ -169,7 +101,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f7fa',
   },
   profileHeader: {
-    backgroundColor: '#2c5aa0',
+    backgroundColor: '#800020',
     alignItems: 'center',
     paddingVertical: 20,
     paddingHorizontal: 20,

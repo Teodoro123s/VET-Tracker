@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Animated, Alert } from 'react-native';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getAppointments } from '@/lib/services/firebaseService';
@@ -13,9 +13,10 @@ export default function VetCalendarScreen() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState(null);
+  const slideAnim = useRef(new Animated.Value(500)).current;
   const [statusFilter, setStatusFilter] = useState('All');
   const [translateX] = useState(new Animated.Value(0));
-  const [showNotifications, setShowNotifications] = useState(false);
+
   
   useEffect(() => {
     fetchAppointments();
@@ -31,7 +32,10 @@ export default function VetCalendarScreen() {
   };
   
   const getVetAppointments = () => {
-    let filtered = appointments.filter(apt => apt.veterinarian === user?.email || apt.assignedVet === user?.email);
+    let filtered = appointments.filter(apt => {
+      const vetEmail = user?.email;
+      return apt.veterinarian === vetEmail || apt.assignedVet === vetEmail || apt.veterinarianEmail === vetEmail;
+    });
     if (statusFilter !== 'All') {
       filtered = filtered.filter(apt => apt.status === statusFilter);
     }
@@ -62,11 +66,11 @@ export default function VetCalendarScreen() {
     <View style={styles.container}>
       <View style={styles.filterHeader}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-          {['All', 'Pending', 'Approved', 'Due'].map((status) => (
+          {['All', 'Pending', 'Due', 'Done'].map((status) => (
             <TouchableOpacity
               key={status}
               style={[styles.filterButton, statusFilter === status && styles.filterButtonActive]}
-              onPress={() => setStatusFilter(status)}
+              onPress={() => setStatusFilter(status === 'Done' ? 'Completed' : status)}
             >
               <Text style={[styles.filterText, statusFilter === status && styles.filterTextActive]}>
                 {status}
@@ -84,25 +88,9 @@ export default function VetCalendarScreen() {
               <Text style={styles.monthTitle}>
                 {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][selectedMonth]} {selectedYear}
               </Text>
-              <View style={styles.headerRight}>
-                <TouchableOpacity style={styles.notificationButton} onPress={() => {
-                  console.log('Bell clicked!');
-                  Alert.alert('Test', 'Bell clicked');
-                  setShowNotifications(true);
-                }}>
-                  <Ionicons name="notifications" size={20} color="#2c5aa0" />
-                  {(getVetAppointments().filter(apt => apt.status === 'Pending' || apt.status === 'Due').length + 3) > 0 && (
-                    <View style={styles.notificationBadge}>
-                      <Text style={styles.notificationBadgeText}>
-                        {getVetAppointments().filter(apt => apt.status === 'Pending' || apt.status === 'Due').length + 3}
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.navButton} onPress={() => navigateMonth(1)}>
-                  <Text style={styles.navButtonText}>›</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity style={styles.navButton} onPress={() => navigateMonth(1)}>
+                <Text style={styles.navButtonText}>›</Text>
+              </TouchableOpacity>
             </View>
             
             <View style={styles.weekHeader}>
@@ -172,6 +160,11 @@ export default function VetCalendarScreen() {
                       onPress={() => {
                         if (isCurrentMonth) {
                           setSelectedDate({ day, month: selectedMonth, year: selectedYear });
+                          Animated.timing(slideAnim, {
+                            toValue: 0,
+                            duration: 300,
+                            useNativeDriver: false,
+                          }).start();
                         }
                       }}
                     >
@@ -197,44 +190,21 @@ export default function VetCalendarScreen() {
         
       </View>
       
-      <Modal visible={showNotifications} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.notificationModal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Notifications</Text>
-              <TouchableOpacity onPress={() => setShowNotifications(false)}>
-                <Text style={styles.closeText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.notificationItem}>
-              <Text style={styles.itemTitle}>🔔 Appointment Pending</Text>
-              <Text style={styles.itemText}>John Smith - Buddy needs approval</Text>
-              <Text style={styles.itemTime}>Today at 2:00 PM</Text>
-            </View>
-            
-            <View style={styles.notificationItem}>
-              <Text style={styles.itemTitle}>⚠️ Appointment Due</Text>
-              <Text style={styles.itemText}>Sarah Johnson - Max appointment is due</Text>
-              <Text style={styles.itemTime}>Today at 3:30 PM</Text>
-            </View>
-            
-            <View style={styles.notificationItem}>
-              <Text style={styles.itemTitle}>📅 Upcoming Appointment</Text>
-              <Text style={styles.itemText}>Mike Davis - Luna scheduled tomorrow</Text>
-              <Text style={styles.itemTime}>Tomorrow at 10:00 AM</Text>
-            </View>
-          </View>
-        </View>
-      </Modal>
+
         
         {selectedDate && (
-          <View style={styles.scheduleContainer}>
+          <Animated.View style={[styles.scheduleContainer, { transform: [{ translateY: slideAnim }] }]}>
             <View style={styles.scheduleHeader}>
               <Text style={styles.scheduleTitle}>
                 Schedule for {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][selectedDate.month]} {selectedDate.day}, {selectedDate.year}
               </Text>
-              <TouchableOpacity onPress={() => setSelectedDate(null)} style={styles.closeButton}>
+              <TouchableOpacity onPress={() => {
+                Animated.timing(slideAnim, {
+                  toValue: 500,
+                  duration: 300,
+                  useNativeDriver: false,
+                }).start(() => setSelectedDate(null));
+              }} style={styles.closeButton}>
                 <Ionicons name="close" size={20} color="#666" />
               </TouchableOpacity>
             </View>
@@ -289,7 +259,7 @@ export default function VetCalendarScreen() {
                 ));
               })()}
             </ScrollView>
-          </View>
+          </Animated.View>
         )}
     </View>
   );
@@ -340,6 +310,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderWidth: 1,
     borderColor: '#ddd',
+    height: 350,
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -348,7 +319,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   navButton: {
-    backgroundColor: '#2c5aa0',
+    backgroundColor: '#800020',
     borderRadius: 5,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -361,7 +332,7 @@ const styles = StyleSheet.create({
   monthTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2c5aa0',
+    color: '#800020',
   },
   weekHeader: {
     flexDirection: 'row',
@@ -375,7 +346,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#2c5aa0',
+    color: '#800020',
   },
   daysGrid: {
     flexDirection: 'row',
@@ -395,9 +366,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#e8f5e8',
   },
   todayBox: {
-    backgroundColor: '#2c5aa0',
+    backgroundColor: '#800020',
     borderWidth: 2,
-    borderColor: '#2c5aa0',
+    borderColor: '#800020',
   },
   otherMonthBox: {
     backgroundColor: '#f8f9fa',
@@ -530,7 +501,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderWidth: 1,
     borderColor: '#ddd',
-    maxHeight: 300,
+    height: 600,
   },
   scheduleHeader: {
     flexDirection: 'row',
@@ -544,7 +515,7 @@ const styles = StyleSheet.create({
   scheduleTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#2c5aa0',
+    color: '#800020',
     flex: 1,
   },
   closeButton: {
@@ -578,7 +549,7 @@ const styles = StyleSheet.create({
   appointmentTime: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#2c5aa0',
+    color: '#800020',
   },
   appointmentName: {
     fontSize: 16,
@@ -590,31 +561,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  notificationButton: {
-    padding: 8,
-    marginRight: 10,
-    position: 'relative',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 2,
-    right: 2,
-    backgroundColor: '#FF6B6B',
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  notificationBadgeText: {
-    fontSize: 10,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
+
   notificationPanel: {
     backgroundColor: '#fff',
     borderRadius: 8,
@@ -634,7 +581,7 @@ const styles = StyleSheet.create({
   notificationTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#2c5aa0',
+    color: '#800020',
   },
   notificationList: {
     padding: 15,
@@ -727,53 +674,5 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 4,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  notificationModal: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingBottom: 10,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  closeText: {
-    fontSize: 20,
-    color: '#666',
-  },
-  notificationItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  itemTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-  },
-  itemText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 3,
-  },
-  itemTime: {
-    fontSize: 12,
-    color: '#999',
-  },
+
 });

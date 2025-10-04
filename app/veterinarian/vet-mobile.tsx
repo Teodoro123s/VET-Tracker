@@ -62,37 +62,18 @@ export default function VetMobile() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.welcomeSection}>
-          <ThemedText type="subtitle" style={styles.welcomeText}>Welcome back, {vetDetails.name}</ThemedText>
-          <ThemedText style={styles.dateText}>Today is {new Date().toLocaleDateString()}</ThemedText>
-        </View>
 
-        <View style={styles.vetDetailsCard}>
-          <View style={styles.detailRow}>
-            <Ionicons name="medical" size={20} color="#2196F3" />
-            <Text style={styles.detailLabel}>Specialty:</Text>
-            <Text style={styles.detailValueActive}>{vetDetails.specialization}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="document-text" size={20} color="#2196F3" />
-            <Text style={styles.detailLabel}>License:</Text>
-            <Text style={styles.detailValueActive}>{vetDetails.license}</Text>
-          </View>
-          <View style={styles.detailRow}>
-            <Ionicons name="call" size={20} color="#2196F3" />
-            <Text style={styles.detailLabel}>Phone:</Text>
-            <Text style={styles.detailValueActive}>{vetDetails.phone}</Text>
-          </View>
-        </View>
+
+
 
         <View style={styles.quickStats}>
           <TouchableOpacity style={styles.statCard}>
-            <Ionicons name="calendar" size={32} color="#2196F3" />
+            <Ionicons name="calendar" size={32} color="#800020" />
             <ThemedText style={styles.statValue}>8</ThemedText>
             <ThemedText style={styles.statLabel}>Today's Appointments</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity style={styles.statCard}>
-            <Ionicons name="document-text" size={32} color="#2196F3" />
+            <Ionicons name="document-text" size={32} color="#800020" />
             <ThemedText style={styles.statValue}>3</ThemedText>
             <ThemedText style={styles.statLabel}>Pending Records</ThemedText>
           </TouchableOpacity>
@@ -102,19 +83,19 @@ export default function VetMobile() {
           <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
           <View style={styles.actionsGrid}>
             <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="add-circle" size={40} color="#2196F3" />
+              <Ionicons name="add-circle" size={40} color="#800020" />
               <Text style={styles.actionText}>New Record</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="search" size={40} color="#2196F3" />
+              <Ionicons name="search" size={40} color="#800020" />
               <Text style={styles.actionText}>Search Patient</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-calendar')}>
-              <Ionicons name="calendar" size={40} color="#2196F3" />
+              <Ionicons name="calendar" size={40} color="#800020" />
               <Text style={styles.actionText}>Calendar</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="settings" size={40} color="#2196F3" />
+              <Ionicons name="settings" size={40} color="#800020" />
               <Text style={styles.actionText}>Settings</Text>
             </TouchableOpacity>
           </View>
@@ -308,7 +289,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2196F3',
+    color: '#800020',
     marginBottom: 5,
   },
   statLabel: {

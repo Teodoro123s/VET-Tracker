@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { loginUser } from '../lib/services/firebaseService';
 import { Ionicons } from '@expo/vector-icons';
@@ -46,7 +46,7 @@ export default function LoginMobile() {
       >
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Ionicons name="medical" size={60} color="#800000" />
+            <Image source={require('@/assets/logo.png')} style={styles.logo} />
           </View>
           <Text style={styles.title}>VetCare</Text>
           <Text style={styles.subtitle}>Veterinary Management System</Text>
@@ -129,18 +129,16 @@ const styles = StyleSheet.create({
     marginBottom: 48,
   },
   logoContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#f5e8e8',
+    width: 80,
+    height: 80,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    shadowColor: '#800000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    resizeMode: 'contain',
   },
   title: {
     fontSize: 24,

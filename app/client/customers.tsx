@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert, Modal, Animated, Image } from 'react-native';
-import { getCustomers, addCustomer, deleteCustomer, updateCustomer, getMedicalForms, getMedicalCategories, addMedicalRecord } from '@/lib/services/firebaseService';
+import { getCustomers, addCustomer, deleteCustomer, updateCustomer } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
 import { router } from 'expo-router';
 
@@ -12,16 +12,15 @@ export default function CustomersScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
+
   const [addSlideAnim] = useState(new Animated.Value(-350));
   const [editSlideAnim] = useState(new Animated.Value(-350));
   const [recordSlideAnim] = useState(new Animated.Value(-350));
+
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [categories, setCategories] = useState([]);
-  const [formTemplates, setFormTemplates] = useState([]);
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-  const [showFormTemplateDropdown, setShowFormTemplateDropdown] = useState(false);
+
   const [newCustomer, setNewCustomer] = useState({
     firstname: '',
     surname: '',
@@ -36,15 +35,21 @@ export default function CustomersScreen() {
     contact: '',
     address: ''
   });
+
+  const [categories, setCategories] = useState([]);
+  const [formTemplates, setFormTemplates] = useState([]);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showFormTemplateDropdown, setShowFormTemplateDropdown] = useState(false);
   const [newRecord, setNewRecord] = useState({
-    category: 'No Category',
+    category: '',
     formTemplate: ''
   });
+
 
   useEffect(() => {
     if (userEmail) {
       loadCustomers();
-      loadRecordData();
+
     } else {
       setLoading(false);
     }
@@ -63,40 +68,7 @@ export default function CustomersScreen() {
     }
   };
 
-  const loadRecordData = async () => {
-    try {
-      const [forms, cats] = await Promise.all([
-        getMedicalForms(userEmail),
-        getMedicalCategories(userEmail)
-      ]);
-      
-      const formTemplatesList = forms.map(form => ({
-        id: form.id,
-        formName: form.formName || form.type || form.name,
-        category: form.category || 'No Category'
-      }));
-      
-      console.log('RAW FORMS FROM DB:', JSON.stringify(forms, null, 2));
-      console.log('MAPPED FORM TEMPLATES:', JSON.stringify(formTemplatesList, null, 2));
-      setFormTemplates(formTemplatesList);
-      
-      const categoryList = cats.map(cat => ({
-        id: cat.id,
-        category: cat.name || cat.category
-      }));
-      
-      if (!categoryList.find(cat => cat.category === 'No Category')) {
-        categoryList.unshift({ id: 'no-category', category: 'No Category' });
-      }
-      
-      console.log('RAW CATEGORIES FROM DB:', JSON.stringify(cats, null, 2));
-      console.log('MAPPED CATEGORIES:', JSON.stringify(categoryList, null, 2));
-      setCategories(categoryList);
-    } catch (error) {
-      console.error('Error loading record data:', error);
-      setCategories([{ id: 'no-category', category: 'No Category' }]);
-    }
-  };
+
 
   const handleAddCustomer = async () => {
     try {
@@ -120,34 +92,7 @@ export default function CustomersScreen() {
     }
   };
 
-  const handleAddRecord = async () => {
-    if (newRecord.category && newRecord.formTemplate) {
-      try {
-        const recordData = {
-          category: newRecord.category,
-          formTemplate: newRecord.formTemplate,
-          createdAt: new Date().toISOString(),
-          data: {}
-        };
-        
-        await addMedicalRecord(recordData, userEmail);
-        
-        setNewRecord({ category: 'No Category', formTemplate: '' });
-        Animated.timing(recordSlideAnim, {
-          toValue: -350,
-          duration: 200,
-          useNativeDriver: false,
-        }).start(() => setShowAddRecordModal(false));
-        
-        Alert.alert('Success', 'Record added successfully!');
-      } catch (error) {
-        console.error('Error adding record:', error);
-        Alert.alert('Error', 'Error adding record');
-      }
-    } else {
-      Alert.alert('Error', 'Please select both category and form template');
-    }
-  };
+
 
   useEffect(() => {
     if (showAddModal) {
@@ -171,22 +116,7 @@ export default function CustomersScreen() {
     }
   }, [showEditModal]);
 
-  useEffect(() => {
-    if (showAddRecordModal) {
-      recordSlideAnim.setValue(-350);
-      Animated.timing(recordSlideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-    }
-  }, [showAddRecordModal]);
 
-  useEffect(() => {
-    if (newRecord.category) {
-      setShowFormTemplateDropdown(false);
-    }
-  }, [newRecord.category]);
 
   const handleRowPress = (customer) => {
     console.log('Navigating to customer:', customer.id);
@@ -289,6 +219,39 @@ export default function CustomersScreen() {
     );
   };
 
+  const handleAddRecord = async () => {
+    try {
+      if (!newRecord.category || !newRecord.formTemplate) {
+        Alert.alert('Error', 'Please select category and form template');
+        return;
+      }
+      
+      const recordData = {
+        category: newRecord.category,
+        formTemplate: newRecord.formTemplate,
+        createdAt: new Date().toISOString()
+      };
+      
+      await addMedicalRecord(recordData, userEmail);
+      setNewRecord({ category: '', formTemplate: '' });
+      Alert.alert('Success', 'Medical record added successfully');
+      
+      Animated.timing(recordSlideAnim, {
+        toValue: -350,
+        duration: 200,
+        useNativeDriver: false,
+      }).start(() => setShowAddRecordModal(false));
+    } catch (error) {
+      Alert.alert('Error', 'Failed to add medical record');
+    }
+  };
+
+  const renderFormModal = () => {
+    return null;
+  };
+
+
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
@@ -297,10 +260,13 @@ export default function CustomersScreen() {
           <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
             <Text style={styles.addButtonText}>+ Add Customer</Text>
           </TouchableOpacity>
+
           <View style={styles.searchContainer}>
+            <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
             <TextInput 
               style={styles.searchInput}
               placeholder="Search customers..."
+              placeholderTextColor="#999"
               value={searchTerm}
               onChangeText={(text) => {
                 setSearchTerm(text);
@@ -413,9 +379,9 @@ export default function CustomersScreen() {
           
           <View style={styles.pagination}>
             <View style={styles.paginationControls}>
-              <Text style={styles.paginationLabel}>Show:</Text>
+              <Text style={styles.paginationLabel}>Rows per page:</Text>
               <View style={styles.dropdown}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.dropdownButton}
                   onPress={() => {}}
                 >
@@ -423,20 +389,25 @@ export default function CustomersScreen() {
                   <Text style={styles.dropdownArrow}>▼</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.paginationLabel}>entries</Text>
               
-              <TouchableOpacity style={styles.pageBtn} onPress={handlePrevious}>
-                <Text style={styles.pageBtnText}>Prev</Text>
+              <TouchableOpacity
+                style={styles.pageBtn}
+                onPress={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+              >
+                <Text style={styles.pageBtnText}>‹</Text>
               </TouchableOpacity>
-              <TextInput 
-                style={styles.pageInput}
-                value={currentPage.toString()}
-                keyboardType="numeric"
-                onChangeText={handlePageChange}
-              />
-              <Text style={styles.pageOf}>of {totalPages}</Text>
-              <TouchableOpacity style={styles.pageBtn} onPress={handleNext}>
-                <Text style={styles.pageBtnText}>Next</Text>
+              
+              <Text style={styles.pageOf}>
+                {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredCustomers.length)} of {filteredCustomers.length}
+              </Text>
+              
+              <TouchableOpacity
+                style={styles.pageBtn}
+                onPress={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <Text style={styles.pageBtnText}>›</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -605,118 +576,7 @@ export default function CustomersScreen() {
         </Modal>
       )}
 
-      {showAddRecordModal && (
-        <Modal visible={true} transparent animationType="none">
-          <View style={styles.drawerOverlay}>
-            <Animated.View style={[styles.drawer, { left: recordSlideAnim }]}>
-              <View style={styles.drawerHeader}>
-                <Text style={styles.drawerTitle}>Add New Record</Text>
-                <TouchableOpacity style={styles.drawerCloseButton} onPress={() => {
-                  Animated.timing(recordSlideAnim, {
-                    toValue: -350,
-                    duration: 200,
-                    useNativeDriver: false,
-                  }).start(() => setShowAddRecordModal(false));
-                }}>
-                  <Text style={styles.drawerCloseText}>×</Text>
-                </TouchableOpacity>
-              </View>
-              <ScrollView style={styles.drawerForm} showsVerticalScrollIndicator={false}>
-                <Text style={styles.fieldLabel}>Category *</Text>
-                <View style={styles.categoryDropdownContainer}>
-                  <TouchableOpacity style={styles.drawerDropdown} onPress={() => {
-                    setShowCategoryDropdown(!showCategoryDropdown);
-                    setShowFormTemplateDropdown(false);
-                  }}>
-                    <Text style={styles.drawerDropdownText}>{newRecord.category}</Text>
-                    <Text style={styles.dropdownArrow}>▼</Text>
-                  </TouchableOpacity>
-                  {showCategoryDropdown && (
-                    <View style={styles.categoryDropdownMenu}>
-                      <ScrollView style={styles.categoryDropdownScroll} showsVerticalScrollIndicator={false}>
-                        {categories.map((category) => (
-                          <TouchableOpacity
-                            key={category.id}
-                            style={styles.dropdownOption}
-                            onPress={() => {
-                              setNewRecord({...newRecord, category: category.category, formTemplate: ''});
-                              setShowCategoryDropdown(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownOptionText}>{category.category}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-                
-                <Text style={styles.fieldLabel}>Form Template *</Text>
-                <View style={styles.categoryDropdownContainer}>
-                  <TouchableOpacity style={styles.drawerDropdown} onPress={() => {
-                    setShowFormTemplateDropdown(!showFormTemplateDropdown);
-                    setShowCategoryDropdown(false);
-                  }}>
-                    <Text style={styles.drawerDropdownText}>{newRecord.formTemplate || 'Select form template'}</Text>
-                    <Text style={styles.dropdownArrow}>▼</Text>
-                  </TouchableOpacity>
-                  {showFormTemplateDropdown && (
-                    <View style={styles.categoryDropdownMenu} key={newRecord.category}>
-                      <ScrollView style={styles.categoryDropdownScroll} showsVerticalScrollIndicator={false}>
-                        {(() => {
-                          console.log('=== FILTERING DEBUG ===');
-                          console.log('All formTemplates:', JSON.stringify(formTemplates, null, 2));
-                          console.log('Selected category:', newRecord.category);
-                          
-                          const filtered = formTemplates.filter(form => {
-                            const formCategory = form.category || 'No Category';
-                            const selectedCategory = newRecord.category || 'No Category';
-                            const match = formCategory === selectedCategory;
-                            console.log(`Form: ${form.formName} | FormCat: "${formCategory}" | SelectedCat: "${selectedCategory}" | Match: ${match}`);
-                            return match;
-                          });
-                          
-                          console.log('Filtered results:', JSON.stringify(filtered, null, 2));
-                          console.log('=== END FILTERING DEBUG ===');
-                          
-                          return filtered;
-                        })()
-                          .sort((a, b) => a.formName.localeCompare(b.formName))
-                          .map((form) => (
-                          <TouchableOpacity
-                            key={form.id}
-                            style={styles.dropdownOption}
-                            onPress={() => {
-                              setNewRecord({...newRecord, formTemplate: form.formName});
-                              setShowFormTemplateDropdown(false);
-                            }}
-                          >
-                            <Text style={styles.dropdownOptionText}>{form.formName}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-              </ScrollView>
-              <View style={styles.drawerButtons}>
-                <TouchableOpacity style={styles.drawerCancelButton} onPress={() => {
-                  Animated.timing(recordSlideAnim, {
-                    toValue: -350,
-                    duration: 200,
-                    useNativeDriver: false,
-                  }).start(() => setShowAddRecordModal(false));
-                }}>
-                  <Text style={styles.drawerCancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.drawerSaveButton} onPress={handleAddRecord}>
-                  <Text style={styles.drawerSaveText}>Add Record</Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-          </View>
-        </Modal>
-      )}
+
     </ScrollView>
   );
 }
@@ -754,27 +614,25 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 12,
   },
-  recordButton: {
-    backgroundColor: '#007bff',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  recordButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
+
   searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 2,
     borderColor: '#800000',
     borderRadius: 5,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
+  searchIcon: {
+    width: 14,
+    height: 14,
+    marginRight: 6,
+  },
   searchInput: {
     width: 150,
     fontSize: 12,
+    outlineStyle: 'none',
   },
   scrollContent: {
     flexGrow: 1,
@@ -811,8 +669,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actionsCell: {
-    flex: 0.3,
+    flex: 0.2,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   actionButtons: {
     flexDirection: 'row',
@@ -1040,57 +899,5 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#666',
   },
-  categoryDropdownContainer: {
-    position: 'relative',
-    zIndex: 3001,
-  },
-  drawerDropdown: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  drawerDropdownText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  categoryDropdownMenu: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    zIndex: 3002,
-    elevation: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    maxHeight: 200,
-  },
-  categoryDropdownScroll: {
-    maxHeight: 200,
-  },
-  dropdownOption: {
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  dropdownOptionText: {
-    fontSize: 14,
-    color: '#333',
-  },
+
 });

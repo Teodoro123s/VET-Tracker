@@ -19,7 +19,7 @@ export default function SuperAdminSidebar() {
   return (
     <View style={styles.sidebar}>
       <View style={styles.logoSection}>
-        <Image source={require('@/assets/Group 20.png')} style={styles.logo} />
+        <Image source={require('@/assets/logo.png')} style={styles.logo} />
         <Text style={styles.subtitle}>System Owner</Text>
       </View>
       {menuItems.map((item) => (

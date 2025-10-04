@@ -48,11 +48,28 @@ export function subscribeToTenants(callback: (tenants: Subscriber[]) => void): (
 
 export async function createSubscriber(subscriberData: Partial<Subscriber>): Promise<string | null> {
   try {
-    const docRef = await addDoc(collection(db, 'tenants'), {
+    // Create tenant record
+    const tenantDocRef = await addDoc(collection(db, 'tenants'), {
       ...subscriberData,
       createdAt: new Date()
     });
-    return docRef.id;
+    
+    // Also create veterinarian record in the tenant's veterinarians collection
+    if (subscriberData.role === 'veterinarian' && subscriberData.tenantId) {
+      await addDoc(collection(db, `tenants/${subscriberData.tenantId}/veterinarians`), {
+        name: subscriberData.clinicName || 'Dr. ' + subscriberData.email?.split('@')[0],
+        email: subscriberData.email,
+        phone: 'Not provided',
+        specialization: 'General Practice',
+        license: tenantDocRef.id,
+        role: subscriberData.role,
+        status: subscriberData.status,
+        createdAt: new Date(),
+        tenantId: subscriberData.tenantId
+      });
+    }
+    
+    return tenantDocRef.id;
   } catch (error) {
     console.error('Error creating subscriber:', error);
     return null;

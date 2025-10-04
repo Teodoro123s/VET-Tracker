@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, Modal, Animated } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-import { deleteMedicalCategory, deleteMedicalForm, getMedicalForms, getMedicalCategories, addMedicalForm, addMedicalCategory, getFormFields, addFormField, updateMedicalForm, deleteFormField, updateFormField, addMedicalRecord } from '../../lib/services/firebaseService';
+import { deleteMedicalCategory, deleteMedicalForm, getMedicalForms, getMedicalCategories, addMedicalForm, addMedicalCategory, getFormFields, addFormField, updateMedicalForm, deleteFormField, updateFormField, addMedicalRecord, getVeterinarians } from '../../lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
 
 export default function RecordsScreen() {
@@ -41,9 +41,10 @@ export default function RecordsScreen() {
       if (!userEmail) return;
       
       try {
-        const [forms, categories] = await Promise.all([
+        const [forms, categories, vets] = await Promise.all([
           getMedicalForms(userEmail),
-          getMedicalCategories(userEmail)
+          getMedicalCategories(userEmail),
+          getVeterinarians(userEmail)
         ]);
         
         const formsList = forms.map(form => ({
@@ -80,10 +81,18 @@ export default function RecordsScreen() {
         }
         
         setRecordList(categoryList);
+        
+        // Load veterinarians
+        const vetList = vets.map(vet => ({
+          id: vet.id,
+          name: `${vet.firstname || ''} ${vet.surname || ''}`.trim() || vet.name || 'Unknown'
+        }));
+        setVeterinarians(vetList);
       } catch (error) {
         console.error('Error loading data:', error);
         // Fallback to default "No Category"
         setRecordList([{ id: 'no-category', category: 'No Category', formCount: 0 }]);
+        setVeterinarians([]);
       }
     };
     
@@ -93,6 +102,7 @@ export default function RecordsScreen() {
   const [selectedForm, setSelectedForm] = useState(null);
   const [selectedFormPreview, setSelectedFormPreview] = useState(null);
   const [previewDropdownStates, setPreviewDropdownStates] = useState({});
+  const [veterinarians, setVeterinarians] = useState([]);
   const [selectedCategoryDetail, setSelectedCategoryDetail] = useState(null);
   const [detailSearchTerm, setDetailSearchTerm] = useState('');
   const [showAddFieldDrawer, setShowAddFieldDrawer] = useState(false);
@@ -224,7 +234,7 @@ export default function RecordsScreen() {
     setShowDropdown(false);
   };
   
-  const dropdownOptions = [10, 20, 50, 100];
+  const dropdownOptions = [5, 10, 25, 50];
   
   const handleAddRecord = async () => {
     if (newCategory.category.trim()) {
@@ -350,40 +360,52 @@ export default function RecordsScreen() {
           
           <View style={styles.pagination}>
             <View style={styles.paginationControls}>
-              <Text style={styles.paginationLabel}>Show:</Text>
-              <View style={styles.dropdownContainer}>
-                <TouchableOpacity style={styles.dropdown} onPress={() => setShowDropdown(!showDropdown)}>
+              <Text style={styles.paginationLabel}>Rows per page:</Text>
+              <View style={styles.dropdown}>
+                <TouchableOpacity
+                  style={styles.dropdownButton}
+                  onPress={() => setShowDropdown(!showDropdown)}
+                >
                   <Text style={styles.dropdownText}>{itemsPerPage}</Text>
                   <Text style={styles.dropdownArrow}>▼</Text>
                 </TouchableOpacity>
                 {showDropdown && (
                   <View style={styles.dropdownMenu}>
-                    {dropdownOptions.map((option) => (
+                    {dropdownOptions.map((size) => (
                       <TouchableOpacity
-                        key={option}
+                        key={size}
                         style={styles.dropdownOption}
-                        onPress={() => handleItemsPerPageChange(option)}
+                        onPress={() => {
+                          setItemsPerPage(size);
+                          setCurrentPage(1);
+                          setShowDropdown(false);
+                        }}
                       >
-                        <Text style={styles.dropdownOptionText}>{option}</Text>
+                        <Text style={styles.dropdownOptionText}>{size}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
               </View>
-              <Text style={styles.paginationLabel}>entries</Text>
               
-              <TouchableOpacity style={styles.pageBtn} onPress={handlePrevious}>
-                <Text style={styles.pageBtnText}>Prev</Text>
+              <TouchableOpacity
+                style={styles.pageBtn}
+                onPress={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+              >
+                <Text style={styles.pageBtnText}>‹</Text>
               </TouchableOpacity>
-              <TextInput 
-                style={styles.pageInput}
-                value={currentPage.toString()}
-                keyboardType="numeric"
-                onChangeText={handlePageChange}
-              />
-              <Text style={styles.pageOf}>of {totalPages}</Text>
-              <TouchableOpacity style={styles.pageBtn} onPress={handleNext}>
-                <Text style={styles.pageBtnText}>Next</Text>
+              
+              <Text style={styles.pageOf}>
+                {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredRecords.length)} of {filteredRecords.length}
+              </Text>
+              
+              <TouchableOpacity
+                style={styles.pageBtn}
+                onPress={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+              >
+                <Text style={styles.pageBtnText}>›</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -450,40 +472,52 @@ export default function RecordsScreen() {
             
             <View style={styles.medicalFormsPagination}>
               <View style={styles.medicalFormsPaginationControls}>
-                <Text style={styles.paginationLabel}>Show:</Text>
-                <View style={styles.formsDropdownContainer}>
-                  <TouchableOpacity style={styles.dropdown} onPress={() => setFormsShowDropdown(!formsShowDropdown)}>
+                <Text style={styles.paginationLabel}>Rows per page:</Text>
+                <View style={styles.dropdown}>
+                  <TouchableOpacity
+                    style={styles.dropdownButton}
+                    onPress={() => setFormsShowDropdown(!formsShowDropdown)}
+                  >
                     <Text style={styles.dropdownText}>{formsItemsPerPage}</Text>
                     <Text style={styles.dropdownArrow}>▼</Text>
                   </TouchableOpacity>
                   {formsShowDropdown && (
-                    <View style={styles.formsDropdownMenu}>
-                      {formsDropdownOptions.map((option) => (
+                    <View style={styles.dropdownMenu}>
+                      {formsDropdownOptions.map((size) => (
                         <TouchableOpacity
-                          key={option}
+                          key={size}
                           style={styles.dropdownOption}
-                          onPress={() => handleFormsItemsPerPageChange(option)}
+                          onPress={() => {
+                            setFormsItemsPerPage(size);
+                            setFormsCurrentPage(1);
+                            setFormsShowDropdown(false);
+                          }}
                         >
-                          <Text style={styles.dropdownOptionText}>{option}</Text>
+                          <Text style={styles.dropdownOptionText}>{size}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
                   )}
                 </View>
-                <Text style={styles.paginationLabel}>entries</Text>
                 
-                <TouchableOpacity style={styles.pageBtn} onPress={handleFormsPrevious}>
-                  <Text style={styles.pageBtnText}>Prev</Text>
+                <TouchableOpacity
+                  style={styles.pageBtn}
+                  onPress={() => setFormsCurrentPage(Math.max(1, formsCurrentPage - 1))}
+                  disabled={formsCurrentPage === 1}
+                >
+                  <Text style={styles.pageBtnText}>‹</Text>
                 </TouchableOpacity>
-                <TextInput 
-                  style={styles.pageInput}
-                  value={formsCurrentPage.toString()}
-                  keyboardType="numeric"
-                  onChangeText={handleFormsPageChange}
-                />
-                <Text style={styles.pageOf}>of {formsTotalPages}</Text>
-                <TouchableOpacity style={styles.pageBtn} onPress={handleFormsNext}>
-                  <Text style={styles.pageBtnText}>Next</Text>
+                
+                <Text style={styles.pageOf}>
+                  {formsStartIndex + 1}-{Math.min(formsStartIndex + formsItemsPerPage, filteredForms.length)} of {filteredForms.length}
+                </Text>
+                
+                <TouchableOpacity
+                  style={styles.pageBtn}
+                  onPress={() => setFormsCurrentPage(Math.min(formsTotalPages, formsCurrentPage + 1))}
+                  disabled={formsCurrentPage === formsTotalPages}
+                >
+                  <Text style={styles.pageBtnText}>›</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -857,7 +891,9 @@ export default function RecordsScreen() {
                 <TouchableOpacity style={styles.drawerSaveButton} onPress={async () => {
                   if (newField.fieldName.trim()) {
                     try {
-                      const fieldType = newField.inputType.toLowerCase().replace(' ', '_');
+                      const fieldType = newField.inputType === 'Veterinarian Dropdown' 
+                        ? 'veterinarian_dropdown' 
+                        : newField.inputType.toLowerCase().replace(' ', '_');
                       const fieldData = {
                         formName: selectedForm,
                         label: newField.fieldName,
@@ -1369,9 +1405,9 @@ export default function RecordsScreen() {
                             <View style={styles.previewDropdownMenu}>
                               <ScrollView style={styles.previewDropdownScroll} showsVerticalScrollIndicator={false}>
                                 {field.type === 'veterinarian_dropdown' ? (
-                                  ['Dr. Smith', 'Dr. Johnson', 'Dr. Brown', 'Dr. Davis'].map((vet, index) => (
+                                  veterinarians.length > 0 ? veterinarians.map((vet) => (
                                     <TouchableOpacity
-                                      key={index}
+                                      key={vet.id}
                                       style={styles.dropdownOption}
                                       onPress={() => {
                                         setPreviewDropdownStates(prev => ({
@@ -1380,9 +1416,13 @@ export default function RecordsScreen() {
                                         }));
                                       }}
                                     >
-                                      <Text style={styles.dropdownOptionText}>{vet}</Text>
+                                      <Text style={styles.dropdownOptionText}>{vet.name}</Text>
                                     </TouchableOpacity>
-                                  ))
+                                  )) : (
+                                    <TouchableOpacity style={styles.dropdownOption}>
+                                      <Text style={styles.dropdownOptionText}>No veterinarians available</Text>
+                                    </TouchableOpacity>
+                                  )
                                 ) : (
                                   (field.options || []).map((option, index) => (
                                     <TouchableOpacity
@@ -1581,20 +1621,25 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 2001,
   },
+
   dropdown: {
+    position: 'relative',
+    zIndex: 1001,
+  },
+  dropdownButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 2,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    minWidth: 35,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minWidth: 50,
   },
   dropdownText: {
     fontSize: 10,
-    marginRight: 2,
+    marginRight: 4,
   },
   dropdownArrow: {
     fontSize: 6,
@@ -1602,24 +1647,29 @@ const styles = StyleSheet.create({
   },
   dropdownMenu: {
     position: 'absolute',
-    top: 0,
-    left: 40,
+    top: -120,
+    left: 0,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 2,
-    zIndex: 2002,
-    minWidth: 35,
-    elevation: 10,
+    borderRadius: 4,
+    zIndex: 10000,
+    minWidth: 50,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   dropdownOption: {
-    paddingHorizontal: 15,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#eee',
   },
   dropdownOptionText: {
-    fontSize: 14,
+    fontSize: 12,
+    textAlign: 'center',
     color: '#333',
   },
   pageBtn: {

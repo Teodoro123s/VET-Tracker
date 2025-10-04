@@ -10,8 +10,8 @@ export default function VetBottomMenu() {
   const menuItems = [
     { name: 'Home', icon: 'home-outline', route: '/veterinarian/vet-mobile' },
     { name: 'Appointments', icon: 'calendar-outline', route: '/veterinarian/vet-appointments' },
-    { name: 'Customers', icon: 'people-outline', route: '/veterinarian/vet-customers' },
-    { name: 'Calendar', icon: 'calendar-outline', route: '/veterinarian/vet-calendar' }
+    { name: 'Calendar', icon: 'calendar-outline', route: '/veterinarian/vet-calendar' },
+    { name: 'Customers', icon: 'people-outline', route: '/veterinarian/vet-customers' }
   ];
 
   return (
@@ -25,7 +25,7 @@ export default function VetBottomMenu() {
           <Ionicons 
             name={item.icon as any} 
             size={24} 
-            color={pathname === item.route ? '#2c5aa0' : '#666'} 
+            color={pathname === item.route ? '#800020' : '#666'} 
           />
           <Text style={[styles.menuText, pathname === item.route && styles.activeText]}>
             {item.name}
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   activeText: {
-    color: '#2c5aa0',
+    color: '#800020',
     fontWeight: '600',
   },
 });

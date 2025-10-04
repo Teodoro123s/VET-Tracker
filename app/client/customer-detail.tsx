@@ -844,13 +844,16 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
   },
   returnButton: {
-    flex: 1,
-    alignItems: 'flex-start',
+    backgroundColor: '#800000',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
   },
   returnIcon: {
-    fontSize: 18,
-    color: '#800000',
+    color: '#ffffff',
     fontWeight: 'bold',
+    fontSize: 12,
   },
   returnText: {
     flex: 1,

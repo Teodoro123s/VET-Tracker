@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Animated, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Animated, StyleSheet, Alert, Image } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
-import { addAppointment, getAppointments, deleteAppointment, updateAppointment, getCustomers, getPets, getVeterinarians, getReasonOptions, addReasonOption, updateReasonOption, deleteReasonOption } from '../../lib/services/firebaseService';
+import { addAppointment, getAppointments, deleteAppointment, updateAppointment, getCustomers, getPets, getVeterinarians, getReasonOptions, addReasonOption, updateReasonOption, deleteReasonOption, getMedicalForms, getMedicalCategories, addMedicalRecord, getFormFields } from '../../lib/services/firebaseService';
 import { notificationService } from '../../lib/services/notificationService';
 
 interface Appointment {
@@ -63,6 +63,19 @@ export default function AppointmentsScreen() {
   const [showYearFilter, setShowYearFilter] = useState(false);
   const [customYear, setCustomYear] = useState('');
   const [activeStatusFilter, setActiveStatusFilter] = useState('pending');
+  const [showAddRecordModal, setShowAddRecordModal] = useState(false);
+  const [recordSlideAnim] = useState(new Animated.Value(-350));
+  const [categories, setCategories] = useState([]);
+  const [formTemplates, setFormTemplates] = useState([]);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showFormTemplateDropdown, setShowFormTemplateDropdown] = useState(false);
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [formFields, setFormFields] = useState([]);
+  const [formData, setFormData] = useState({});
+  const [newRecord, setNewRecord] = useState({
+    category: '',
+    formTemplate: ''
+  });
   const [newAppointment, setNewAppointment] = useState({
     customerId: '',
     customerName: '',
@@ -83,6 +96,7 @@ export default function AppointmentsScreen() {
       loadPets();
       loadVeterinarians();
       loadReasonOptions();
+      loadRecordData();
       // Process notifications every 5 minutes
       const interval = setInterval(() => {
         processNotifications();
@@ -168,6 +182,163 @@ export default function AppointmentsScreen() {
       setReasonOptions(reasonsList);
     } catch (error) {
       console.error('Failed to load reason options:', error);
+    }
+  };
+
+  const loadRecordData = async () => {
+    if (!user?.email) return;
+    try {
+      const [forms, cats] = await Promise.all([
+        getMedicalForms(user.email),
+        getMedicalCategories(user.email)
+      ]);
+      
+      const formTemplatesList = forms.map(form => ({
+        id: form.id,
+        formName: form.formName || form.type || form.name,
+        category: form.category || 'No Category'
+      }));
+      
+      setFormTemplates(formTemplatesList);
+      
+      const categoryList = cats.map(cat => ({
+        id: cat.id,
+        name: cat.name || cat.category
+      }));
+      
+      if (!categoryList.find(cat => cat.name === 'No Category')) {
+        categoryList.unshift({ id: 'no-category', name: 'No Category' });
+      }
+      
+      setCategories(categoryList);
+    } catch (error) {
+      console.error('Error loading record data:', error);
+      setCategories([{ id: 'no-category', category: 'No Category' }]);
+    }
+  };
+
+  const handleAddRecord = async () => {
+    try {
+      if (!newRecord.category) {
+        Alert.alert('Error', 'Please select category');
+        return;
+      }
+      if (!newRecord.formTemplate) {
+        Alert.alert('Error', 'Please select form template');
+        return;
+      }
+      
+      // Fetch form fields and show form modal
+      const fields = await getFormFields(newRecord.formTemplate, user.email);
+      setFormFields(fields);
+      setFormData({});
+      setShowFormModal(true);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load form fields');
+    }
+  };
+
+  const handleSubmitForm = async () => {
+    try {
+      // Find the actual pet ID from the pets array
+      const pet = pets.find(p => p.name === selectedAppointment?.petName);
+      
+      const recordData = {
+        petId: pet?.id || selectedAppointment?.petName || 'Unknown Pet',
+        petName: selectedAppointment?.petName || 'Unknown Pet',
+        category: newRecord.category,
+        formTemplate: newRecord.formTemplate,
+        formData,
+        date: new Date().toISOString().split('T')[0],
+        diagnosis: formData.diagnosis || 'N/A',
+        treatment: formData.treatment || 'N/A',
+        notes: formData.notes || Object.values(formData).join(', ') || 'N/A'
+      };
+      
+      await addMedicalRecord(recordData, user.email);
+      
+      // Close modals and reset form
+      setShowFormModal(false);
+      Animated.timing(recordSlideAnim, {
+        toValue: -350,
+        duration: 200,
+        useNativeDriver: false,
+      }).start(() => setShowAddRecordModal(false));
+      setNewRecord({ category: '', formTemplate: '' });
+      setFormData({});
+      
+      // Show success alert
+      Alert.alert('Success', 'Medical record saved successfully!');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save medical record');
+    }
+  };
+
+  const formatDate = (text) => {
+    const cleaned = text.replace(/\D/g, '');
+    if (cleaned.length >= 4) {
+      return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
+    } else if (cleaned.length >= 2) {
+      return `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+    }
+    return cleaned;
+  };
+
+  const formatNumber = (text) => {
+    return text.replace(/[^0-9.]/g, '').replace(/(\.)(?=.*\1)/g, '');
+  };
+
+  const renderFormField = (field) => {
+    switch (field.type) {
+      case 'text':
+        return (
+          <TextInput
+            key={field.id}
+            style={styles.formInput}
+            placeholder={`Enter ${field.label}`}
+            value={formData[field.id] || ''}
+            onChangeText={(text) => setFormData({...formData, [field.id]: text})}
+          />
+        );
+      case 'date':
+        return (
+          <TextInput
+            key={field.id}
+            style={styles.formInput}
+            placeholder="MM/DD/YYYY"
+            value={formData[field.id] || ''}
+            keyboardType="numeric"
+            maxLength={10}
+            onChangeText={(text) => {
+              const formatted = formatDate(text);
+              setFormData({...formData, [field.id]: formatted});
+            }}
+          />
+        );
+      case 'number':
+        return (
+          <TextInput
+            key={field.id}
+            style={styles.formInput}
+            placeholder={`Enter ${field.label}`}
+            keyboardType="numeric"
+            value={formData[field.id] || ''}
+            onChangeText={(text) => {
+              const formatted = formatNumber(text);
+              setFormData({...formData, [field.id]: formatted});
+            }}
+          />
+        );
+      default:
+        return (
+          <TextInput
+            key={field.id}
+            style={styles.formInput}
+            placeholder={`Enter ${field.label}`}
+            value={formData[field.id] || ''}
+            onChangeText={(text) => setFormData({...formData, [field.id]: text})}
+          />
+        );
     }
   };
 
@@ -503,9 +674,163 @@ export default function AppointmentsScreen() {
     }
   };
 
+  const renderAddRecordModal = () => (
+    <Modal visible={showAddRecordModal} transparent animationType="none">
+      <View style={styles.drawerOverlay}>
+        <Animated.View style={[styles.drawer, { left: recordSlideAnim }]}>
+          <View style={styles.drawerHeader}>
+            <Text style={styles.drawerTitle}>Add Medical Record</Text>
+            <TouchableOpacity style={styles.drawerCloseButton} onPress={() => {
+              Animated.timing(recordSlideAnim, {
+                toValue: -350,
+                duration: 200,
+                useNativeDriver: false,
+              }).start(() => setShowAddRecordModal(false));
+            }}>
+              <Text style={styles.drawerCloseText}>×</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.drawerForm}>
+            <Text style={styles.fieldLabel}>Category *</Text>
+            <View style={[styles.dropdownContainer, { zIndex: 3000 }]}>
+              <TouchableOpacity 
+                style={styles.petDropdown}
+                onPress={() => {
+                  setShowCategoryDropdown(!showCategoryDropdown);
+                  setShowFormTemplateDropdown(false);
+                }}
+              >
+                <Text style={styles.petDropdownText}>
+                  {newRecord.category || 'Select Category'}
+                </Text>
+                <Text style={styles.petDropdownArrow}>▼</Text>
+              </TouchableOpacity>
+              {showCategoryDropdown && (
+                <View style={styles.dropdownMenu}>
+                  <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
+                    {categories.map((category) => (
+                      <TouchableOpacity
+                        key={category.id}
+                        style={styles.dropdownOption}
+                        onPress={() => {
+                          setNewRecord({...newRecord, category: category.name, formTemplate: ''});
+                          setShowCategoryDropdown(false);
+                        }}
+                      >
+                        <Text style={styles.dropdownOptionText}>{category.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+            <Text style={styles.fieldLabel}>Form Template *</Text>
+            <View style={[styles.dropdownContainer, { zIndex: 2000 }]}>
+              <TouchableOpacity 
+                style={[styles.petDropdown, !newRecord.category && styles.disabledDropdown]}
+                onPress={() => {
+                  if (newRecord.category) {
+                    setShowFormTemplateDropdown(!showFormTemplateDropdown);
+                    setShowCategoryDropdown(false);
+                  }
+                }}
+              >
+                <Text style={[styles.petDropdownText, !newRecord.category && styles.disabledText]}>
+                  {!newRecord.category ? 'Select category first' : (newRecord.formTemplate || 'Select Form Template')}
+                </Text>
+                <Text style={styles.petDropdownArrow}>▼</Text>
+              </TouchableOpacity>
+              {showFormTemplateDropdown && (
+                <View style={styles.dropdownMenu}>
+                  <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
+                    {(() => {
+                      const filtered = formTemplates.filter(template => {
+                        if (!newRecord.category) return true;
+                        return template.category === newRecord.category;
+                      });
+                      if (filtered.length === 0 && newRecord.category) {
+                        return [
+                          <View key="no-forms" style={styles.dropdownOption}>
+                            <Text style={styles.dropdownOptionText}>No forms available for this category</Text>
+                          </View>
+                        ];
+                      }
+                      return filtered
+                        .sort((a, b) => a.formName.localeCompare(b.formName))
+                        .map((template) => (
+                        <TouchableOpacity
+                          key={template.id}
+                          style={styles.dropdownOption}
+                          onPress={() => {
+                            setNewRecord({...newRecord, formTemplate: template.formName});
+                            setShowFormTemplateDropdown(false);
+                          }}
+                        >
+                          <Text style={styles.dropdownOptionText}>{template.formName}</Text>
+                        </TouchableOpacity>
+                      ));
+                    })()
+                    }
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+          </ScrollView>
+          <View style={styles.drawerButtons}>
+            <TouchableOpacity style={styles.drawerCancelButton} onPress={() => {
+              Animated.timing(recordSlideAnim, {
+                toValue: -350,
+                duration: 200,
+                useNativeDriver: false,
+              }).start(() => setShowAddRecordModal(false));
+            }}>
+              <Text style={styles.drawerCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.drawerSaveButton} onPress={handleAddRecord}>
+              <Text style={styles.drawerSaveText}>Create Record</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+
+  const renderFormModal = () => (
+    <Modal visible={showFormModal} transparent animationType="fade">
+      <View style={styles.formPreviewModalOverlay}>
+        <View style={styles.formPreviewModalContent}>
+          <View style={styles.formPreviewHeader}>
+            <TouchableOpacity style={styles.formPreviewBackButton} onPress={() => setShowFormModal(false)}>
+              <Text style={styles.formPreviewBackText}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.formPreviewHeaderTitle}>{newRecord.formTemplate}</Text>
+            <TouchableOpacity style={styles.formPreviewSaveHeaderButton} onPress={handleSubmitForm}>
+              <Text style={styles.formPreviewSaveHeaderText}>Save Record</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.formPreviewBody} showsVerticalScrollIndicator={false}>
+            <View style={styles.formPreviewDisplayArea}>
+              <View style={styles.formPreviewFieldsContainer}>
+                {formFields.map((field) => (
+                  <View key={field.id} style={styles.formPreviewField}>
+                    <Text style={styles.formPreviewFieldLabel}>
+                      {field.label}{field.required && ' *'}
+                    </Text>
+                    {renderFormField(field)}
+                  </View>
+                ))}
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+
   if (selectedAppointment) {
     return (
-      <View style={styles.container}>
+      <>
+        <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerText}>Appointments</Text>
         </View>
@@ -517,6 +842,21 @@ export default function AppointmentsScreen() {
               </TouchableOpacity>
               <Text style={styles.formDetailTitle}>Appointment Details</Text>
               <View style={styles.categoryActions}>
+                <TouchableOpacity 
+                  style={styles.addRecordButton} 
+                  onPress={() => {
+                    setNewRecord({ category: '', formTemplate: '' });
+                    setShowAddRecordModal(true);
+                    recordSlideAnim.setValue(-350);
+                    Animated.timing(recordSlideAnim, {
+                      toValue: 0,
+                      duration: 300,
+                      useNativeDriver: false,
+                    }).start();
+                  }}
+                >
+                  <Text style={styles.addRecordButtonText}>+ Add Record</Text>
+                </TouchableOpacity>
                 {(selectedAppointment.status === 'pending' || selectedAppointment.status === 'due' || selectedAppointment.status === 'scheduled') && (
                   <TouchableOpacity 
                     style={styles.doneCategoryButton} 
@@ -632,6 +972,9 @@ export default function AppointmentsScreen() {
           </View>
         </View>
       </View>
+      {renderAddRecordModal()}
+      {renderFormModal()}
+      </>
     );
   }
 
@@ -658,9 +1001,11 @@ export default function AppointmentsScreen() {
               </TouchableOpacity>
               
               <View style={styles.searchContainer}>
+                <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
                 <TextInput
                   style={styles.searchInput}
                   placeholder="Search..."
+                  placeholderTextColor="#999"
                   value={searchTerm}
                   onChangeText={setSearchTerm}
                 />
@@ -975,9 +1320,7 @@ export default function AppointmentsScreen() {
                   })
                   .map((appointment) => (
                     <View key={appointment.id} style={[styles.appointmentListItem, {
-                      backgroundColor: appointment.status === 'pending' ? '#d4edda' : 
-                                     appointment.status === 'due' || appointment.status === 'scheduled' ? '#f8d7da' : 
-                                     appointment.status === 'completed' ? '#d1ecf1' : '#ffffff'
+                      backgroundColor: appointment.status === 'due' || appointment.status === 'scheduled' ? '#f8d7da' : '#ffffff'
                     }]}>
                       <TouchableOpacity 
                         style={styles.appointmentContent}
@@ -992,29 +1335,39 @@ export default function AppointmentsScreen() {
                           <Text style={styles.petText}>{appointment.petName} - {appointment.reason}</Text>
                         </View>
                       </TouchableOpacity>
-                      {(appointment.status === 'pending' || appointment.status === 'due' || appointment.status === 'scheduled') && (
-                        <TouchableOpacity 
-                          style={styles.calendarDoneButton}
-                          onPress={async () => {
-                            try {
-                              await updateAppointment(user.email, appointment.id, { 
-                                status: 'completed',
-                                completedAt: new Date()
-                              });
-                              await loadAppointments();
-                            } catch (error) {
-                              console.error('Failed to update appointment:', error);
-                            }
-                          }}
-                        >
-                          <Text style={styles.calendarDoneButtonText}>Done</Text>
-                        </TouchableOpacity>
-                      )}
-                      {appointment.status === 'completed' && (
-                        <View style={styles.calendarCompletedBadge}>
-                          <Text style={styles.calendarCompletedText}>✓ Done</Text>
-                        </View>
-                      )}
+                      <View style={styles.appointmentActions}>
+                        {(appointment.status === 'pending' || appointment.status === 'due' || appointment.status === 'scheduled') && (
+                          <TouchableOpacity 
+                            style={styles.calendarDoneButton}
+                            onPress={async () => {
+                              try {
+                                await updateAppointment(user.email, appointment.id, { 
+                                  status: 'completed',
+                                  completedAt: new Date()
+                                });
+                                await loadAppointments();
+                              } catch (error) {
+                                console.error('Failed to update appointment:', error);
+                              }
+                            }}
+                          >
+                            <Text style={styles.calendarDoneButtonText}>Done</Text>
+                          </TouchableOpacity>
+                        )}
+                        {appointment.status !== 'completed' && (
+                          <TouchableOpacity 
+                            style={styles.calendarDeleteButton}
+                            onPress={() => handleDeleteAppointment(appointment.id)}
+                          >
+                            <Text style={styles.calendarDeleteButtonText}>Delete</Text>
+                          </TouchableOpacity>
+                        )}
+                        {appointment.status === 'completed' && (
+                          <View style={styles.calendarCompletedBadge}>
+                            <Text style={styles.calendarCompletedText}>Done</Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
                   ))
                 }
@@ -1061,28 +1414,18 @@ export default function AppointmentsScreen() {
                 </View>
               ) : (
                 paginatedAppointments.map((appointment) => {
-                  const getStatusColor = () => {
-                    switch(appointment.status) {
-                      case 'completed': return '#e8f5e8';
-                      case 'cancelled': return '#ffe6e6';
-                      case 'due': return '#fff3cd';
-                      case 'pending': return '#e3f2fd';
-                      default: return '#ffffff';
-                    }
-                  };
-                  
                   return (
                   <TouchableOpacity 
                     key={appointment.id} 
-                    style={[styles.tableRow, { backgroundColor: getStatusColor() }]}
+                    style={styles.tableRow}
                     onPress={() => setSelectedAppointment(appointment)}
                     activeOpacity={0.7}
                   >
                     <View style={[styles.cell, { flex: 0.8, alignItems: 'center', justifyContent: 'center', marginLeft: -10, marginRight: 15 }]}>
-                      <Text style={[styles.dateText]}>
+                      <Text style={[styles.cell, { fontWeight: 'bold' }]}>
                         {formatDateTime(appointment.appointmentDate).date}
                       </Text>
-                      <Text style={[styles.timeText]}>
+                      <Text style={[styles.cell]}>
                         {formatDateTime(appointment.appointmentDate).time}
                       </Text>
                     </View>
@@ -1111,7 +1454,7 @@ export default function AppointmentsScreen() {
                     )}
                     {activeStatusFilter === 'completed' && (
                       <View style={[styles.cell, { flex: 0.6, alignItems: 'center' }]}>
-                        <Text style={styles.completedText}>✓ Done</Text>
+                        <Text style={styles.completedText}>Done</Text>
                       </View>
                     )}
                   </TouchableOpacity>
@@ -1212,14 +1555,14 @@ export default function AppointmentsScreen() {
                   </TouchableOpacity>
                   {showCustomerDropdown && (
                     <View style={styles.dropdownMenu}>
-                      <ScrollView style={styles.customerList} showsVerticalScrollIndicator={false}>
+                      <ScrollView style={styles.dropdownScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
                         {customers.map((customer) => (
                           <TouchableOpacity
                             key={customer.id}
-                            style={styles.customerOption}
+                            style={styles.dropdownOption}
                             onPress={() => selectCustomer(customer)}
                           >
-                            <Text style={styles.customerOptionText}>
+                            <Text style={styles.dropdownOptionText}>
                               {`${customer.firstname || ''} ${customer.surname || ''}`.trim() || customer.email || 'Unknown'}
                             </Text>
                           </TouchableOpacity>
@@ -1243,21 +1586,21 @@ export default function AppointmentsScreen() {
                   </TouchableOpacity>
                   {showPetDropdown && selectedCustomer && (
                     <View style={styles.dropdownMenu}>
-                      <ScrollView style={styles.customerList} showsVerticalScrollIndicator={false}>
+                      <ScrollView style={styles.dropdownScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
                         {getCustomerPets().map((pet) => (
                           <TouchableOpacity
                             key={pet.id}
-                            style={styles.customerOption}
+                            style={styles.dropdownOption}
                             onPress={() => selectPet(pet)}
                           >
-                            <Text style={styles.customerOptionText}>
+                            <Text style={styles.dropdownOptionText}>
                               {pet.name} ({pet.species || 'Unknown'})
                             </Text>
                           </TouchableOpacity>
                         ))}
                         {getCustomerPets().length === 0 && (
-                          <View style={styles.customerOption}>
-                            <Text style={[styles.customerOptionText, {fontStyle: 'italic', color: '#999'}]}>
+                          <View style={styles.dropdownOption}>
+                            <Text style={[styles.dropdownOptionText, {fontStyle: 'italic', color: '#999'}]}>
                               No pets found for this customer
                             </Text>
                           </View>
@@ -1316,21 +1659,21 @@ export default function AppointmentsScreen() {
                   </TouchableOpacity>
                   {showVetDropdown && (
                     <View style={styles.dropdownMenu}>
-                      <ScrollView style={styles.customerList} showsVerticalScrollIndicator={false}>
+                      <ScrollView style={styles.dropdownScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
                         {veterinarians.map((vet) => (
                           <TouchableOpacity
                             key={vet.id}
-                            style={styles.customerOption}
+                            style={styles.dropdownOption}
                             onPress={() => selectVeterinarian(vet)}
                           >
-                            <Text style={styles.customerOptionText}>
+                            <Text style={styles.dropdownOptionText}>
                               {`${vet.firstname || ''} ${vet.surname || ''}`.trim() || vet.name || 'Unknown'}
                             </Text>
                           </TouchableOpacity>
                         ))}
                         {veterinarians.length === 0 && (
-                          <View style={styles.customerOption}>
-                            <Text style={[styles.customerOptionText, {fontStyle: 'italic', color: '#999'}]}>
+                          <View style={styles.dropdownOption}>
+                            <Text style={[styles.dropdownOptionText, {fontStyle: 'italic', color: '#999'}]}>
                               No veterinarians found
                             </Text>
                           </View>
@@ -1616,7 +1959,7 @@ export default function AppointmentsScreen() {
 
       {/* Add Reason Modal */}
       {showAddReasonModal && (
-        <Modal transparent={true} visible={showAddReasonModal} animationType="scale">
+        <Modal transparent={true} visible={showAddReasonModal} animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.reasonModal}>
               <View style={styles.modalHeader}>
@@ -1636,8 +1979,11 @@ export default function AppointmentsScreen() {
                   style={styles.reasonTextInput}
                   value={newReasonText}
                   onChangeText={setNewReasonText}
-                  placeholder="Enter reason"
-                  autoFocus
+                  placeholder="Enter custom reason"
+                  placeholderTextColor="#999"
+                  autoFocus={true}
+                  editable={true}
+                  selectTextOnFocus={true}
                 />
               </View>
               <View style={styles.buttonRow}>
@@ -1711,6 +2057,9 @@ export default function AppointmentsScreen() {
           </View>
         </Modal>
       )}
+
+      {renderAddRecordModal()}
+      {renderFormModal()}
     </ScrollView>
   );
 }
@@ -1730,6 +2079,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
+
   headerText: {
     fontSize: 36,
     fontWeight: 'bold',
@@ -1763,15 +2113,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 2,
     borderColor: '#800000',
     borderRadius: 5,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
+  searchIcon: {
+    width: 14,
+    height: 14,
+    marginRight: 6,
+  },
   searchInput: {
     width: 150,
     fontSize: 12,
+    outlineStyle: 'none',
   },
   content: {
     padding: 20,
@@ -1834,6 +2192,7 @@ const styles = StyleSheet.create({
   dateText: {
     fontSize: 12,
     color: '#555',
+    fontWeight: 'normal',
     textAlign: 'center',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -1842,6 +2201,7 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 12,
     color: '#555',
+    fontWeight: 'normal',
     textAlign: 'center',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -1890,13 +2250,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 2,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    minWidth: 35,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    minWidth: 50,
   },
   dropdownText: {
     fontSize: 10,
-    marginRight: 2,
+    marginRight: 4,
   },
   dropdownArrow: {
     fontSize: 6,
@@ -1904,25 +2264,30 @@ const styles = StyleSheet.create({
   },
   dropdownMenu: {
     position: 'absolute',
-    top: 25,
+    top: -120,
     left: 0,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 2,
-    zIndex: 1002,
-    minWidth: 35,
-    elevation: 10,
+    borderRadius: 4,
+    zIndex: 10000,
+    minWidth: 50,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   dropdownOption: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
   dropdownOptionText: {
-    fontSize: 10,
+    fontSize: 12,
     textAlign: 'center',
+    color: '#333',
   },
   pageBtn: {
     backgroundColor: '#800000',
@@ -2063,17 +2428,8 @@ const styles = StyleSheet.create({
     color: '#333',
     flex: 1,
   },
-  customerList: {
+  dropdownScroll: {
     maxHeight: 140,
-  },
-  customerOption: {
-    padding: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  customerOptionText: {
-    fontSize: 11,
-    color: '#555',
   },
   drawerButtons: {
     flexDirection: 'row',
@@ -2373,6 +2729,9 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 14,
     width: '100%',
+    backgroundColor: '#fff',
+    color: '#333',
+    outlineStyle: 'none',
   },
   tableTopRow: {
     backgroundColor: '#fff',
@@ -2433,6 +2792,62 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 12,
+  },
+  addRecordButton: {
+    backgroundColor: '#23C062',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  addRecordButtonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  categoryDropdownContainer: {
+    position: 'relative',
+    zIndex: 3001,
+  },
+  drawerDropdown: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  drawerDropdownText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  categoryDropdownMenu: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    zIndex: 3002,
+    elevation: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    maxHeight: 200,
+  },
+  categoryDropdownScroll: {
+    maxHeight: 200,
   },
   completedText: {
     color: '#28a745',
@@ -2734,6 +3149,21 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
+  appointmentActions: {
+    flexDirection: 'row',
+    gap: 5,
+  },
+  calendarDeleteButton: {
+    backgroundColor: '#dc3545',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  calendarDeleteButtonText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
   calendarHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -2846,5 +3276,123 @@ const styles = StyleSheet.create({
   },
   activeFilterTabText: {
     color: '#fff',
+  },
+  dropdownContainer: {
+    position: 'relative',
+    marginBottom: 15,
+  },
+  petDropdown: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#fafafa',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+  },
+  petDropdownText: {
+    fontSize: 12,
+    color: '#555',
+  },
+  petDropdownArrow: {
+    fontSize: 12,
+    color: '#666',
+  },
+  dropdownScroll: {
+    maxHeight: 150,
+  },
+  disabledDropdown: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#ccc',
+  },
+  disabledText: {
+    color: '#999',
+  },
+  formPreviewModalOverlay: {
+    flex: 1,
+    paddingLeft: 270,
+  },
+  formPreviewModalContent: {
+    flex: 1,
+    marginTop: 20,
+    marginRight: 20,
+    marginBottom: 20,
+    overflow: 'visible',
+  },
+  formPreviewHeader: {
+    backgroundColor: '#fff',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    borderWidth: 2,
+    borderColor: '#ddd',
+  },
+  formPreviewBackButton: {
+    backgroundColor: '#800000',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  formPreviewBackText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  formPreviewHeaderTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#800000',
+    flex: 1,
+    textAlign: 'center',
+  },
+  formPreviewSaveHeaderButton: {
+    backgroundColor: '#23C062',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  formPreviewSaveHeaderText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  formPreviewBody: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderTopWidth: 0,
+  },
+  formPreviewDisplayArea: {
+    padding: 20,
+  },
+  formPreviewFieldsContainer: {
+    gap: 15,
+  },
+  formPreviewField: {
+    marginBottom: 15,
+    zIndex: -1,
+  },
+  formPreviewFieldLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  formInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 12,
+    backgroundColor: '#fafafa',
+    maxWidth: 300,
   },
 });
