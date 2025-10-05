@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/config/firebaseConfig';
@@ -143,12 +144,7 @@ export default function LoginWeb() {
             </View>
           ) : null}
           
-          <LinearGradient
-            colors={['#f8f9fa', '#e9ecef']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.inputContainer}
-          >
+          <View style={styles.inputContainer}>
             <Ionicons name="mail-outline" size={18} color={Colors.text.muted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
@@ -163,14 +159,9 @@ export default function LoginWeb() {
               keyboardType="email-address"
               editable={!isLoading}
             />
-          </LinearGradient>
+          </View>
 
-          <LinearGradient
-            colors={['#f8f9fa', '#e9ecef']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.inputContainer}
-          >
+          <View style={styles.inputContainer}>
             <Ionicons name="lock-closed-outline" size={18} color={Colors.text.muted} style={styles.inputIcon} />
             <TextInput
               style={[styles.input, styles.passwordInput]}
@@ -196,7 +187,7 @@ export default function LoginWeb() {
                 color={Colors.text.muted} 
               />
             </TouchableOpacity>
-          </LinearGradient>
+          </View>
 
           <TouchableOpacity 
             style={[styles.loginButton, isLoading && styles.loginButtonDisabled]} 
@@ -294,6 +285,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#f8f9fa',
     borderRadius: 8,
     marginBottom: 16,
     paddingHorizontal: 16,
