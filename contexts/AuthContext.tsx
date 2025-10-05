@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/config/firebaseConfig';
-import { loginWithCredentialOverlap } from '../lib/services/firebaseService';
+import { loginWithCredentialOverlap, getVeterinarianByEmail, getTenantId } from '../lib/services/firebaseService';
 
 const AuthContext = createContext({});
 
@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
       const credentialResult = await loginWithCredentialOverlap(email.trim(), password);
       
       if (credentialResult.success) {
-        // If credential overlap login succeeds, get user data from tenants collection
+        // Check tenants collection for user data
         const q = query(collection(db, 'tenants'), where('email', '==', email.trim()));
         const querySnapshot = await getDocs(q);
         
@@ -45,21 +45,40 @@ export const AuthProvider = ({ children }) => {
           
           const user = {
             email: userData.email,
-            role: userData.role,
+            role: userData.role || 'admin',
             tenantId: userData.tenantId,
-            clinicName: userData.clinicName
+            clinicName: userData.clinicName,
+            name: userData.name || userData.clinicName
           };
           
           await AsyncStorage.setItem('currentUser', JSON.stringify(user));
           setUser(user);
           
-          if (credentialResult.passwordActivated) {
-            // Show success message for password activation
-            console.log('Password updated successfully');
-          }
-          
           return { success: true, user };
         }
+      }
+      
+      // Check superadmins collection first
+      const superAdminQuery = query(collection(db, 'superadmins'), where('email', '==', email.trim()));
+      const superAdminSnapshot = await getDocs(superAdminQuery);
+      
+      if (!superAdminSnapshot.empty) {
+        const superAdminData = superAdminSnapshot.docs[0].data();
+        
+        if (superAdminData.password !== password) {
+          return { success: false, error: 'Incorrect password. Please try again.' };
+        }
+        
+        const user = {
+          email: superAdminData.email,
+          role: 'superadmin',
+          name: superAdminData.name
+        };
+        
+        await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+        setUser(user);
+        
+        return { success: true, user };
       }
       
       // Fallback to original login method

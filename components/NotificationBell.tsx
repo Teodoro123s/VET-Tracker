@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet } from 'react-native';
 import { notificationService, InAppNotification } from '../lib/services/notificationService';
+import { Colors } from '../constants/Colors';
 
 interface NotificationBellProps {
   tenantId: string;
@@ -183,7 +184,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#800000',
+    color: Colors.primary,
   },
   closeButton: {
     fontSize: 20,

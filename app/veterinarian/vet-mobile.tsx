@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/config/firebaseConfig';
+import { Colors } from '@/constants/Colors';
 
 export default function VetMobile() {
   const router = useRouter();
@@ -51,10 +52,10 @@ export default function VetMobile() {
         setVetDetails({
           name: vetData.name || 'Dr. Veterinarian',
           email: vetData.email || user.email,
-          license: vetData.license || 'License not provided',
-          specialization: vetData.specialization || 'Specialization not provided',
-          phone: vetData.phone || 'Phone not provided',
-          experience: vetData.experience || 'Experience not provided'
+          license: vetData.license || 'Not provided',
+          specialization: vetData.specialization || 'Not provided',
+          phone: vetData.phone || 'Not provided',
+          experience: vetData.experience || 'Not provided'
         });
       } else {
         console.log('No veterinarian found with email:', user.email);
@@ -106,12 +107,12 @@ export default function VetMobile() {
 
         <View style={styles.quickStats}>
           <TouchableOpacity style={styles.statCard}>
-            <Ionicons name="calendar" size={32} color="#800020" />
+            <Ionicons name="calendar" size={32} color={Colors.primary} />
             <ThemedText style={styles.statValue}>{vetStats.todayAppointments}</ThemedText>
             <ThemedText style={styles.statLabel}>Today's Appointments</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity style={styles.statCard}>
-            <Ionicons name="document-text" size={32} color="#800020" />
+            <Ionicons name="document-text" size={32} color={Colors.primary} />
             <ThemedText style={styles.statValue}>{vetStats.pendingRecords}</ThemedText>
             <ThemedText style={styles.statLabel}>Pending Records</ThemedText>
           </TouchableOpacity>
@@ -121,19 +122,19 @@ export default function VetMobile() {
           <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
           <View style={styles.actionsGrid}>
             <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="add-circle" size={40} color="#800020" />
+              <Ionicons name="add-circle" size={40} color={Colors.primary} />
               <Text style={styles.actionText}>New Record</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="search" size={40} color="#800020" />
+              <Ionicons name="search" size={40} color={Colors.primary} />
               <Text style={styles.actionText}>Search Patient</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-calendar')}>
-              <Ionicons name="calendar" size={40} color="#800020" />
+              <Ionicons name="calendar" size={40} color={Colors.primary} />
               <Text style={styles.actionText}>Calendar</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="settings" size={40} color="#800020" />
+              <Ionicons name="settings" size={40} color={Colors.primary} />
               <Text style={styles.actionText}>Settings</Text>
             </TouchableOpacity>
           </View>
@@ -253,7 +254,7 @@ export default function VetMobile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: Colors.background,
   },
 
   content: {
@@ -266,23 +267,25 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 20,
-    color: '#333',
+    color: Colors.text.primary,
     marginBottom: 5,
   },
   dateText: {
     fontSize: 16,
-    color: '#666',
+    color: Colors.text.secondary,
   },
   vetDetailsCard: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     elevation: 3,
-    shadowColor: '#000',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
   },
   detailRow: {
     flexDirection: 'row',
@@ -292,18 +295,18 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: Colors.text.primary,
     marginLeft: 8,
     width: 70,
   },
   detailValue: {
     fontSize: 14,
-    color: '#999',
+    color: Colors.text.muted,
     flex: 1,
     fontStyle: 'italic',
   },
   detailValueActive: {
-    color: '#333',
+    color: Colors.text.primary,
     fontStyle: 'normal',
     fontWeight: '500',
   },
@@ -313,32 +316,34 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   statCard: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.surface,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     flex: 0.48,
     elevation: 3,
-    shadowColor: '#000',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
   },
   statValue: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#800020',
+    color: Colors.primary,
     marginBottom: 5,
   },
   statLabel: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.text.secondary,
     textAlign: 'center',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: Colors.text.primary,
     marginBottom: 16,
   },
   quickActions: {
@@ -350,21 +355,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   actionCard: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.surface,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     width: '48%',
     marginBottom: 12,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
   },
   actionText: {
     fontSize: 12,
-    color: '#333',
+    color: Colors.text.primary,
     marginTop: 8,
     textAlign: 'center',
     fontWeight: '500',
@@ -372,16 +379,18 @@ const styles = StyleSheet.create({
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(45, 55, 72, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 20,
     width: '90%',
     maxHeight: '80%',
+    borderWidth: 1,
+    borderColor: Colors.border.light,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -390,7 +399,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: Colors.border.light,
   },
   profileDetails: {
     marginBottom: 20,
@@ -402,16 +411,16 @@ const styles = StyleSheet.create({
   profileLabel: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: Colors.text.primary,
     width: 120,
   },
   profileValue: {
     fontSize: 16,
-    color: '#666',
+    color: Colors.text.secondary,
     flex: 1,
   },
   logoutButton: {
-    backgroundColor: '#ff4444',
+    backgroundColor: Colors.status.error,
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
@@ -419,22 +428,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoutText: {
-    color: 'white',
+    color: Colors.text.inverse,
     fontSize: 16,
     fontWeight: 'bold',
   },
 
   notificationModal: {
-    backgroundColor: 'white',
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 0,
     width: '90%',
     maxHeight: '70%',
+    borderWidth: 1,
+    borderColor: Colors.border.light,
   },
   notificationTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: Colors.text.primary,
   },
   notificationList: {
     maxHeight: 400,
@@ -443,7 +454,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: Colors.border.light,
     alignItems: 'flex-start',
   },
   notificationContent: {
@@ -453,17 +464,17 @@ const styles = StyleSheet.create({
   notificationItemTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: Colors.text.primary,
     marginBottom: 4,
   },
   notificationText: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.text.secondary,
     marginBottom: 4,
   },
   notificationTime: {
     fontSize: 12,
-    color: '#999',
+    color: Colors.text.muted,
     fontStyle: 'italic',
   },
 });

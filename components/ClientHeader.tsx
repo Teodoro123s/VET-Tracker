@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import NotificationBell from './NotificationBell';
 import { useAuth } from '../contexts/AuthContext';
+import { Colors } from '../constants/Colors';
 
 interface ClientHeaderProps {
   title: string;
@@ -30,13 +31,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: Colors.border.light,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#800000',
+    color: Colors.primary,
   },
 });

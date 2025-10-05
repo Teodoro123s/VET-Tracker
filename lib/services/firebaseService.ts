@@ -858,10 +858,20 @@ const verifyPassword = async (password: string, hashedPassword: string) => {
   return btoa(password) === hashedPassword;
 };
 
+import { sendPasswordResetEmail } from './emailService';
+
 const sendPasswordEmail = async (email: string, newPassword: string) => {
-  // Email service integration - placeholder for now
-  console.log(`Sending password to ${email}: ${newPassword}`);
-  // In production, integrate with email service like SendGrid, AWS SES, etc.
+  try {
+    const emailSent = await sendPasswordResetEmail(email, newPassword);
+    if (!emailSent) {
+      console.log(`Email failed, password for ${email}: ${newPassword}`);
+    }
+    return emailSent;
+  } catch (error) {
+    console.error('Email sending failed:', error);
+    console.log(`Fallback - Password for ${email}: ${newPassword}`);
+    return false;
+  }
 };
 
 export const generatePassword = async (targetEmail: string, initiatorEmail: string, initiatorType: string) => {

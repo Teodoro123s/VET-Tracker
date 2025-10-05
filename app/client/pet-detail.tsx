@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Modal, Animated } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { getPetById, getCustomerById, updatePet, deletePet, getMedicalHistory, addMedicalRecord, getAnimalTypes, getBreeds, getMedicalCategories, getMedicalForms, getFormFields } from '@/lib/services/firebaseService';
+import { getPetById, getCustomerById, updatePet, deletePet, getMedicalHistory, getMedicalRecords, addMedicalRecord, getAnimalTypes, getBreeds, getMedicalCategories, getMedicalForms, getFormFields } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
 
 export default function PetDetailScreen() {
@@ -44,6 +44,7 @@ export default function PetDetailScreen() {
   const [categories, setCategories] = useState([]);
   const [formTemplates, setFormTemplates] = useState([]);
   const [showFormModal, setShowFormModal] = useState(false);
+  const [formFields, setFormFields] = useState([]);
 
   const [formData, setFormData] = useState({});
 
@@ -85,8 +86,13 @@ export default function PetDetailScreen() {
         setOwner(ownerData);
       }
       
-      const historyData = await getMedicalHistory(userEmail, id as string);
-      setMedicalHistory(historyData);
+      const allRecords = await getMedicalRecords(userEmail);
+      const petRecords = allRecords.filter(record => {
+        const matchesId = record.petId === id;
+        const matchesName = record.petName === petData?.name;
+        return matchesId || matchesName;
+      });
+      setMedicalHistory(petRecords);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -215,12 +221,15 @@ export default function PetDetailScreen() {
       
       const recordData = {
         petId: id as string,
+        petName: pet?.name,
         category: newRecord.category,
         formTemplate: newRecord.formTemplate,
         formType: newRecord.formTemplate,
         formData: mappedFormData,
         date: new Date().toISOString().split('T')[0],
         createdAt: new Date(),
+        veterinarian: userEmail,
+        createdBy: userEmail,
         diagnosis: mappedFormData.diagnosis || 'N/A',
         treatment: mappedFormData.treatment || 'N/A',
         notes: mappedFormData.notes || Object.values(mappedFormData).join(', ') || 'N/A'
@@ -237,8 +246,13 @@ export default function PetDetailScreen() {
       }).start(() => setShowAddRecordModal(false));
       
       // Reload medical history
-      const historyData = await getMedicalHistory(userEmail, id as string);
-      setMedicalHistory(historyData);
+      const allRecords = await getMedicalRecords(userEmail);
+      const petRecords = allRecords.filter(record => {
+        const matchesId = record.petId === id;
+        const matchesName = record.petName === pet?.name;
+        return matchesId || matchesName;
+      });
+      setMedicalHistory(petRecords);
       
       Alert.alert('Success', 'Medical record added successfully');
     } catch (error) {

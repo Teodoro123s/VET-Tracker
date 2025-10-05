@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, KeyboardAvo
 import { useRouter } from 'expo-router';
 import { loginUser } from '../lib/services/firebaseService';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../constants/Colors';
 
 
 export default function LoginMobile() {
@@ -23,6 +24,7 @@ export default function LoginMobile() {
       const result = await loginUser(username, password);
       console.log('Login successful:', result);
       
+      // Mobile component should only allow admin/superadmin (same as web)
       if (username.includes('superadmin')) {
         router.replace('/superadmin');
       } else {
@@ -100,7 +102,10 @@ export default function LoginMobile() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.forgotPassword}>
+          <TouchableOpacity 
+            style={styles.forgotPassword}
+            onPress={() => Alert.alert('Forgot Password', 'Please contact your administrator for password reset.')}
+          >
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
         </View>
@@ -112,7 +117,7 @@ export default function LoginMobile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: Colors.background,
     width: '100%',
     maxWidth: '100%',
   },
@@ -143,12 +148,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#800000',
+    color: Colors.primary,
     marginBottom: 12,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: Colors.text.secondary,
     textAlign: 'center',
   },
   formContainer: {
@@ -159,18 +164,18 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: Colors.surface,
     borderRadius: 8,
     marginBottom: 16,
     paddingHorizontal: 16,
     minHeight: 48,
-    shadowColor: '#000',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: Colors.border.light,
   },
   inputIcon: {
     marginRight: 12,
@@ -178,7 +183,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: Colors.text.primary,
   },
   passwordInput: {
     paddingRight: 40,
@@ -193,24 +198,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loginButton: {
-    backgroundColor: '#800000',
+    backgroundColor: Colors.primary,
     borderRadius: 8,
     minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 12,
-    shadowColor: '#800000',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
   },
   loginButtonDisabled: {
-    backgroundColor: '#cc9999',
+    backgroundColor: Colors.interactive.disabled,
     shadowOpacity: 0.1,
   },
   loginButtonText: {
-    color: '#fff',
+    color: Colors.text.inverse,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -221,7 +226,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   forgotPasswordText: {
-    color: '#800000',
+    color: Colors.secondary,
     fontSize: 16,
     fontWeight: '500',
   },

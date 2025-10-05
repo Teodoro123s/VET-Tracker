@@ -116,6 +116,10 @@ export default function VetMedicalRecordDetailScreen() {
                 <Text style={styles.cell}>Form Template</Text>
                 <Text style={styles.cell}>{record.formTemplate || record.formType || 'N/A'}</Text>
               </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.cell}>Veterinarian</Text>
+                <Text style={styles.cell}>{record.veterinarian || record.createdBy || 'N/A'}</Text>
+              </View>
             </View>
           </View>
         </View>

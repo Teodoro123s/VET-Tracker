@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { updateAppointment, deleteAppointment, getMedicalCategories, getMedicalForms, getFormFields, addMedicalRecord, getPets } from '@/lib/services/firebaseService';
 import { useAuth } from '@/contexts/AuthContext';
+import { Colors } from '@/constants/Colors';
 
 export default function AppointmentDetails() {
   const router = useRouter();
@@ -69,7 +70,7 @@ export default function AppointmentDetails() {
     setNewRecord({
       category: '',
       formTemplate: '',
-      petId: appointment.petName
+      petId: appointment.petId || appointment.petName
     });
     setShowAddRecordModal(true);
     setShowDropdown(false);
@@ -103,12 +104,12 @@ export default function AppointmentDetails() {
       });
       
       const recordData = {
-        petId: newRecord.petId,
+        petId: appointment.petId || newRecord.petId,
         petName: appointment.petName,
         category: newRecord.category,
         formTemplate: newRecord.formTemplate,
         formType: newRecord.formTemplate,
-        formData: mappedFormData,
+        formData: formData,
         date: new Date().toISOString().split('T')[0],
         createdAt: new Date(),
         veterinarian: user?.email,
@@ -277,8 +278,6 @@ export default function AppointmentDetails() {
 
   return (
     <View style={styles.container}>
-
-
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.detailTable}>
           <View style={styles.detailTableHeader}>
@@ -289,7 +288,6 @@ export default function AppointmentDetails() {
                 <TouchableOpacity style={styles.menuButton} onPress={() => setShowDropdown(!showDropdown)}>
                   <Ionicons name="ellipsis-vertical" size={20} color="#666" />
                 </TouchableOpacity>
-
               </View>
             )}
           </View>
@@ -328,10 +326,7 @@ export default function AppointmentDetails() {
             </View>
           )}
         </View>
-
-
       </ScrollView>
-      
       {showDropdown && (
         <Modal transparent={true} visible={showDropdown} onRequestClose={() => setShowDropdown(false)}>
           <TouchableOpacity style={styles.modalOverlay} onPress={() => setShowDropdown(false)}>
@@ -349,7 +344,6 @@ export default function AppointmentDetails() {
           </TouchableOpacity>
         </Modal>
       )}
-
       <Modal
         visible={showAddRecordModal}
         transparent={true}
@@ -461,7 +455,6 @@ export default function AppointmentDetails() {
           </View>
         </View>
       </Modal>
-
       {showFormModal && (
         <Modal visible={true} transparent animationType="fade">
           <View style={styles.formPreviewModalOverlay}>
@@ -501,7 +494,7 @@ export default function AppointmentDetails() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f7fa',
+    backgroundColor: Colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -518,7 +511,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#800020',
+    color: Colors.primary,
   },
   content: {
     flex: 1,
@@ -733,7 +726,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 12,
   },
   formPreviewBackButton: {
-    backgroundColor: '#800020',
+    backgroundColor: Colors.primary,
     borderRadius: 5,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -747,7 +740,7 @@ const styles = StyleSheet.create({
   formPreviewHeaderTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#800020',
+    color: Colors.primary,
     flex: 1,
     textAlign: 'center',
   },

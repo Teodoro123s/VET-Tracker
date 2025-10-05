@@ -62,8 +62,8 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingHorizontal: Spacing.xlarge,
     borderRightWidth: 1,
-    backgroundColor: '#800000',
-    borderRightColor: '#ffffff20',
+    backgroundColor: Colors.primary,
+    borderRightColor: Colors.border.medium,
   },
   'sidebar-logo-section': {
     marginTop: 0,
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 16,
     textAlign: 'center',
-    color: '#ffffff',
+    color: Colors.text.inverse,
   },
   'sidebar-email-clickable': {
     minHeight: 24,
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   'sidebar-email-text': {
-    color: '#ffffff',
+    color: Colors.text.inverse,
     fontSize: Typography.sidebarEmail,
   },
   'sidebar-menu-item': {
@@ -100,19 +100,19 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.medium,
     paddingHorizontal: Spacing.medium,
     borderBottomWidth: 1,
-    borderBottomColor: '#ffffff20',
+    borderBottomColor: Colors.border.medium,
   },
   'sidebar-menu-text': {
     fontSize: Typography.sidebarItem,
     marginLeft: Spacing.large,
-    color: '#ffffff',
+    color: Colors.text.inverse,
   },
   'sidebar-menu-icon': {
     width: 20,
     height: 20,
   },
   'sidebar-notification-badge': {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: Colors.status.error,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
   },
   'sidebar-badge-text': {
-    color: '#fff',
+    color: Colors.text.inverse,
     fontSize: 10,
     fontWeight: 'bold',
   },

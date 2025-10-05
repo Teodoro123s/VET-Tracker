@@ -64,7 +64,7 @@ function AppContent() {
   const isClientRoute = pathname.startsWith('/client/');
   
   // Routes that should have no sidebar
-  const noSidebarRoutes = pathname === '/server/superadmin' || pathname === '/server/subscriptions' || pathname === '/server/subscription-periods' || pathname === '/server/transaction-history' || pathname === '/server/superadmin-dashboard' || pathname === '/auth/admin-login' || pathname === '/auth/superadmin-login' || pathname === '/veterinarian/mobile-login' || pathname === '/auth/login' || pathname === '/login' || pathname === '/' || pathname.startsWith('/veterinarian/');
+  const noSidebarRoutes = pathname === '/server/superadmin' || pathname === '/server/subscriptions' || pathname === '/server/subscription-periods' || pathname === '/server/transaction-history' || pathname === '/server/superadmin-dashboard' || pathname === '/auth/admin-login' || pathname === '/veterinarian/mobile-login' || pathname === '/auth/login' || pathname === '/login' || pathname === '/' || pathname.startsWith('/veterinarian/');
   
   const showMainSidebar = !noSidebarRoutes;
   const showBottomMenu = isVetRoute;
@@ -134,7 +134,6 @@ function AppContent() {
             <Stack.Screen name="veterinarian/vet-profile" />
             <Stack.Screen name="veterinarian/mobile-login" />
             <Stack.Screen name="auth/admin-login" />
-            <Stack.Screen name="auth/superadmin-login" />
 
             <Stack.Screen name="+not-found" />
           </Stack>

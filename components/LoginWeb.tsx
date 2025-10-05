@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../contexts/AuthContext';
 import ForgotPasswordModal from './ForgotPasswordModal';
+import { Colors } from '../constants/Colors';
 
 export default function LoginWeb() {
   const router = useRouter();
@@ -41,6 +42,29 @@ export default function LoginWeb() {
 
     setIsLoading(true);
     try {
+      // Check superadmins collection first
+      const superAdminQuery = query(collection(db, 'superadmins'), where('email', '==', username.trim()));
+      const superAdminSnapshot = await getDocs(superAdminQuery);
+      
+      if (!superAdminSnapshot.empty) {
+        const superAdminData = superAdminSnapshot.docs[0].data();
+        
+        if (superAdminData.password !== password) {
+          setErrorMessage('Incorrect password. Please try again.');
+          return;
+        }
+        
+        await AsyncStorage.setItem('currentUser', JSON.stringify({
+          email: superAdminData.email,
+          role: 'superadmin',
+          name: superAdminData.name
+        }));
+        
+        await checkAuthState();
+        router.replace('/server/superadmin');
+        return;
+      }
+      
       // Check in tenants collection for user credentials
       const q = query(collection(db, 'tenants'), where('email', '==', username.trim()));
       const querySnapshot = await getDocs(q);
@@ -78,13 +102,19 @@ export default function LoginWeb() {
       // Update auth context immediately
       await checkAuthState();
       
-      // Route based on role or email
+      // Restrict mobile accounts from web login
+      if (userData.role === 'veterinarian' || userData.role === 'staff') {
+        setErrorMessage('Mobile accounts cannot access web interface. Please use mobile login.');
+        return;
+      }
+      
+      // Route based on role
       if (username.includes('superadmin') || userData.role === 'superadmin') {
-        router.replace('/superadmin');
-      } else if (userData.role === 'staff') {
-        router.replace('/staff-dashboard');
+        router.replace('/server/superadmin');
+      } else if (userData.role === 'admin') {
+        router.replace('/client/dashboard');
       } else {
-        router.replace('/dashboard');
+        setErrorMessage('Invalid account type for web access.');
       }
       
     } catch (error) {
@@ -100,9 +130,9 @@ export default function LoginWeb() {
       <View style={styles.loginCard}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Image source={require('@/assets/logo.png')} style={styles.logo} />
+            <Image source={require('@/assets/logo-black.png')} style={styles.logo} />
           </View>
-          <Text style={styles.title}>VetCare</Text>
+
           <Text style={styles.subtitle}>Veterinary Management System</Text>
         </View>
 
@@ -113,12 +143,17 @@ export default function LoginWeb() {
             </View>
           ) : null}
           
-          <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={18} color="#666" style={styles.inputIcon} />
+          <LinearGradient
+            colors={['#f8f9fa', '#e9ecef']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.inputContainer}
+          >
+            <Ionicons name="mail-outline" size={18} color={Colors.text.muted} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Email address (e.g., clinic@gmail.com)"
-              placeholderTextColor="#bbb"
+              placeholderTextColor={Colors.text.muted}
               value={username}
               onChangeText={(text) => {
                 setUsername(text);
@@ -128,14 +163,19 @@ export default function LoginWeb() {
               keyboardType="email-address"
               editable={!isLoading}
             />
-          </View>
+          </LinearGradient>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={18} color="#666" style={styles.inputIcon} />
+          <LinearGradient
+            colors={['#f8f9fa', '#e9ecef']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.inputContainer}
+          >
+            <Ionicons name="lock-closed-outline" size={18} color={Colors.text.muted} style={styles.inputIcon} />
             <TextInput
               style={[styles.input, styles.passwordInput]}
               placeholder="Password"
-              placeholderTextColor="#bbb"
+              placeholderTextColor={Colors.text.muted}
               value={password}
               onChangeText={(text) => {
                 setPassword(text);
@@ -153,10 +193,10 @@ export default function LoginWeb() {
               <Ionicons 
                 name={showPassword ? "eye-off-outline" : "eye-outline"} 
                 size={18} 
-                color="#666" 
+                color={Colors.text.muted} 
               />
             </TouchableOpacity>
-          </View>
+          </LinearGradient>
 
           <TouchableOpacity 
             style={[styles.loginButton, isLoading && styles.loginButtonDisabled]} 
@@ -189,22 +229,24 @@ export default function LoginWeb() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f7fa',
+    backgroundColor: '#F7FAFC',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   loginCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 40,
     width: '100%',
     maxWidth: 400,
-    shadowColor: '#000',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
   },
   header: {
     alignItems: 'center',
@@ -225,39 +267,41 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#800000',
+    color: Colors.primary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.text.secondary,
     textAlign: 'center',
   },
   formContainer: {
     width: '100%',
   },
   errorContainer: {
-    backgroundColor: '#fee',
-    borderColor: '#fcc',
+    backgroundColor: Colors.status.error + '20',
+    borderColor: Colors.status.error,
     borderWidth: 1,
     borderRadius: 6,
     padding: 12,
     marginBottom: 16,
   },
   errorText: {
-    color: '#c33',
+    color: Colors.status.error,
     fontSize: 14,
     textAlign: 'center',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
     borderRadius: 8,
     marginBottom: 16,
     paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   inputIcon: {
     marginRight: 12,
@@ -266,7 +310,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 14,
-    color: '#333',
+    color: Colors.text.primary,
   },
   passwordInput: {
     paddingRight: 40,
@@ -277,17 +321,17 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   loginButton: {
-    backgroundColor: '#800000',
+    backgroundColor: Colors.primary,
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 8,
   },
   loginButtonDisabled: {
-    backgroundColor: '#cc9999',
+    backgroundColor: Colors.interactive.disabled,
   },
   loginButtonText: {
-    color: '#fff',
+    color: Colors.text.inverse,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -296,7 +340,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   forgotPasswordText: {
-    color: '#800000',
+    color: Colors.secondary,
     fontSize: 14,
     fontWeight: '500',
   },

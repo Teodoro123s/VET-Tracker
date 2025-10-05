@@ -24,8 +24,20 @@ export default function MobileLogin() {
       const result = await login(email.trim(), password);
       
       if (result.success) {
-        // Route all mobile users to blue veterinarian interface
-        router.replace('/veterinarian/vet-mobile');
+        const userRole = result.user?.role;
+        
+        // Restrict client/admin accounts from mobile login
+        if (userRole === 'admin' || userRole === 'superadmin') {
+          Alert.alert('Access Denied', 'Client accounts cannot access mobile interface. Please use web login.');
+          return;
+        }
+        
+        // Only veterinarian and staff can access mobile
+        if (userRole === 'veterinarian' || userRole === 'staff') {
+          router.replace('/veterinarian/vet-mobile');
+        } else {
+          Alert.alert('Access Denied', 'Invalid account type for mobile access.');
+        }
       } else {
         Alert.alert('Login Failed', result.error || 'Invalid credentials');
       }
@@ -40,7 +52,7 @@ export default function MobileLogin() {
     <View style={styles.container}>
       <View style={styles.loginCard}>
         <View style={styles.logoContainer}>
-          <Image source={require('@/assets/logo.png')} style={styles.logo} />
+          <Image source={require('@/assets/logo-black.png')} style={styles.logo} />
         </View>
         <Text style={styles.title}>Vet Clinic Mobile</Text>
         <Text style={styles.subtitle}>Sign in to continue</Text>

@@ -6,6 +6,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { getCustomers, getAppointments, getVeterinarians } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
 import { useRouter } from 'expo-router';
+import { Colors } from '@/constants/Colors';
 
 export default function Dashboard() {
   const { userEmail } = useTenant();
@@ -55,28 +56,28 @@ export default function Dashboard() {
       title: 'Total Customers',
       value: stats.totalCustomers,
       icon: 'people',
-      color: '#4CAF50',
+      color: Colors.status.success,
       route: '/client/customers'
     },
     {
       title: 'Total Appointments',
       value: stats.totalAppointments,
       icon: 'calendar',
-      color: '#2196F3',
+      color: Colors.status.info,
       route: '/client/appointments'
     },
     {
       title: 'Today\'s Appointments',
       value: stats.todayAppointments,
       icon: 'today',
-      color: '#FF9800',
+      color: Colors.status.warning,
       route: '/client/appointments'
     },
     {
       title: 'Veterinarians',
       value: stats.totalVeterinarians,
       icon: 'medical',
-      color: '#9C27B0',
+      color: Colors.secondary,
       route: '/client/veterinarians'
     }
   ];
@@ -160,17 +161,17 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: Colors.background,
   },
   header: {
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: Colors.border.light,
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.text.secondary,
     marginTop: 4,
   },
   content: {
@@ -187,16 +188,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
     borderLeftWidth: 4,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
   },
   cardContent: {
     flexDirection: 'row',
@@ -209,11 +212,11 @@ const styles = StyleSheet.create({
   cardValue: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#333',
+    color: Colors.text.primary,
   },
   cardTitle: {
     fontSize: 16,
-    color: '#666',
+    color: Colors.text.secondary,
     marginTop: 4,
   },
   cardIcon: {
@@ -224,9 +227,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   quickActions: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 20,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
   },
   sectionTitle: {
     marginBottom: 16,
@@ -240,13 +245,15 @@ const styles = StyleSheet.create({
     width: '48%',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: Colors.card,
     borderRadius: 12,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
   },
   actionText: {
     fontSize: 14,
-    color: '#333',
+    color: Colors.text.primary,
     marginTop: 8,
     textAlign: 'center',
   },

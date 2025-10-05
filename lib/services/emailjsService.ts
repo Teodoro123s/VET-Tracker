@@ -11,10 +11,22 @@ interface EmailJSConfig {
 class EmailJSService {
   private config: EmailJSConfig = {
     serviceId: 'service_zefpsar',
-    templateId: 'template_hoxe5k7',
-    publicKey: process.env.EMAILJS_PUBLIC_KEY || '',
+    templateId: 'template_6w1b0xi', // Password reset template
+    publicKey: process.env.EMAILJS_PUBLIC_KEY || 'ReUQK_p4eYlnZileo',
     privateKey: process.env.EMAILJS_PRIVATE_KEY || '',
   };
+
+  // Method to send password reset emails
+  async sendPasswordReset(email: string, newPassword: string): Promise<boolean> {
+    const templateParams = {
+      to_email: email,
+      from_name: 'VetCare System',
+      password: newPassword,
+      message: `Your new password is: ${newPassword}\n\nPlease log in and change this password immediately.`,
+      subject: 'VetCare - Password Reset'
+    };
+    return await this.sendEmail(templateParams);
+  }
 
   async sendEmail(templateParams: any): Promise<boolean> {
     try {

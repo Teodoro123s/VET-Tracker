@@ -3,33 +3,18 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTenant } from '@/contexts/TenantContext';
 
 export default function LogoutScreen() {
   const router = useRouter();
-  const { logout, user } = useAuth();
-  const { userRole } = useTenant();
-
-  const getLoginRoute = () => {
-    const role = user?.role || userRole;
-    switch (role) {
-      case 'superadmin':
-        return '/auth/superadmin-login';
-      case 'veterinarian':
-        return '/veterinarian/mobile-login';
-      case 'admin':
-      default:
-        return '/auth/admin-login';
-    }
-  };
+  const { logout } = useAuth();
 
   const handleLogout = async () => {
     try {
       await logout();
-      router.replace(getLoginRoute());
+      router.replace('/auth/admin-login');
     } catch (error) {
       console.error('Error during logout:', error);
-      router.replace(getLoginRoute());
+      router.replace('/auth/admin-login');
     }
   };
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../constants/Colors';
 
 export default function VetBottomMenu() {
   const router = useRouter();
@@ -25,7 +26,7 @@ export default function VetBottomMenu() {
           <Ionicons 
             name={item.icon as any} 
             size={24} 
-            color={pathname === item.route ? '#800020' : '#666'} 
+            color={pathname === item.route ? Colors.primary : Colors.text.secondary} 
           />
           <Text style={[styles.menuText, pathname === item.route && styles.activeText]}>
             {item.name}
@@ -39,9 +40,9 @@ export default function VetBottomMenu() {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: Colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: Colors.border.light,
     paddingVertical: 8,
     paddingHorizontal: 4,
     paddingBottom: 8,
@@ -53,11 +54,11 @@ const styles = StyleSheet.create({
   },
   menuText: {
     fontSize: 12,
-    color: '#666',
+    color: Colors.text.secondary,
     marginTop: 2,
   },
   activeText: {
-    color: '#800020',
+    color: Colors.primary,
     fontWeight: '600',
   },
 });

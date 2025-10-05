@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTenant } from '@/contexts/TenantContext';
 import { getVeterinarianByEmail, generateOwnPassword } from '@/lib/services/firebaseService';
 import { useRouter } from 'expo-router';
+import { Colors } from '@/constants/Colors';
 
 export default function VetProfile() {
   const { userEmail } = useTenant();
@@ -48,28 +49,28 @@ export default function VetProfile() {
           <Text style={styles.sectionTitle}>Contact & Professional Information</Text>
           {console.log('Rendering with vetData:', vetData)}
           <View style={styles.detailRow}>
-            <Ionicons name="mail" size={20} color="#800020" />
+            <Ionicons name="mail" size={20} color={Colors.primary} />
             <View style={styles.detailText}>
               <Text style={styles.detailLabel}>Email</Text>
               <Text style={styles.detailValue}>{vetData?.email || userEmail || 'Not provided'}</Text>
             </View>
           </View>
           <View style={styles.detailRow}>
-            <Ionicons name="call" size={20} color="#800020" />
+            <Ionicons name="call" size={20} color={Colors.primary} />
             <View style={styles.detailText}>
               <Text style={styles.detailLabel}>Phone</Text>
               <Text style={styles.detailValue}>{vetData?.phone || vetData?.phoneNumber || 'Not provided'}</Text>
             </View>
           </View>
           <View style={styles.detailRow}>
-            <Ionicons name="medical" size={20} color="#800020" />
+            <Ionicons name="medical" size={20} color={Colors.primary} />
             <View style={styles.detailText}>
               <Text style={styles.detailLabel}>Specialization</Text>
               <Text style={styles.detailValue}>{vetData?.specialization || vetData?.role || 'Not provided'}</Text>
             </View>
           </View>
           <View style={styles.detailRow}>
-            <Ionicons name="document-text" size={20} color="#800020" />
+            <Ionicons name="document-text" size={20} color={Colors.primary} />
             <View style={styles.detailText}>
               <Text style={styles.detailLabel}>License</Text>
               <Text style={styles.detailValue}>{vetData?.license || vetData?.licenseNumber || vetData?.tenantId || 'Not provided'}</Text>
@@ -98,10 +99,10 @@ export default function VetProfile() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f7fa',
+    backgroundColor: Colors.background,
   },
   profileHeader: {
-    backgroundColor: '#800020',
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     paddingVertical: 20,
     paddingHorizontal: 20,
@@ -118,7 +119,7 @@ const styles = StyleSheet.create({
   profileName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: Colors.text.inverse,
     marginBottom: 2,
   },
   profileEmail: {
@@ -129,20 +130,22 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   detailCard: {
-    backgroundColor: '#fff',
+    backgroundColor: Colors.surface,
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: Colors.text.primary,
     marginBottom: 16,
   },
   detailRow: {
@@ -156,16 +159,16 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.text.secondary,
     marginBottom: 2,
   },
   detailValue: {
     fontSize: 16,
-    color: '#333',
+    color: Colors.text.primary,
     fontWeight: '500',
   },
   logoutButton: {
-    backgroundColor: '#ff4444',
+    backgroundColor: Colors.status.error,
     margin: 20,
     padding: 16,
     borderRadius: 12,
@@ -174,7 +177,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoutText: {
-    color: 'white',
+    color: Colors.text.inverse,
     fontSize: 16,
     fontWeight: 'bold',
     marginLeft: 8,
