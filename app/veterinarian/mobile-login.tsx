@@ -52,7 +52,7 @@ export default function MobileLogin() {
     <View style={styles.container}>
       <View style={styles.loginCard}>
         <View style={styles.logoContainer}>
-          <Image source={require('@/assets/logo-black.png')} style={styles.logo} />
+          <Image source={require('@/assets/Maroon logo.png')} style={styles.logo} />
         </View>
         <Text style={styles.title}>Vet Clinic Mobile</Text>
         <Text style={styles.subtitle}>Sign in to continue</Text>
@@ -117,7 +117,7 @@ export default function MobileLogin() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f7fa',
+    backgroundColor: '#800020',
     justifyContent: 'center',
     paddingHorizontal: 40,
   },
@@ -143,13 +143,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2c5aa0',
+    color: '#800020',
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#800020',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   loginButton: {
-    backgroundColor: '#2c5aa0',
+    backgroundColor: '#800020',
     borderRadius: 8,
     padding: 15,
     alignItems: 'center',
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   forgotPasswordText: {
-    color: '#2c5aa0',
+    color: '#800020',
     fontSize: 14,
     fontWeight: '600',
   },

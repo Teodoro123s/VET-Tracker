@@ -1,18 +1,18 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Typography, Spacing, MaroonThemeProtocol } from '@/constants/Typography';
 
-export default function SuperAdminSidebar() {
+export default function VetSidebar() {
   const router = useRouter();
-  const [ownerEmail] = useState('owner@vetclinic.com');
 
   const menuItems = [
-    { name: 'Dashboard', icon: require('@/assets/dashboard.png'), route: '/server/superadmin-dashboard' },
-    { name: 'Tenants', icon: require('@/assets/customers.png'), route: '/server/superadmin' },
-    { name: 'Subscriptions', icon: require('@/assets/notifications.png'), route: '/server/subscriptions' },
-    { name: 'Subscription Periods', icon: require('@/assets/appointments.png'), route: '/server/subscription-periods' },
-    { name: 'Transaction History', icon: require('@/assets/dashboard.png'), route: '/server/transaction-history' },
+    { name: 'Dashboard', icon: require('@/assets/dashboard.png'), route: '/veterinarian/vet-mobile' },
+    { name: 'Appointments', icon: require('@/assets/appointments.png'), route: '/veterinarian/vet-appointments' },
+    { name: 'Customers', icon: require('@/assets/customers.png'), route: '/veterinarian/vet-customers' },
+    { name: 'Calendar', icon: require('@/assets/appointments.png'), route: '/veterinarian/vet-calendar' },
+    { name: 'Notifications', icon: require('@/assets/notifications.png'), route: '/veterinarian/vet-notifications' },
+    { name: 'Profile', icon: require('@/assets/veterinarians.png'), route: '/veterinarian/vet-profile' },
     { name: 'Logout', icon: require('@/assets/logout.png'), route: '/shared/logout' },
   ];
 
@@ -20,7 +20,7 @@ export default function SuperAdminSidebar() {
     <View style={styles.sidebar}>
       <View style={styles.logoSection}>
         <Image source={require('@/assets/logo.png')} style={styles.logo} />
-        <Text style={styles.subtitle}>System Owner</Text>
+        <Text style={styles.subtitle}>Veterinarian</Text>
       </View>
       {menuItems.map((item) => (
         <TouchableOpacity
@@ -43,8 +43,8 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingHorizontal: Spacing.xlarge,
     borderRightWidth: 1,
-    backgroundColor: '#800020',
-    borderRightColor: '#A0002A',
+    backgroundColor: MaroonThemeProtocol.colors.veterinarian.primary,
+    borderRightColor: MaroonThemeProtocol.colors.veterinarian.secondary,
     zIndex: 9999,
     position: 'relative',
   },
@@ -59,28 +59,11 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
     marginBottom: 0,
   },
-  title: {
-    fontSize: Typography.sidebarTitle,
-    fontWeight: 'bold',
-    marginBottom: Spacing.gapTiny,
-    textAlign: 'center',
-    color: '#ffffff',
-  },
   subtitle: {
     fontSize: Typography.small,
     marginBottom: Spacing.large,
     textAlign: 'center',
-    color: '#BDC3C7',
-  },
-  emailContainer: {
-    height: 40,
-    paddingHorizontal: Spacing.medium,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emailText: {
-    color: '#ffffff',
-    fontSize: Typography.sidebarEmail,
+    color: '#FFFFFF',
   },
   menuItem: {
     flexDirection: 'row',
@@ -88,12 +71,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.medium,
     paddingHorizontal: Spacing.medium,
     borderBottomWidth: 1,
-    borderBottomColor: '#A0002A',
+    borderBottomColor: MaroonThemeProtocol.colors.veterinarian.secondary,
   },
   menuText: {
     fontSize: Typography.sidebarItem,
     marginLeft: Spacing.large,
-    color: '#ffffff',
+    color: '#FFFFFF',
   },
   icon: {
     width: 20,

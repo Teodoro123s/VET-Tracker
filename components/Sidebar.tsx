@@ -4,7 +4,7 @@ import { Colors } from '@/constants/Colors';
 import { useRouter } from 'expo-router';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useTenant } from '@/contexts/TenantContext';
-import { Typography, Spacing } from '@/constants/Typography';
+import { Typography, Spacing, MaroonThemeProtocol } from '@/constants/Typography';
 
 export default function Sidebar() {
   const router = useRouter();
@@ -62,8 +62,8 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingHorizontal: Spacing.xlarge,
     borderRightWidth: 1,
-    backgroundColor: Colors.primary,
-    borderRightColor: Colors.border.medium,
+    backgroundColor: MaroonThemeProtocol.colors.client.primary,
+    borderRightColor: MaroonThemeProtocol.colors.client.secondary,
   },
   'sidebar-logo-section': {
     marginTop: 0,
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.medium,
     paddingHorizontal: Spacing.medium,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border.medium,
+    borderBottomColor: MaroonThemeProtocol.colors.client.secondary,
   },
   'sidebar-menu-text': {
     fontSize: Typography.sidebarItem,

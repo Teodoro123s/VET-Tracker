@@ -1,41 +1,99 @@
+// MAROON THEME PROTOCOL - Universal Design System
 export const Colors = {
-  // Primary ash-gray palette
-  primary: '#2D3748',      // Dark charcoal
-  secondary: '#4A5568',    // Medium gray
-  accent: '#718096',       // Light gray
+  // Primary maroon palette
+  primary: '#800020',      // Primary maroon
+  secondary: '#A0002A',    // Light maroon
+  accent: '#D4002F',       // Lighter maroon
   
   // Background colors
-  background: '#F7FAFC',   // Very light gray (almost white)
+  background: '#FFFFFF',   // Pure white
   surface: '#FFFFFF',      // Pure white
-  card: '#EDF2F7',         // Light ash gray
+  card: '#FFFFFF',         // Pure white
+  
+  // Maroon variations
+  maroon: {
+    dark: '#5D0017',       // Dark maroon (SuperAdmin)
+    primary: '#800020',    // Primary maroon (Client)
+    light: '#A0002A',      // Light maroon (Veterinarian)
+    lighter: '#D4002F',    // Lighter maroon
+    pale: '#F5E6EA',       // Very light maroon
+  },
   
   // Text colors
   text: {
-    primary: '#1A202C',    // Very dark gray (almost black)
-    secondary: '#4A5568',  // Medium gray
-    muted: '#718096',      // Light gray
+    primary: '#800020',    // Maroon text
+    secondary: '#A0002A',  // Light maroon text
+    muted: '#718096',      // Gray text
     inverse: '#FFFFFF',    // White text
+    dark: '#1A202C',       // Dark gray
   },
   
   // Border colors
   border: {
-    light: '#E2E8F0',     // Very light gray
-    medium: '#CBD5E0',    // Light gray
-    dark: '#A0AEC0',      // Medium gray
+    light: '#F5E6EA',     // Light maroon border
+    medium: '#D4002F',    // Medium maroon border
+    dark: '#800020',      // Dark maroon border
   },
   
-  // Status colors (muted versions)
+  // Status colors
   status: {
-    success: '#48BB78',   // Muted green
-    warning: '#ED8936',   // Muted orange
-    error: '#F56565',     // Muted red
-    info: '#4299E1',      // Muted blue
+    success: '#10B981',   // Green
+    warning: '#F59E0B',   // Orange
+    error: '#DC2626',     // Maroon-tinted red
+    info: '#800020',      // Maroon info
   },
   
   // Interactive states
   interactive: {
-    hover: '#EDF2F7',     // Light hover
-    pressed: '#E2E8F0',   // Pressed state
-    disabled: '#CBD5E0',  // Disabled state
+    hover: '#F5E6EA',     // Light maroon hover
+    pressed: '#D4002F',   // Maroon pressed
+    disabled: '#E5E7EB',  // Gray disabled
+  },
+  
+  // Interface-specific colors
+  interfaces: {
+    superadmin: {
+      primary: '#5D0017',   // Dark maroon
+      secondary: '#800020', // Primary maroon
+      background: '#FFFFFF',
+    },
+    client: {
+      primary: '#800020',   // Primary maroon
+      secondary: '#A0002A', // Light maroon
+      background: '#FFFFFF',
+    },
+    veterinarian: {
+      primary: '#A0002A',   // Light maroon
+      secondary: '#D4002F', // Lighter maroon
+      background: '#FFFFFF',
+    }
+  }
+};
+
+// Maroon Theme Protocol Components
+export const MaroonTheme = {
+  button: {
+    primary: {
+      backgroundColor: '#800020',
+      color: '#FFFFFF',
+      borderColor: '#800020',
+    },
+    secondary: {
+      backgroundColor: '#FFFFFF',
+      color: '#800020',
+      borderColor: '#800020',
+    }
+  },
+  
+  sidebar: {
+    background: '#800020',
+    text: '#FFFFFF',
+    border: '#A0002A',
+  },
+  
+  header: {
+    background: '#FFFFFF',
+    text: '#800020',
+    border: '#F5E6EA',
   }
 };

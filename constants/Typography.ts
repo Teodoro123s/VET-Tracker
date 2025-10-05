@@ -37,6 +37,9 @@ export const Typography = {
   iconText: 14,
 };
 
+// Export maroon theme protocol
+export { MaroonThemeProtocol } from './MaroonTheme';
+
 export const Spacing = {
   // Margins
   tiny: 4,
