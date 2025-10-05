@@ -1,16 +1,16 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { getAppointments, updateAppointment, getMedicalRecords, addMedicalRecord } from '../../lib/services/firebaseService';
-import { useTenant } from '../../contexts/TenantContext';
+import { getAppointments, updateAppointment, deleteAppointment } from '../../lib/services/firebaseService';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function VetAppointments() {
   const router = useRouter();
-  const { userEmail } = useTenant();
+  const { user } = useAuth();
   
   const [appointments, setAppointments] = useState([]);
   const [filteredAppointments, setFilteredAppointments] = useState([]);
-  const [selectedFilter, setSelectedFilter] = useState('Today');
+  const [selectedFilter, setSelectedFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -24,14 +24,48 @@ export default function VetAppointments() {
 
   const loadAppointments = async () => {
     try {
-      const allAppointments = await getAppointments(userEmail);
+      const allAppointments = await getAppointments(user?.email);
       
       // Filter appointments for current veterinarian
       const myAppointments = allAppointments.filter(apt => 
-        apt.veterinarian === userEmail || apt.staff === userEmail
+        apt.veterinarian === user?.email || apt.staff === user?.email ||
+        (apt.veterinarian && apt.veterinarian.includes('Dr.'))
       );
       
-      setAppointments(myAppointments);
+      // Smart status assignment
+      const now = new Date();
+      const smartAppointments = myAppointments.map(appointment => {
+        // Keep completed/cancelled status unchanged
+        if (appointment.status === 'Completed' || appointment.status === 'completed' || appointment.status === 'cancelled') {
+          return { ...appointment, status: 'Completed' };
+        }
+        
+        let appointmentDateTime;
+        if (appointment.appointmentDate?.seconds) {
+          appointmentDateTime = new Date(appointment.appointmentDate.seconds * 1000);
+        } else {
+          appointmentDateTime = new Date(appointment.appointmentDate || appointment.dateTime);
+        }
+        
+        if (isNaN(appointmentDateTime.getTime())) {
+          return { ...appointment, status: 'Pending' };
+        }
+        
+        // Smart status assignment: Due = overdue, Pending = future, Completed = done
+        const timeDiff = appointmentDateTime.getTime() - now.getTime();
+        const hoursDiff = timeDiff / (1000 * 60 * 60);
+        
+        let newStatus;
+        if (hoursDiff <= 0) {
+          newStatus = 'Due'; // Overdue appointments
+        } else {
+          newStatus = 'Pending'; // Future appointments
+        }
+        
+        return { ...appointment, status: newStatus };
+      });
+      
+      setAppointments(smartAppointments);
     } catch (error) {
       console.error('Error loading appointments:', error);
     } finally {
@@ -42,34 +76,10 @@ export default function VetAppointments() {
   const filterAppointments = () => {
     let filtered = appointments;
 
-    // Filter by time period
-    const today = new Date();
-    const todayStr = today.toDateString();
-    
-    switch (selectedFilter) {
-      case 'Today':
-        filtered = appointments.filter(apt => 
-          apt.dateTime?.includes('Today') || 
-          new Date(apt.date).toDateString() === todayStr
-        );
-        break;
-      case 'This Week':
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - today.getDay());
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        
-        filtered = appointments.filter(apt => {
-          const aptDate = new Date(apt.date);
-          return aptDate >= weekStart && aptDate <= weekEnd;
-        });
-        break;
-      case 'Pending':
-        filtered = appointments.filter(apt => apt.status === 'Pending');
-        break;
-      case 'Completed':
-        filtered = appointments.filter(apt => apt.status === 'Completed');
-        break;
+    // Filter by status
+    if (selectedFilter !== 'All') {
+      const filterStatus = selectedFilter === 'Completed' ? 'Completed' : selectedFilter;
+      filtered = appointments.filter(apt => apt.status === filterStatus);
     }
 
     // Filter by search term
@@ -77,16 +87,52 @@ export default function VetAppointments() {
       filtered = filtered.filter(apt =>
         apt.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         apt.petName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        apt.service?.toLowerCase().includes(searchTerm.toLowerCase())
+        apt.reason?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
+
+    // Smart sorting based on filter
+    const now = new Date();
+    filtered.sort((a, b) => {
+      let dateA, dateB;
+      
+      if (a.appointmentDate?.seconds) {
+        dateA = new Date(a.appointmentDate.seconds * 1000);
+      } else {
+        dateA = new Date(a.appointmentDate || a.dateTime);
+      }
+      
+      if (b.appointmentDate?.seconds) {
+        dateB = new Date(b.appointmentDate.seconds * 1000);
+      } else {
+        dateB = new Date(b.appointmentDate || b.dateTime);
+      }
+      
+      if (selectedFilter === 'Pending') {
+        return dateA.getTime() - dateB.getTime();
+      } else if (selectedFilter === 'Due') {
+        const isAOverdue = dateA.getTime() < now.getTime();
+        const isBOverdue = dateB.getTime() < now.getTime();
+        
+        if (isAOverdue && !isBOverdue) return -1;
+        if (!isAOverdue && isBOverdue) return 1;
+        
+        return dateA.getTime() - dateB.getTime();
+      } else if (selectedFilter === 'Completed') {
+        return dateB.getTime() - dateA.getTime();
+      } else {
+        // All: Sort by status priority (Due, Pending, Completed)
+        const statusPriority = { 'Due': 0, 'Pending': 1, 'Completed': 2 };
+        return (statusPriority[a.status] || 3) - (statusPriority[b.status] || 3);
+      }
+    });
 
     setFilteredAppointments(filtered);
   };
 
   const updateAppointmentStatus = async (appointmentId, newStatus) => {
     try {
-      await updateAppointment(userEmail, appointmentId, { status: newStatus });
+      await updateAppointment(user?.email, appointmentId, { status: newStatus });
       loadAppointments();
       Alert.alert('Success', `Appointment ${newStatus.toLowerCase()}`);
     } catch (error) {
@@ -94,14 +140,35 @@ export default function VetAppointments() {
     }
   };
 
+  const handleDeleteAppointment = async (appointmentId) => {
+    Alert.alert(
+      'Delete Appointment',
+      'Are you sure you want to delete this appointment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAppointment(user?.email, appointmentId);
+              loadAppointments();
+            } catch (error) {
+              console.error('Error deleting appointment:', error);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Pending': return '#ff9800';
-      case 'Approved': return '#4caf50';
-      case 'Due': return '#f44336';
-      case 'Completed': return '#2196f3';
-      case 'Cancelled': return '#9e9e9e';
-      default: return '#9e9e9e';
+      case 'Pending': return '#28a745';
+      case 'Due': return '#dc3545';
+      case 'Completed': return '#007bff';
+      case 'cancelled': return '#6c757d';
+      default: return '#6c757d';
     }
   };
 
@@ -115,31 +182,23 @@ export default function VetAppointments() {
 
   return (
     <View style={styles.container}>
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search patients, pets, or services..."
-          value={searchTerm}
-          onChangeText={setSearchTerm}
-        />
-      </View>
 
-      {/* Filter Tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterContainer}>
-        {['Today', 'This Week', 'Pending', 'Completed'].map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            style={[styles.filterTab, selectedFilter === filter && styles.activeFilterTab]}
-            onPress={() => setSelectedFilter(filter)}
-          >
-            <Text style={[styles.filterText, selectedFilter === filter && styles.activeFilterText]}>
-              {filter}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+
+      <View style={styles.filterHeader}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+          {['All', 'Pending', 'Due', 'Completed'].map((filter) => (
+            <TouchableOpacity
+              key={filter}
+              style={[styles.filterButton, selectedFilter === filter && styles.filterButtonActive]}
+              onPress={() => setSelectedFilter(filter)}
+            >
+              <Text style={[styles.filterText, selectedFilter === filter && styles.filterTextActive]}>
+                {filter}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
 
       {/* Appointments List */}
       <ScrollView style={styles.appointmentsList} showsVerticalScrollIndicator={false}>
@@ -149,7 +208,16 @@ export default function VetAppointments() {
           </View>
         ) : (
           filteredAppointments.map((appointment) => (
-            <View key={appointment.id} style={styles.appointmentCard}>
+            <TouchableOpacity 
+              key={appointment.id} 
+              style={styles.appointmentCard}
+              onPress={() => {
+                router.push({
+                  pathname: '/veterinarian/appointment-details',
+                  params: { appointmentData: JSON.stringify(appointment) }
+                });
+              }}
+            >
               <View style={styles.appointmentHeader}>
                 <View style={styles.timeContainer}>
                   <Text style={styles.appointmentTime}>
@@ -166,54 +234,30 @@ export default function VetAppointments() {
 
               <View style={styles.appointmentInfo}>
                 <Text style={styles.patientName}>{appointment.customerName}</Text>
-                <Text style={styles.petInfo}>{appointment.petName} - {appointment.service}</Text>
+                <Text style={styles.petInfo}>{appointment.petName} - {appointment.reason || appointment.service}</Text>
               </View>
 
               <View style={styles.appointmentActions}>
-                {appointment.status === 'Pending' && (
-                  <>
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.approveButton]}
-                      onPress={() => updateAppointmentStatus(appointment.id, 'Approved')}
-                    >
-                      <Text style={styles.actionButtonText}>Approve</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.cancelButton]}
-                      onPress={() => updateAppointmentStatus(appointment.id, 'Cancelled')}
-                    >
-                      <Text style={styles.actionButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-                
-                {(appointment.status === 'Approved' || appointment.status === 'Due') && (
+                {appointment.status !== 'Completed' && (
                   <>
                     <TouchableOpacity
                       style={[styles.actionButton, styles.completeButton]}
                       onPress={() => updateAppointmentStatus(appointment.id, 'Completed')}
                     >
-                      <Text style={styles.actionButtonText}>Complete</Text>
+                      <Text style={styles.actionButtonText}>Done</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      style={[styles.actionButton, styles.recordButton]}
-                      onPress={() => router.push(`/vet-medical-record?appointmentId=${appointment.id}`)}
+                      style={[styles.actionButton, styles.cancelButton]}
+                      onPress={() => handleDeleteAppointment(appointment.id)}
                     >
-                      <Text style={styles.actionButtonText}>Add Record</Text>
+                      <Text style={styles.actionButtonText}>Delete</Text>
                     </TouchableOpacity>
                   </>
                 )}
 
-                {appointment.status === 'Completed' && (
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.viewButton]}
-                    onPress={() => router.push(`/appointment-details?id=${appointment.id}`)}
-                  >
-                    <Text style={styles.actionButtonText}>View Details</Text>
-                  </TouchableOpacity>
-                )}
+
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>
@@ -231,15 +275,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffffff',
-    margin: 20,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderRadius: 12,
+    margin: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 2,
+    elevation: 2,
   },
   searchIcon: {
     width: 20,
@@ -252,95 +296,104 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  filterContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
+  filterHeader: {
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
-  filterTab: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginRight: 10,
+  filterScroll: {
+    flexGrow: 0,
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginRight: 12,
     borderRadius: 20,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#f0f0f0',
   },
-  activeFilterTab: {
-    backgroundColor: '#2c5aa0',
+  filterButtonActive: {
+    backgroundColor: '#2196F3',
   },
   filterText: {
     fontSize: 14,
-    fontWeight: '600',
     color: '#666',
+    fontWeight: '500',
   },
-  activeFilterText: {
-    color: '#ffffff',
+  filterTextActive: {
+    color: '#fff',
   },
   appointmentsList: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 15,
   },
   appointmentCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 2,
+    elevation: 2,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
   },
   appointmentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 3,
   },
   timeContainer: {
     flex: 1,
   },
   appointmentTime: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#2c5aa0',
+    color: '#800020',
   },
   appointmentDate: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
-    marginTop: 2,
+    marginTop: 1,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 15,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 9,
     fontWeight: 'bold',
     color: '#ffffff',
   },
   appointmentInfo: {
-    marginBottom: 16,
+    marginBottom: 6,
   },
   patientName: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   petInfo: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
   },
   appointmentActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    marginTop: 6,
+    gap: 8,
   },
   actionButton: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginHorizontal: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 4,
   },
   approveButton: {
     backgroundColor: '#4caf50',

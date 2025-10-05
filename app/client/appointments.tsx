@@ -120,8 +120,9 @@ export default function AppointmentsScreen() {
       const now = new Date();
       
       const smartSortedAppointments = appointmentsList.map(appointment => {
-        if (appointment.status === 'completed') {
-          return appointment;
+        // Keep completed/cancelled status unchanged
+        if (appointment.status === 'completed' || appointment.status === 'cancelled') {
+          return { ...appointment, status: appointment.status === 'completed' ? 'completed' : 'cancelled' };
         }
         
         let appointmentDateTime;
@@ -135,7 +136,17 @@ export default function AppointmentsScreen() {
           return { ...appointment, status: 'pending' };
         }
         
-        const newStatus = appointmentDateTime <= now ? 'due' : 'pending';
+        // Smart status assignment: due = overdue, pending = future, completed = done
+        const timeDiff = appointmentDateTime.getTime() - now.getTime();
+        const hoursDiff = timeDiff / (1000 * 60 * 60);
+        
+        let newStatus;
+        if (hoursDiff <= 0) {
+          newStatus = 'due'; // Overdue appointments
+        } else {
+          newStatus = 'pending'; // Future appointments
+        }
+        
         return { ...appointment, status: newStatus };
       });
       
@@ -603,7 +614,7 @@ export default function AppointmentsScreen() {
     );
   };
 
-  // Filter appointments by active status and search term
+  // Filter appointments by active status and search term with smart sorting
   const filteredAppointments = appointments
     .filter(appointment => {
       const matchesSearch = appointment.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -629,9 +640,23 @@ export default function AppointmentsScreen() {
         dateB = new Date(b.appointmentDate);
       }
       
+      // Smart sorting based on status
       if (activeStatusFilter === 'pending') {
+        // Pending: Sort by date ascending (earliest first)
+        return dateA.getTime() - dateB.getTime();
+      } else if (activeStatusFilter === 'due') {
+        // Due: Sort by urgency (overdue first, then by time)
+        const now = new Date();
+        const isAOverdue = dateA.getTime() < now.getTime();
+        const isBOverdue = dateB.getTime() < now.getTime();
+        
+        if (isAOverdue && !isBOverdue) return -1;
+        if (!isAOverdue && isBOverdue) return 1;
+        
+        // Both overdue or both upcoming, sort by time
         return dateA.getTime() - dateB.getTime();
       } else {
+        // Completed: Sort by completion date descending (most recent first)
         return dateB.getTime() - dateA.getTime();
       }
     });
@@ -836,93 +861,7 @@ export default function AppointmentsScreen() {
         </View>
         <View style={styles.content}>
           <View style={styles.tableContainer}>
-            <View style={styles.tableTopRow}>
-              <TouchableOpacity style={styles.returnButton} onPress={() => setSelectedAppointment(null)}>
-                <Text style={styles.returnButtonText}>←</Text>
-              </TouchableOpacity>
-              <Text style={styles.formDetailTitle}>Appointment Details</Text>
-              <View style={styles.categoryActions}>
-                <TouchableOpacity 
-                  style={styles.addRecordButton} 
-                  onPress={() => {
-                    setNewRecord({ category: '', formTemplate: '' });
-                    setShowAddRecordModal(true);
-                    recordSlideAnim.setValue(-350);
-                    Animated.timing(recordSlideAnim, {
-                      toValue: 0,
-                      duration: 300,
-                      useNativeDriver: false,
-                    }).start();
-                  }}
-                >
-                  <Text style={styles.addRecordButtonText}>+ Add Record</Text>
-                </TouchableOpacity>
-                {(selectedAppointment.status === 'pending' || selectedAppointment.status === 'due' || selectedAppointment.status === 'scheduled') && (
-                  <TouchableOpacity 
-                    style={styles.doneCategoryButton} 
-                    onPress={async () => {
-                      try {
-                        if (!user?.email || !selectedAppointment?.id) {
-                          Alert.alert('Error', 'Missing required information');
-                          return;
-                        }
-                        await updateAppointment(user.email, selectedAppointment.id, { 
-                          status: 'completed',
-                          completedAt: new Date()
-                        });
-                        setSelectedAppointment({
-                          ...selectedAppointment,
-                          status: 'completed',
-                          completedAt: new Date()
-                        });
-                        await loadAppointments();
-                        Alert.alert('Success', 'Appointment marked as done');
-                      } catch (error) {
-                        console.error('Failed to mark appointment as done:', error);
-                        Alert.alert('Error', 'Failed to mark appointment as done');
-                      }
-                    }}
-                  >
-                    <Text style={styles.doneCategoryButtonText}>Done</Text>
-                  </TouchableOpacity>
-                )}
-                {selectedAppointment.status !== 'completed' && (
-                  <TouchableOpacity 
-                    style={styles.deleteCategoryButton} 
-                    onPress={() => {
-                      Alert.alert(
-                        'Delete Appointment',
-                        'Are you sure you want to delete this appointment?',
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          {
-                            text: 'Delete',
-                            style: 'destructive',
-                            onPress: async () => {
-                              try {
-                                if (!user?.email || !selectedAppointment?.id) {
-                                  Alert.alert('Error', 'Missing required information');
-                                  return;
-                                }
-                                await deleteAppointment(user.email, selectedAppointment.id);
-                                setSelectedAppointment(null);
-                                await loadAppointments();
-                                Alert.alert('Success', 'Appointment deleted successfully');
-                              } catch (error) {
-                                console.error('Failed to delete appointment:', error);
-                                Alert.alert('Error', 'Failed to delete appointment');
-                              }
-                            }
-                          }
-                        ]
-                      );
-                    }}
-                  >
-                    <Text style={styles.deleteCategoryButtonText}>Delete</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
+
             <ScrollView style={styles.detailTable} showsVerticalScrollIndicator={false}>
               <View style={styles.detailTableHeader}>
                 <Text style={styles.detailHeaderCell}>Field</Text>
@@ -949,7 +888,7 @@ export default function AppointmentsScreen() {
                 <Text style={styles.detailCell}>{selectedAppointment.reason}</Text>
               </View>
               <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Veterinarian</Text>
+                <Text style={styles.detailCell}>Appointment Details</Text>
                 <Text style={styles.detailCell}>{selectedAppointment.veterinarian || 'Not assigned'}</Text>
               </View>
               <View style={styles.detailTableRow}>
@@ -1336,33 +1275,32 @@ export default function AppointmentsScreen() {
                         </View>
                       </TouchableOpacity>
                       <View style={styles.appointmentActions}>
-                        {(appointment.status === 'pending' || appointment.status === 'due' || appointment.status === 'scheduled') && (
-                          <TouchableOpacity 
-                            style={styles.calendarDoneButton}
-                            onPress={async () => {
-                              try {
-                                await updateAppointment(user.email, appointment.id, { 
-                                  status: 'completed',
-                                  completedAt: new Date()
-                                });
-                                await loadAppointments();
-                              } catch (error) {
-                                console.error('Failed to update appointment:', error);
-                              }
-                            }}
-                          >
-                            <Text style={styles.calendarDoneButtonText}>Done</Text>
-                          </TouchableOpacity>
-                        )}
-                        {appointment.status !== 'completed' && (
-                          <TouchableOpacity 
-                            style={styles.calendarDeleteButton}
-                            onPress={() => handleDeleteAppointment(appointment.id)}
-                          >
-                            <Text style={styles.calendarDeleteButtonText}>Delete</Text>
-                          </TouchableOpacity>
-                        )}
-                        {appointment.status === 'completed' && (
+                        {(appointment.status === 'pending' || appointment.status === 'due' || appointment.status === 'scheduled') ? (
+                          <>
+                            <TouchableOpacity 
+                              style={styles.calendarDoneButton}
+                              onPress={async () => {
+                                try {
+                                  await updateAppointment(user.email, appointment.id, { 
+                                    status: 'completed',
+                                    completedAt: new Date()
+                                  });
+                                  await loadAppointments();
+                                } catch (error) {
+                                  console.error('Failed to update appointment:', error);
+                                }
+                              }}
+                            >
+                              <Text style={styles.calendarDoneButtonText}>Done</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                              style={styles.calendarDeleteButton}
+                              onPress={() => handleDeleteAppointment(appointment.id)}
+                            >
+                              <Text style={styles.calendarDeleteButtonText}>Delete</Text>
+                            </TouchableOpacity>
+                          </>
+                        ) : (
                           <View style={styles.calendarCompletedBadge}>
                             <Text style={styles.calendarCompletedText}>Done</Text>
                           </View>
@@ -1380,21 +1318,25 @@ export default function AppointmentsScreen() {
           <View style={styles.table}>
             <View style={styles.subHeader}>
               <View style={styles.filterTabs}>
-                {['Pending', 'Due', 'Done'].map((filter) => (
-                  <TouchableOpacity
-                    key={filter}
-                    style={[styles.filterTab, activeStatusFilter === (filter === 'Due' ? 'due' : filter === 'Done' ? 'completed' : 'pending') && styles.activeFilterTab]}
-                    onPress={() => {
-                      const filterValue = filter === 'Due' ? 'due' : filter === 'Done' ? 'completed' : 'pending';
-                      setActiveStatusFilter(filterValue);
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <Text style={[styles.filterTabText, activeStatusFilter === (filter === 'Due' ? 'due' : filter === 'Done' ? 'completed' : 'pending') && styles.activeFilterTabText]}>
-                      {filter}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {['Pending', 'Due', 'Done'].map((filter) => {
+                  const filterValue = filter === 'Due' ? 'due' : filter === 'Done' ? 'completed' : 'pending';
+                  const count = appointments.filter(apt => apt.status === filterValue).length;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={filter}
+                      style={[styles.filterTab, activeStatusFilter === filterValue && styles.activeFilterTab]}
+                      onPress={() => {
+                        setActiveStatusFilter(filterValue);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <Text style={[styles.filterTabText, activeStatusFilter === filterValue && styles.activeFilterTabText]}>
+                        {filter} ({count})
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
             <View style={styles.tableHeader}>

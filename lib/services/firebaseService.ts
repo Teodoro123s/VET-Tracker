@@ -185,7 +185,21 @@ export const getCustomerById = async (userEmail?: string, customerId?: string) =
 // Add a new customer (tenant-aware)
 export const addCustomer = async (customerData, userEmail?: string) => {
   try {
-    const tenantId = await getTenantId(userEmail || '');
+    let tenantId = await getTenantId(userEmail || '');
+    
+    // If no tenant ID found, try using email prefix directly
+    if (!tenantId && userEmail) {
+      const emailPrefix = userEmail.split('@')[0];
+      try {
+        const tenantDoc = await getDoc(doc(db, 'tenants', emailPrefix));
+        if (tenantDoc.exists()) {
+          tenantId = emailPrefix;
+        }
+      } catch (error) {
+        // Continue with error if still no tenant
+      }
+    }
+    
     if (!tenantId) {
       throw new Error('No tenant ID found');
     }
@@ -330,6 +344,9 @@ export const getMedicalRecordById = async (userEmail?: string, recordId?: string
     if (docSnap.exists()) {
       const recordData = { id: docSnap.id, ...docSnap.data() };
       console.log('Medical Record by ID from DB:', recordData);
+      console.log('Retrieved FormData:', recordData.formData);
+      console.log('Retrieved FormData type:', typeof recordData.formData);
+      console.log('Retrieved FormData keys:', recordData.formData ? Object.keys(recordData.formData) : 'no formData');
       return recordData;
     } else {
       return null;
@@ -393,6 +410,9 @@ export const getMedicalHistory = async (userEmail?: string, petId?: string) => {
 export const addMedicalRecord = async (recordData, userEmail?: string) => {
   try {
     console.log('Saving medical record to DB:', recordData);
+    console.log('FormData being saved:', recordData.formData);
+    console.log('FormData type:', typeof recordData.formData);
+    console.log('FormData keys:', recordData.formData ? Object.keys(recordData.formData) : 'no formData');
     const tenantCollection = await getTenantCollection(userEmail || '', 'medicalRecords');
     const docRef = await addDoc(tenantCollection, recordData);
     return { id: docRef.id, ...recordData };

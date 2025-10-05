@@ -44,7 +44,7 @@ export default function PetDetailScreen() {
   const [categories, setCategories] = useState([]);
   const [formTemplates, setFormTemplates] = useState([]);
   const [showFormModal, setShowFormModal] = useState(false);
-  const [formFields, setFormFields] = useState([]);
+
   const [formData, setFormData] = useState({});
 
   useEffect(() => {
@@ -156,7 +156,7 @@ export default function PetDetailScreen() {
     try {
       await deletePet(id as string, userEmail);
       Alert.alert('Success', 'Pet deleted successfully', [
-        { text: 'OK', onPress: () => router.back() }
+        { text: 'OK', onPress: () => router.canGoBack() ? router.back() : router.push('/client/customers') }
       ]);
     } catch (error) {
       Alert.alert('Error', 'Failed to delete pet');
@@ -202,16 +202,31 @@ export default function PetDetailScreen() {
 
   const handleSubmitForm = async () => {
     try {
+      console.log('Submitting form with data:', formData);
+      console.log('Form fields:', formFields);
+      
+      // Map form data using field labels as keys
+      const mappedFormData = {};
+      formFields.forEach(field => {
+        mappedFormData[field.label] = formData[field.id] || '';
+      });
+      
+      console.log('Mapped form data:', mappedFormData);
+      
       const recordData = {
         petId: id as string,
         category: newRecord.category,
         formTemplate: newRecord.formTemplate,
-        formData,
+        formType: newRecord.formTemplate,
+        formData: mappedFormData,
         date: new Date().toISOString().split('T')[0],
-        diagnosis: formData.diagnosis || 'N/A',
-        treatment: formData.treatment || 'N/A',
-        notes: formData.notes || Object.values(formData).join(', ') || 'N/A'
+        createdAt: new Date(),
+        diagnosis: mappedFormData.diagnosis || 'N/A',
+        treatment: mappedFormData.treatment || 'N/A',
+        notes: mappedFormData.notes || Object.values(mappedFormData).join(', ') || 'N/A'
       };
+      
+      console.log('Final record data:', recordData);
       
       await addMedicalRecord(recordData, userEmail);
       setShowFormModal(false);
@@ -227,6 +242,7 @@ export default function PetDetailScreen() {
       
       Alert.alert('Success', 'Medical record added successfully');
     } catch (error) {
+      console.error('Error submitting form:', error);
       Alert.alert('Error', 'Failed to add medical record');
     }
   };
@@ -311,7 +327,7 @@ export default function PetDetailScreen() {
     return (
       <View style={styles.container}>
         <Text>Pet not found</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.push('/client/customers')} style={styles.backButton}>
           <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -328,11 +344,11 @@ export default function PetDetailScreen() {
         <View style={styles.tableContainer}>
           <View style={styles.table}>
             <View style={styles.returnRow}>
-              <TouchableOpacity onPress={() => router.back()} style={styles.returnButton}>
+              <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.push('/client/customers')} style={styles.returnButton}>
                 <Text style={styles.returnIcon}>←</Text>
               </TouchableOpacity>
-              <Text style={styles.returnText}></Text>
-              <Text style={styles.returnText}></Text>
+              <View style={styles.returnText} />
+              <View style={styles.returnText} />
               <View style={styles.actionButtons}>
                 <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
                   <Text style={styles.actionButtonText}>Edit</Text>

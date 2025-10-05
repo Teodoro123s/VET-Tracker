@@ -96,6 +96,9 @@ function AppContent() {
     if (pathname === '/veterinarian/vet-notifications') {
       return { showBackButton: true, title: 'Notifications' };
     }
+    if (pathname === '/veterinarian/appointment-details') {
+      return { showBackButton: true, title: 'Appointment Details', hideActions: true };
+    }
     return { showBackButton: true, title: 'Veterinarian' };
   };
   

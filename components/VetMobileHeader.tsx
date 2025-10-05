@@ -9,9 +9,10 @@ interface VetMobileHeaderProps {
   showBackButton?: boolean;
   title?: string;
   onBackPress?: () => void;
+  hideActions?: boolean;
 }
 
-export default function VetMobileHeader({ showBackButton = false, title, onBackPress }: VetMobileHeaderProps) {
+export default function VetMobileHeader({ showBackButton = false, title, onBackPress, hideActions = false }: VetMobileHeaderProps) {
   const { userEmail } = useTenant();
   const router = useRouter();
 
@@ -58,17 +59,19 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
           </>
         )}
       </View>
-      <View style={styles.rightSection}>
-        <TouchableOpacity style={styles.notificationButton} onPress={() => router.push('/veterinarian/vet-notifications')}>
-          <Ionicons name="notifications-outline" size={24} color="#800020" />
-          <View style={styles.notificationBadge}>
-            <Text style={styles.badgeText}>3</Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.settingsButton}>
-          <Ionicons name="ellipsis-vertical" size={24} color="#800020" />
-        </TouchableOpacity>
-      </View>
+      {!hideActions && (
+        <View style={styles.rightSection}>
+          <TouchableOpacity style={styles.notificationButton} onPress={() => router.push('/veterinarian/vet-notifications')}>
+            <Ionicons name="notifications-outline" size={24} color="#800020" />
+            <View style={styles.notificationBadge}>
+              <Text style={styles.badgeText}>3</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.settingsButton}>
+            <Ionicons name="ellipsis-vertical" size={24} color="#800020" />
+          </TouchableOpacity>
+        </View>
+      )}
 
     </View>
   );

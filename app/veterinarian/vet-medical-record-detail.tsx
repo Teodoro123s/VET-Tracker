@@ -4,7 +4,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { getMedicalRecordById, deleteMedicalRecord, getFormFields } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
 
-export default function MedicalRecordDetailScreen() {
+export default function VetMedicalRecordDetailScreen() {
   const { id } = useLocalSearchParams();
   const { userEmail } = useTenant();
   const [record, setRecord] = useState(null);
@@ -20,17 +20,11 @@ export default function MedicalRecordDetailScreen() {
   const loadRecord = async () => {
     try {
       const recordData = await getMedicalRecordById(userEmail, id as string);
-      console.log('Loaded record data:', recordData);
-      console.log('Record formData:', recordData?.formData);
-      console.log('Record formData type:', typeof recordData?.formData);
-      console.log('Record formData keys:', recordData?.formData ? Object.keys(recordData.formData) : 'no formData');
       setRecord(recordData);
       
-      // Load form fields if form template exists
       if (recordData?.formTemplate || recordData?.formType) {
         const formName = recordData.formTemplate || recordData.formType;
         const fields = await getFormFields(formName, userEmail);
-        console.log('Loaded form fields:', fields);
         setFormFields(fields);
       }
     } catch (error) {
@@ -75,7 +69,7 @@ export default function MedicalRecordDetailScreen() {
     return (
       <View style={styles.container}>
         <Text>Medical record not found</Text>
-        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.push('/client/customers')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.push('/veterinarian/vet-customers')} style={styles.backButton}>
           <Text style={styles.backButtonText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -92,7 +86,7 @@ export default function MedicalRecordDetailScreen() {
         <View style={styles.tableContainer}>
           <View style={styles.table}>
             <View style={styles.returnRow}>
-              <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.push('/client/customers')} style={styles.returnButton}>
+              <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.push('/veterinarian/vet-customers')} style={styles.returnButton}>
                 <Text style={styles.returnIcon}>←</Text>
               </TouchableOpacity>
               <View style={styles.returnText} />
@@ -137,14 +131,6 @@ export default function MedicalRecordDetailScreen() {
               <View style={styles.tableBody}>
                 {formFields.map((field) => {
                   const fieldValue = record.formData?.[field.label] || 'No data entered';
-                  console.log('=== FIELD MAPPING DEBUG ===');
-                  console.log('Field ID:', field.id);
-                  console.log('Field Label:', field.label);
-                  console.log('Record FormData:', record.formData);
-                  console.log('Looking for key:', field.label);
-                  console.log('Found Value:', record.formData?.[field.label]);
-                  console.log('Final Value:', fieldValue);
-                  console.log('=== END DEBUG ===');
                   return (
                     <View key={field.id} style={styles.tableRow}>
                       <Text style={styles.cell}>{field.label}</Text>
@@ -185,10 +171,10 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#800000',
+    color: '#800020',
   },
   backButton: {
-    backgroundColor: '#800000',
+    backgroundColor: '#800020',
     borderRadius: 5,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -247,7 +233,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
   },
   returnButton: {
-    backgroundColor: '#800000',
+    backgroundColor: '#800020',
     borderRadius: 5,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -284,7 +270,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#800000',
+    color: '#800020',
     marginBottom: 15,
   },
 });

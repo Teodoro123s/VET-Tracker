@@ -10,7 +10,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Modal,
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-import { getCustomers, addCustomer, getPets, getMedicalRecords, addPet, addMedicalRecord, getAnimalTypes, addAnimalType, getBreeds, addBreed, deleteAnimalType, deleteBreed } from '@/lib/services/firebaseService';
+import { getCustomers, addCustomer, getPets, getMedicalRecords, addPet, addMedicalRecord, getAnimalTypes, addAnimalType, getBreeds, addBreed, deleteAnimalType, deleteBreed, getMedicalCategories, getMedicalForms, getFormFields } from '@/lib/services/firebaseService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
 import { useCustomer } from '../_layout';
@@ -45,12 +45,12 @@ export default function VetCustomers() {
   const [customerPets, setCustomerPets] = useState([]);
   const [medicalSearchTerm, setMedicalSearchTerm] = useState('');
   const [medicalRecords, setMedicalRecords] = useState([]);
+  const [formFields, setFormFields] = useState([]);
   const [newCustomer, setNewCustomer] = useState({
-    surname: '',
     firstname: '',
-    middlename: '',
-    contact: '',
+    surname: '',
     email: '',
+    contact: '',
     address: ''
   });
   const [newPet, setNewPet] = useState({
@@ -61,15 +61,14 @@ export default function VetCustomers() {
   const [newRecord, setNewRecord] = useState({
     category: '',
     formTemplate: '',
-    date: new Date().toLocaleDateString(),
-    veterinarian: '',
-    symptoms: '',
-    diagnosis: '',
-    treatment: '',
-    medications: '',
-    followUp: '',
-    cost: ''
+    petId: ''
   });
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [formTemplates, setFormTemplates] = useState([]);
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [formData, setFormData] = useState({});
   
   const [animalTypes, setAnimalTypes] = useState([]);
   const [breedsByType, setBreedsByType] = useState({});
@@ -133,10 +132,44 @@ export default function VetCustomers() {
     }
   }, [selectedPet, tenantEmail]);
   
+  useEffect(() => {
+    if (selectedMedicalRecord && tenantEmail) {
+      loadFormFields();
+    }
+  }, [selectedMedicalRecord, tenantEmail]);
+  
+  const loadFormFields = async () => {
+    try {
+      const { getFormFields } = await import('@/lib/services/firebaseService');
+      const formName = selectedMedicalRecord.formType || selectedMedicalRecord.formTemplate;
+      if (formName) {
+        const fields = await getFormFields(formName, tenantEmail);
+        setFormFields(fields);
+      }
+    } catch (error) {
+      console.error('Error loading form fields:', error);
+      setFormFields([]);
+    }
+  };
+
   const loadMedicalRecords = async () => {
     try {
+      console.log('VET MOBILE - Loading medical records for pet:', selectedPet);
+      console.log('VET MOBILE - Using tenantEmail:', tenantEmail);
       const allRecords = await getMedicalRecords(tenantEmail);
-      const petRecords = allRecords.filter(record => record.petId === selectedPet.id || record.petName === selectedPet.name);
+      console.log('VET MOBILE - All medical records found:', allRecords.length, allRecords);
+      
+      // Filter records for this pet (show all records, not just from current vet)
+      const petRecords = allRecords.filter(record => {
+        const matchesId = record.petId === selectedPet.id;
+        const matchesName = record.petName === selectedPet.name;
+        console.log('VET MOBILE - Checking record:', record);
+        console.log('VET MOBILE - Pet ID match:', matchesId, 'Pet name match:', matchesName);
+        console.log('VET MOBILE - Record petId:', record.petId, 'Selected pet id:', selectedPet.id);
+        console.log('VET MOBILE - Record petName:', record.petName, 'Selected pet name:', selectedPet.name);
+        return matchesId || matchesName;
+      });
+      console.log('VET MOBILE - Filtered pet records:', petRecords.length, petRecords);
       setMedicalRecords(petRecords);
     } catch (error) {
       console.error('Error loading medical records:', error);
@@ -148,17 +181,46 @@ export default function VetCustomers() {
     console.log('VET MOBILE - Loading customers with tenantEmail:', tenantEmail);
     console.log('VET MOBILE - User email:', user?.email);
     try {
-      const [customersData, animalTypesData, breedsData] = await Promise.all([
+      const [customersData, animalTypesData, breedsData, allPets, categoriesData, formsData] = await Promise.all([
         getCustomers(tenantEmail),
         getAnimalTypes(tenantEmail),
-        getBreeds(tenantEmail)
+        getBreeds(tenantEmail),
+        getPets(tenantEmail),
+        getMedicalCategories(tenantEmail),
+        getMedicalForms(tenantEmail)
       ]);
       
-      console.log('VET MOBILE - Customers loaded:', customersData.length, customersData);
-      console.log('VET MOBILE - First customer data:', customersData[0]);
+      // Load categories and form templates
+      const mappedCategories = categoriesData.map(cat => ({ id: cat.id, name: cat.name || cat.category }));
+      if (!mappedCategories.find(cat => cat.name === 'No Category')) {
+        mappedCategories.unshift({ id: 'no-category', name: 'No Category' });
+      }
+      setCategories(mappedCategories);
+      
+      const formTemplatesList = formsData.map(form => ({
+        id: form.id,
+        formName: form.formName || form.type || form.name,
+        category: form.category || 'No Category'
+      }));
+      setFormTemplates(formTemplatesList);
+      
+      // Update customer pet counts
+      const customersWithPetCounts = customersData.map(customer => {
+        const customerName = customer.name || `${customer.firstname || ''} ${customer.surname || ''}`.trim();
+        const petCount = allPets.filter(pet => 
+          pet.owner === customerName || 
+          pet.owner === customer.name ||
+          pet.owner === customer.id ||
+          pet.ownerId === customer.id
+        ).length;
+        return { ...customer, pets: petCount };
+      });
+      
+      console.log('VET MOBILE - Customers loaded:', customersWithPetCounts.length, customersWithPetCounts);
+      console.log('VET MOBILE - First customer data:', customersWithPetCounts[0]);
       console.log('VET MOBILE - Animal types loaded:', animalTypesData);
       console.log('VET MOBILE - Breeds loaded:', breedsData);
-      setCustomers(customersData);
+      setCustomers(customersWithPetCounts);
       
       // Load animal types from Firebase or initialize with defaults
       if (animalTypesData.length === 0) {
@@ -231,28 +293,15 @@ export default function VetCustomers() {
   };
 
   const handleAddCustomer = async () => {
-    if (!newCustomer.surname || !newCustomer.firstname || !newCustomer.contact || !newCustomer.email || !newCustomer.address) {
-      Alert.alert('Error', 'Please fill in all required fields');
+    if (!newCustomer.firstname || !newCustomer.surname) {
+      Alert.alert('Error', 'Please fill in first name and surname');
       return;
     }
 
     try {
-      const fullName = newCustomer.middlename 
-        ? `${newCustomer.surname}, ${newCustomer.firstname} ${newCustomer.middlename}`
-        : `${newCustomer.surname}, ${newCustomer.firstname}`;
-      
-      const customer = {
-        name: fullName,
-        contact: newCustomer.contact,
-        email: newCustomer.email,
-        address: newCustomer.address,
-        city: 'Not specified',
-        pets: 0
-      };
-
-      const savedCustomer = await addCustomer(customer, tenantEmail);
+      await addCustomer(newCustomer, tenantEmail);
+      setNewCustomer({ firstname: '', surname: '', email: '', contact: '', address: '' });
       await loadCustomers();
-      setNewCustomer({ surname: '', firstname: '', middlename: '', contact: '', email: '', address: '' });
       setShowAddModal(false);
       Alert.alert('Success', 'Customer added successfully');
     } catch (error) {
@@ -274,12 +323,14 @@ export default function VetCustomers() {
         species: newPet.type,
         breed: newPet.breed,
         owner: ownerName,
-        ownerId: selectedCustomer.id
+        ownerId: selectedCustomer.id,
+        createdAt: new Date()
       };
 
       console.log('VET MOBILE - Adding pet with owner:', ownerName, 'ownerId:', selectedCustomer.id);
       await addPet(pet, tenantEmail);
       await loadCustomerPets();
+      await loadCustomers(); // Refresh customer list to update pet counts
       setNewPet({ name: '', type: '', breed: '' });
       setShowAddPetModal(false);
       Alert.alert('Success', 'Pet added successfully');
@@ -289,56 +340,68 @@ export default function VetCustomers() {
     }
   };
   
-  const handleAddRecord = async () => {
-    if (!newRecord.formTemplate || !newRecord.treatment || !newRecord.diagnosis) {
-      Alert.alert('Error', 'Please fill in required fields');
-      return;
-    }
-
+  const handleAddRecord = () => {
+    setNewRecord({
+      category: '',
+      formTemplate: '',
+      petId: selectedPet.id
+    });
+    setShowAddRecordModal(true);
+  };
+  
+  const handleSaveRecord = async () => {
     try {
-      const record = {
-        formType: newRecord.formTemplate,
-        category: newRecord.category,
-        date: newRecord.date,
-        veterinarian: newRecord.veterinarian || user?.email,
-        symptoms: newRecord.symptoms,
-        diagnosis: newRecord.diagnosis,
-        treatment: newRecord.treatment,
-        medications: newRecord.medications,
-        followUp: newRecord.followUp,
-        cost: newRecord.cost,
+      if (!newRecord.category) {
+        Alert.alert('Error', 'Please select category');
+        return;
+      }
+      if (!newRecord.formTemplate) {
+        Alert.alert('Error', 'Please select form template');
+        return;
+      }
+      
+      // Fetch form fields and show form modal
+      const fields = await getFormFields(newRecord.formTemplate, tenantEmail);
+      setFormFields(fields);
+      setFormData({});
+      setShowFormModal(true);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to load form fields');
+    }
+  };
+  
+  const handleSubmitForm = async () => {
+    try {
+      // Map form data using field labels as keys
+      const mappedFormData = {};
+      formFields.forEach(field => {
+        mappedFormData[field.label] = formData[field.id] || '';
+      });
+      
+      const recordData = {
         petId: selectedPet.id,
         petName: selectedPet.name,
-        formData: {
-          symptoms: newRecord.symptoms,
-          diagnosis: newRecord.diagnosis,
-          treatment: newRecord.treatment,
-          medications: newRecord.medications,
-          followUp: newRecord.followUp,
-          cost: newRecord.cost,
-          veterinarian: newRecord.veterinarian || user?.email,
-          date: newRecord.date
-        }
+        category: newRecord.category,
+        formTemplate: newRecord.formTemplate,
+        formType: newRecord.formTemplate,
+        formData: mappedFormData,
+        date: new Date().toISOString().split('T')[0],
+        createdAt: new Date(),
+        veterinarian: user?.email,
+        createdBy: user?.email,
+        diagnosis: mappedFormData.diagnosis || 'N/A',
+        treatment: mappedFormData.treatment || 'N/A',
+        notes: mappedFormData.notes || Object.values(mappedFormData).join(', ') || 'N/A'
       };
-
-      await addMedicalRecord(record, tenantEmail);
-      await loadMedicalRecords();
-      setNewRecord({ 
-        category: '', 
-        formTemplate: '', 
-        date: new Date().toLocaleDateString(), 
-        veterinarian: '', 
-        symptoms: '', 
-        diagnosis: '', 
-        treatment: '', 
-        medications: '', 
-        followUp: '', 
-        cost: '' 
-      });
+      
+      await addMedicalRecord(recordData, tenantEmail);
+      setShowFormModal(false);
       setShowAddRecordModal(false);
+      await loadMedicalRecords();
+      
       Alert.alert('Success', 'Medical record added successfully');
     } catch (error) {
-      console.error('Error adding medical record:', error);
+      console.error('Error submitting form:', error);
       Alert.alert('Error', 'Failed to add medical record');
     }
   };
@@ -368,6 +431,66 @@ export default function VetCustomers() {
         }
       ]
     );
+  };
+
+  const renderFormField = (field) => {
+    switch (field.type) {
+      case 'text':
+        return (
+          <TextInput
+            key={field.id}
+            style={styles.formInput}
+            placeholder={`Enter ${field.label}`}
+            value={formData[field.id] || ''}
+            onChangeText={(text) => setFormData({...formData, [field.id]: text})}
+          />
+        );
+      case 'date':
+        return (
+          <TextInput
+            key={field.id}
+            style={styles.formInput}
+            placeholder="MM/DD/YYYY"
+            value={formData[field.id] || ''}
+            keyboardType="numeric"
+            maxLength={10}
+            onChangeText={(text) => {
+              const cleaned = text.replace(/\D/g, '');
+              let formatted = cleaned;
+              if (cleaned.length >= 4) {
+                formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
+              } else if (cleaned.length >= 2) {
+                formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+              }
+              setFormData({...formData, [field.id]: formatted});
+            }}
+          />
+        );
+      case 'number':
+        return (
+          <TextInput
+            key={field.id}
+            style={styles.formInput}
+            placeholder={`Enter ${field.label}`}
+            keyboardType="numeric"
+            value={formData[field.id] || ''}
+            onChangeText={(text) => {
+              const formatted = text.replace(/[^0-9.]/g, '').replace(/(\.)(?=.*\1)/g, '');
+              setFormData({...formData, [field.id]: formatted});
+            }}
+          />
+        );
+      default:
+        return (
+          <TextInput
+            key={field.id}
+            style={styles.formInput}
+            placeholder={`Enter ${field.label}`}
+            value={formData[field.id] || ''}
+            onChangeText={(text) => setFormData({...formData, [field.id]: text})}
+          />
+        );
+    }
   };
 
   const handleDeleteBreed = async (breedName, animalType) => {
@@ -501,20 +624,25 @@ export default function VetCustomers() {
         ) : showMedicalView ? (
           <View style={styles.medicalView}>
             <ScrollView style={styles.scrollableList} showsVerticalScrollIndicator={false}>
-              {medicalRecords.filter(record => 
-                record.formType?.toLowerCase().includes(medicalSearchTerm.toLowerCase())
-              ).map((record, index) => (
+              {console.log('VET MOBILE - Rendering medical view with records:', medicalRecords)}
+              {medicalRecords.filter(record => {
+                const searchTerm = medicalSearchTerm.toLowerCase();
+                return !searchTerm || 
+                  record.formType?.toLowerCase().includes(searchTerm) ||
+                  record.diagnosis?.toLowerCase().includes(searchTerm) ||
+                  record.notes?.toLowerCase().includes(searchTerm) ||
+                  record.date?.toLowerCase().includes(searchTerm);
+              }).map((record, index) => (
                 <TouchableOpacity key={record.id || index} style={styles.medicalRow} onPress={() => {
-                  setSelectedMedicalRecord(record);
-                  setShowMedicalView(false);
+                  router.push(`/veterinarian/vet-medical-record-detail?id=${record.id}`);
                 }}>
-                  <Text style={styles.medicalType}>{record.formType}</Text>
-                  <Text style={styles.medicalDate}>{record.date}</Text>
+                  <Text style={styles.medicalType}>{record.formType || record.diagnosis || 'Medical Record'}</Text>
+                  <Text style={styles.medicalDate}>{record.date || 'No Date'}</Text>
                 </TouchableOpacity>
               ))}
               {medicalRecords.length === 0 && (
                 <View style={styles.emptyContainer}>
-                  <ThemedText style={styles.emptyText}>No medical records found</ThemedText>
+                  <ThemedText style={styles.emptyText}>No medical records found for this pet</ThemedText>
                 </View>
               )}
             </ScrollView>
@@ -549,19 +677,37 @@ export default function VetCustomers() {
           <View style={styles.customerDetailsView}>
             <ScrollView style={styles.scrollableList} showsVerticalScrollIndicator={false}>
               <View style={styles.detailTable}>
-                {[
-                  { label: 'Form Type', value: selectedMedicalRecord.formType },
-                  { label: 'Date', value: selectedMedicalRecord.date },
-                  ...Object.entries(selectedMedicalRecord.formData || {}).map(([key, value]) => ({
-                    label: key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1'),
-                    value: value
-                  }))
-                ].map((item, index) => (
-                  <View key={index} style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>{item.label}</Text>
-                    <Text style={styles.detailValue}>{item.value}</Text>
-                  </View>
-                ))}
+                {/* Basic Info */}
+                <View style={styles.medicalSection}>
+                  <Text style={styles.medicalSectionTitle}>Record Information</Text>
+                  {[
+                    { label: 'Date & Time Created', value: selectedMedicalRecord.createdAt ? new Date(selectedMedicalRecord.createdAt.seconds * 1000).toLocaleString() : selectedMedicalRecord.date },
+                    { label: 'Category', value: selectedMedicalRecord.category || 'N/A' },
+                    { label: 'Form Template', value: selectedMedicalRecord.formType || selectedMedicalRecord.formTemplate || 'N/A' }
+                  ].map((item, index) => (
+                    <View key={index} style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>{item.label}</Text>
+                      <Text style={styles.detailValue}>{item.value}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Form Fields */}
+                <View style={styles.medicalSection}>
+                  <Text style={styles.medicalSectionTitle}>Form Fields</Text>
+                  {formFields.map((field, index) => {
+                    const fieldValue = selectedMedicalRecord.formData?.[field.label] || 'No data entered';
+                    return (
+                      <View key={index} style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>{field.label}</Text>
+                        <Text style={styles.detailValue}>{fieldValue}</Text>
+                      </View>
+                    );
+                  })}
+                  {formFields.length === 0 && (
+                    <Text style={styles.detailValue}>No form fields found</Text>
+                  )}
+                </View>
               </View>
             </ScrollView>
           </View>
@@ -643,14 +789,14 @@ export default function VetCustomers() {
                 <Text style={styles.inputLabel}>Surname *</Text>
                 <TextInput
                   style={styles.input}
-                  value={newCustomer.middlename}
-                  onChangeText={(text) => setNewCustomer({...newCustomer, middlename: text})}
+                  value={newCustomer.surname}
+                  onChangeText={(text) => setNewCustomer({...newCustomer, surname: text})}
                   placeholder="Enter surname"
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Email Address *</Text>
+                <Text style={styles.inputLabel}>Email</Text>
                 <TextInput
                   style={styles.input}
                   value={newCustomer.email}
@@ -662,7 +808,7 @@ export default function VetCustomers() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Contact Number *</Text>
+                <Text style={styles.inputLabel}>Contact</Text>
                 <TextInput
                   style={styles.input}
                   value={newCustomer.contact}
@@ -673,14 +819,12 @@ export default function VetCustomers() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Address *</Text>
+                <Text style={styles.inputLabel}>Address</Text>
                 <TextInput
-                  style={[styles.input, styles.textArea]}
+                  style={styles.input}
                   value={newCustomer.address}
                   onChangeText={(text) => setNewCustomer({...newCustomer, address: text})}
                   placeholder="Enter address"
-                  multiline
-                  numberOfLines={3}
                 />
               </View>
             </ScrollView>
@@ -861,109 +1005,109 @@ export default function VetCustomers() {
             </View>
 
             <ScrollView style={styles.modalForm}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Category</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newRecord.category}
-                  onChangeText={(text) => setNewRecord({...newRecord, category: text})}
-                  placeholder="Enter category"
-                />
+              <View style={[styles.inputGroup, { zIndex: 10000 }]}>
+                <Text style={styles.inputLabel}>Category *</Text>
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity 
+                    style={styles.dropdownButton}
+                    onPress={() => {
+                      setShowCategoryDropdown(!showCategoryDropdown);
+                      setShowTemplateDropdown(false);
+                    }}
+                  >
+                    <Text style={styles.dropdownText}>
+                      {newRecord.category || 'Select Category'}
+                    </Text>
+                    <Text style={styles.dropdownArrow}>▼</Text>
+                  </TouchableOpacity>
+                  {showCategoryDropdown && (
+                    <View style={styles.dropdownMenu}>
+                      <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
+                        {categories.length === 0 ? (
+                          <View style={styles.dropdownOption}>
+                            <Text style={styles.dropdownOptionText}>No categories available</Text>
+                          </View>
+                        ) : (
+                          categories.map((category) => (
+                            <TouchableOpacity
+                              key={category.id}
+                              style={styles.dropdownOption}
+                              onPress={() => {
+                                setNewRecord({...newRecord, category: category.name, formTemplate: ''});
+                                setShowCategoryDropdown(false);
+                              }}
+                            >
+                              <Text style={styles.dropdownOptionText}>{category.name}</Text>
+                            </TouchableOpacity>
+                          ))
+                        )}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
               </View>
 
-              <View style={styles.inputGroup}>
+              <View style={[styles.inputGroup, { zIndex: 5000 }]}>
                 <Text style={styles.inputLabel}>Form Template *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newRecord.formTemplate}
-                  onChangeText={(text) => setNewRecord({...newRecord, formTemplate: text})}
-                  placeholder="Vaccination, Checkup, Surgery, etc."
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Date</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newRecord.date}
-                  onChangeText={(text) => setNewRecord({...newRecord, date: text})}
-                  placeholder="Enter date"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Veterinarian</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newRecord.veterinarian}
-                  onChangeText={(text) => setNewRecord({...newRecord, veterinarian: text})}
-                  placeholder="Enter veterinarian name"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Symptoms</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={newRecord.symptoms}
-                  onChangeText={(text) => setNewRecord({...newRecord, symptoms: text})}
-                  placeholder="Enter symptoms"
-                  multiline
-                  numberOfLines={2}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Diagnosis *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newRecord.diagnosis}
-                  onChangeText={(text) => setNewRecord({...newRecord, diagnosis: text})}
-                  placeholder="Enter diagnosis"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Treatment *</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={newRecord.treatment}
-                  onChangeText={(text) => setNewRecord({...newRecord, treatment: text})}
-                  placeholder="Enter treatment"
-                  multiline
-                  numberOfLines={2}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Medications</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newRecord.medications}
-                  onChangeText={(text) => setNewRecord({...newRecord, medications: text})}
-                  placeholder="Enter medications"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Follow Up</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newRecord.followUp}
-                  onChangeText={(text) => setNewRecord({...newRecord, followUp: text})}
-                  placeholder="Enter follow up instructions"
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Cost</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newRecord.cost}
-                  onChangeText={(text) => setNewRecord({...newRecord, cost: text})}
-                  placeholder="Enter cost"
-                  keyboardType="numeric"
-                />
+                <View style={styles.dropdownContainer}>
+                  <TouchableOpacity 
+                    style={[styles.dropdownButton, !newRecord.category && styles.disabledDropdown]}
+                    onPress={() => {
+                      if (newRecord.category) {
+                        setShowTemplateDropdown(!showTemplateDropdown);
+                        setShowCategoryDropdown(false);
+                      }
+                    }}
+                  >
+                    <Text style={[styles.dropdownText, !newRecord.category && styles.disabledText]}>
+                      {!newRecord.category ? 'Select category first' : (newRecord.formTemplate || 'Select Form Template')}
+                    </Text>
+                    <Text style={styles.dropdownArrow}>▼</Text>
+                  </TouchableOpacity>
+                  {showTemplateDropdown && (
+                    <View style={styles.dropdownMenu}>
+                      <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
+                        {(() => {
+                          const filtered = formTemplates.filter(template => {
+                            if (!newRecord.category) return true;
+                            return template.category === newRecord.category;
+                          });
+                          
+                          if (formTemplates.length === 0) {
+                            return [
+                              <View key="no-templates" style={styles.dropdownOption}>
+                                <Text style={styles.dropdownOptionText}>No form templates available</Text>
+                              </View>
+                            ];
+                          }
+                          
+                          if (filtered.length === 0 && newRecord.category) {
+                            return [
+                              <View key="no-forms" style={styles.dropdownOption}>
+                                <Text style={styles.dropdownOptionText}>No forms available for this category</Text>
+                              </View>
+                            ];
+                          }
+                          
+                          return filtered
+                            .sort((a, b) => a.formName.localeCompare(b.formName))
+                            .map((template) => (
+                            <TouchableOpacity
+                              key={template.id}
+                              style={styles.dropdownOption}
+                              onPress={() => {
+                                setNewRecord({...newRecord, formTemplate: template.formName});
+                                setShowTemplateDropdown(false);
+                              }}
+                            >
+                              <Text style={styles.dropdownOptionText}>{template.formName}</Text>
+                            </TouchableOpacity>
+                          ));
+                        })()}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
               </View>
             </ScrollView>
 
@@ -976,9 +1120,9 @@ export default function VetCustomers() {
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.saveButton}
-                onPress={handleAddRecord}
+                onPress={handleSaveRecord}
               >
-                <Text style={styles.saveButtonText}>Add Record</Text>
+                <Text style={styles.saveButtonText}>Create Record</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1096,6 +1240,40 @@ export default function VetCustomers() {
           </View>
         </View>
       </Modal>
+
+      {/* Form Modal */}
+      {showFormModal && (
+        <Modal visible={true} transparent animationType="fade">
+          <View style={styles.formPreviewModalOverlay}>
+            <View style={styles.formPreviewModalContent}>
+              <View style={styles.formPreviewHeader}>
+                <TouchableOpacity style={styles.formPreviewBackButton} onPress={() => setShowFormModal(false)}>
+                  <Text style={styles.formPreviewBackText}>←</Text>
+                </TouchableOpacity>
+                <Text style={styles.formPreviewHeaderTitle}>{newRecord.formTemplate}</Text>
+                <TouchableOpacity style={styles.formPreviewSaveHeaderButton} onPress={handleSubmitForm}>
+                  <Text style={styles.formPreviewSaveHeaderText}>Save Record</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.formPreviewBody} showsVerticalScrollIndicator={false}>
+                <View style={styles.formPreviewDisplayArea}>
+                  <View style={styles.formPreviewFieldsContainer}>
+                    {formFields.map((field) => (
+                      <View key={field.id} style={styles.formPreviewField}>
+                        <Text style={styles.formPreviewFieldLabel}>
+                          {field.label}{field.required && ' *'}
+                        </Text>
+                        {renderFormField(field)}
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
 
     </ThemedView>
   );
@@ -1261,7 +1439,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     flex: 1,
-    backgroundColor: '#2196F3',
+    backgroundColor: '#28a745',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -1396,6 +1574,21 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
   },
+  medicalSection: {
+    marginBottom: 24,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 16,
+  },
+  medicalSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    paddingBottom: 8,
+  },
   addRecordButton: {
     position: 'absolute',
     bottom: 20,
@@ -1496,7 +1689,7 @@ const styles = StyleSheet.create({
   },
   customSaveButton: {
     flex: 1,
-    backgroundColor: '#2196F3',
+    backgroundColor: '#28a745',
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -1538,5 +1731,136 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  dropdownContainer: {
+    position: 'relative',
+    marginBottom: 15,
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    maxHeight: 150,
+    zIndex: 9999,
+    elevation: 9999,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  dropdownScroll: {
+    maxHeight: 150,
+  },
+  dropdownOption: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  dropdownOptionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  dropdownArrow: {
+    fontSize: 12,
+    color: '#666',
+  },
+  disabledDropdown: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#ccc',
+  },
+  disabledText: {
+    color: '#999',
+  },
+  formPreviewModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  formPreviewModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    width: '90%',
+    maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  formPreviewHeader: {
+    backgroundColor: '#fff',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  formPreviewBackButton: {
+    backgroundColor: '#800020',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  formPreviewBackText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  formPreviewHeaderTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#800020',
+    flex: 1,
+    textAlign: 'center',
+  },
+  formPreviewSaveHeaderButton: {
+    backgroundColor: '#28a745',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  formPreviewSaveHeaderText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  formPreviewBody: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  formPreviewDisplayArea: {
+    padding: 20,
+  },
+  formPreviewFieldsContainer: {
+    gap: 15,
+  },
+  formPreviewField: {
+    marginBottom: 15,
+  },
+  formPreviewFieldLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  formInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#fafafa',
   },
 });

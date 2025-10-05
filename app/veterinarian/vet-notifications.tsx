@@ -1,91 +1,189 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getAppointments } from '../../lib/services/firebaseService';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function VetNotificationsScreen() {
+  const { user } = useAuth();
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const generateAINotifications = (appointments, currentTime) => {
+    const aiNotifs = [];
+    
+    // AI Schedule Optimization
+    const todayAppts = appointments.filter(apt => {
+      const aptDate = apt.appointmentDate?.seconds ? 
+        new Date(apt.appointmentDate.seconds * 1000) : 
+        new Date(apt.appointmentDate);
+      return aptDate.toDateString() === currentTime.toDateString();
+    });
+    
+    if (todayAppts.length > 3) {
+      aiNotifs.push({
+        id: 'ai-schedule',
+        icon: 'analytics',
+        color: '#9C27B0',
+        title: 'AI Schedule Optimizer',
+        text: `Busy day ahead! ${todayAppts.length} appointments. Consider 15min buffer between visits.`,
+        time: '30m ago'
+      });
+    }
+    
+    // AI Medical Record Reminder
+    const completedWithoutRecords = appointments.filter(apt => 
+      apt.status === 'Completed' && !apt.medicalRecordAdded
+    );
+    
+    if (completedWithoutRecords.length > 0) {
+      aiNotifs.push({
+        id: 'ai-records',
+        icon: 'document-text',
+        color: '#FF9800',
+        title: 'AI Record Assistant',
+        text: `${completedWithoutRecords.length} completed appointments need medical records`,
+        time: '45m ago'
+      });
+    }
+    
+    // AI Chatbot availability
+    if (appointments.length > 2) {
+      aiNotifs.push({
+        id: 'ai-chatbot',
+        icon: 'chatbubble',
+        color: '#00BCD4',
+        title: 'AI Chatbot',
+        text: 'Ask me about appointment scheduling or medical protocols',
+        time: '1h ago'
+      });
+    }
+    
+    return aiNotifs;
+  };
+
+  const loadNotifications = async () => {
+    try {
+      const appointments = await getAppointments(user?.email);
+      const vetAppointments = appointments.filter(apt => 
+        apt.veterinarian === user?.email || 
+        apt.assignedVet === user?.email || 
+        (apt.veterinarian && apt.veterinarian.includes('Dr.'))
+      );
+
+      const now = new Date();
+      const notificationList = [];
+
+      vetAppointments.forEach(apt => {
+        let aptDate;
+        if (apt.appointmentDate?.seconds) {
+          aptDate = new Date(apt.appointmentDate.seconds * 1000);
+        } else {
+          aptDate = new Date(apt.appointmentDate || apt.dateTime);
+        }
+
+        if (!isNaN(aptDate.getTime())) {
+          const timeDiff = aptDate.getTime() - now.getTime();
+          const hoursDiff = timeDiff / (1000 * 60 * 60);
+
+          if (hoursDiff <= 0 && apt.status !== 'Completed') {
+            notificationList.push({
+              id: `due-${apt.id}`,
+              icon: 'alert-circle',
+              color: '#FF6B6B',
+              title: 'Appointment Overdue',
+              text: `${apt.customerName} - ${apt.petName} appointment is overdue`,
+              time: aptDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+            });
+          } else if (hoursDiff <= 1 && hoursDiff > 0) {
+            notificationList.push({
+              id: `reminder-${apt.id}`,
+              icon: 'time',
+              color: '#FFA500',
+              title: 'Appointment Reminder',
+              text: `${apt.customerName} - ${apt.petName} appointment in ${Math.round(hoursDiff * 60)} minutes`,
+              time: aptDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+            });
+          } else if (hoursDiff <= 24 && hoursDiff > 1) {
+            notificationList.push({
+              id: `upcoming-${apt.id}`,
+              icon: 'calendar',
+              color: '#4ECDC4',
+              title: 'Upcoming Appointment',
+              text: `${apt.customerName} - ${apt.petName} scheduled ${hoursDiff < 24 ? 'today' : 'tomorrow'}`,
+              time: aptDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+            });
+          }
+
+          if (apt.status === 'Completed') {
+            const completedHours = (now.getTime() - aptDate.getTime()) / (1000 * 60 * 60);
+            if (completedHours <= 24) {
+              notificationList.push({
+                id: `completed-${apt.id}`,
+                icon: 'checkmark-circle',
+                color: '#4CAF50',
+                title: 'Appointment Completed',
+                text: `${apt.customerName} - ${apt.petName} ${apt.reason || 'checkup'} completed`,
+                time: `${Math.round(completedHours)}h ago`
+              });
+            }
+          }
+        }
+      });
+
+      // AI-powered notifications
+      const aiNotifications = generateAINotifications(vetAppointments, now);
+      notificationList.push(...aiNotifications);
+
+      // Admin notice
+      notificationList.push({
+        id: 'admin-notice',
+        icon: 'megaphone',
+        color: '#FF5722',
+        title: 'Admin Notice',
+        text: 'New vaccination protocol guidelines',
+        time: '2d ago'
+      });
+
+      setNotifications(notificationList);
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text>Loading notifications...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.content}>
-        <View style={styles.notificationItem}>
-          <Ionicons name="alert-circle" size={20} color="#FF6B6B" />
-          <View style={styles.notificationContent}>
-            <Text style={styles.notificationTitle}>Appointment Due</Text>
-            <Text style={styles.notificationText}>Sarah Johnson - Max appointment is due</Text>
-            <Text style={styles.notificationTime}>Today at 3:30 PM</Text>
+        {notifications.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No notifications</Text>
           </View>
-        </View>
-        
-        <View style={styles.notificationItem}>
-          <Ionicons name="time" size={20} color="#FFA500" />
-          <View style={styles.notificationContent}>
-            <Text style={styles.notificationTitle}>Appointment Pending</Text>
-            <Text style={styles.notificationText}>John Smith - Buddy needs approval</Text>
-            <Text style={styles.notificationTime}>Today at 2:00 PM</Text>
-          </View>
-        </View>
-        
-        <View style={styles.notificationItem}>
-          <Ionicons name="calendar" size={20} color="#4ECDC4" />
-          <View style={styles.notificationContent}>
-            <Text style={styles.notificationTitle}>Upcoming Appointment</Text>
-            <Text style={styles.notificationText}>Mike Davis - Luna scheduled tomorrow</Text>
-            <Text style={styles.notificationTime}>Tomorrow at 10:00 AM</Text>
-          </View>
-        </View>
-
-        <View style={styles.notificationItem}>
-          <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-          <View style={styles.notificationContent}>
-            <Text style={styles.notificationTitle}>Appointment Completed</Text>
-            <Text style={styles.notificationText}>Emma Wilson - Charlie checkup completed</Text>
-            <Text style={styles.notificationTime}>Yesterday at 4:00 PM</Text>
-          </View>
-        </View>
-
-        <View style={styles.notificationItem}>
-          <Ionicons name="medical" size={20} color="#9C27B0" />
-          <View style={styles.notificationContent}>
-            <Text style={styles.notificationTitle}>Medical Record Updated</Text>
-            <Text style={styles.notificationText}>Tom Brown - Bella's vaccination record updated</Text>
-            <Text style={styles.notificationTime}>2 days ago</Text>
-          </View>
-        </View>
-
-        <View style={styles.notificationItem}>
-          <Ionicons name="warning" size={20} color="#FF9800" />
-          <View style={styles.notificationContent}>
-            <Text style={styles.notificationTitle}>Appointment Cancelled</Text>
-            <Text style={styles.notificationText}>Lisa White - Rocky's appointment cancelled</Text>
-            <Text style={styles.notificationTime}>3 days ago</Text>
-          </View>
-        </View>
-
-        <View style={styles.notificationItem}>
-          <Ionicons name="heart" size={20} color="#E91E63" />
-          <View style={styles.notificationContent}>
-            <Text style={styles.notificationTitle}>Surgery Scheduled</Text>
-            <Text style={styles.notificationText}>Mark Johnson - Fluffy surgery scheduled</Text>
-            <Text style={styles.notificationTime}>1 week ago</Text>
-          </View>
-        </View>
-
-        <View style={styles.notificationItem}>
-          <Ionicons name="star" size={20} color="#FFC107" />
-          <View style={styles.notificationContent}>
-            <Text style={styles.notificationTitle}>Review Received</Text>
-            <Text style={styles.notificationText}>Happy customer left 5-star review</Text>
-            <Text style={styles.notificationTime}>1 week ago</Text>
-          </View>
-        </View>
-
-        <View style={styles.notificationItem}>
-          <Ionicons name="document" size={20} color="#607D8B" />
-          <View style={styles.notificationContent}>
-            <Text style={styles.notificationTitle}>Report Generated</Text>
-            <Text style={styles.notificationText}>Monthly appointment report is ready</Text>
-            <Text style={styles.notificationTime}>2 weeks ago</Text>
-          </View>
-        </View>
+        ) : (
+          notifications.map((notification) => (
+            <View key={notification.id} style={styles.notificationItem}>
+              <Ionicons name={notification.icon} size={20} color={notification.color} />
+              <View style={styles.notificationContent}>
+                <Text style={styles.notificationTitle}>{notification.title}</Text>
+                <Text style={styles.notificationText}>{notification.text}</Text>
+                <Text style={styles.notificationTime}>{notification.time}</Text>
+              </View>
+            </View>
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -133,6 +231,15 @@ const styles = StyleSheet.create({
   notificationTime: {
     fontSize: 12,
     color: '#999',
+    fontStyle: 'italic',
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
     fontStyle: 'italic',
   },
 });

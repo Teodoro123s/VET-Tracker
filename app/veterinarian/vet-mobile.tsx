@@ -15,6 +15,10 @@ export default function VetMobile() {
   const [showProfile, setShowProfile] = useState(false);
 
   const [showNotifications, setShowNotifications] = useState(false);
+  const [vetStats, setVetStats] = useState({
+    todayAppointments: 0,
+    pendingRecords: 0
+  });
   const [vetDetails, setVetDetails] = useState({
     name: 'Loading...',
     email: user?.email || '',
@@ -26,6 +30,7 @@ export default function VetMobile() {
 
   useEffect(() => {
     fetchVetDetails();
+    fetchVetStats();
   }, [user]);
 
   const fetchVetDetails = async () => {
@@ -59,6 +64,39 @@ export default function VetMobile() {
     }
   };
 
+  const fetchVetStats = async () => {
+    if (!user?.email) return;
+    
+    try {
+      const { getAppointments, getMedicalRecords } = await import('@/lib/services/firebaseService');
+      const [appointments, records] = await Promise.all([
+        getAppointments(user.email),
+        getMedicalRecords(user.email)
+      ]);
+      
+      // Filter appointments for this vet
+      const vetAppointments = appointments.filter(apt => 
+        apt.veterinarian === user.email || apt.assignedVet === user.email || apt.veterinarianEmail === user.email
+      );
+      
+      // Count today's appointments
+      const today = new Date().toDateString();
+      const todayAppointments = vetAppointments.filter(apt => {
+        const aptDate = new Date(apt.dateTime || apt.date).toDateString();
+        return aptDate === today;
+      }).length;
+      
+      // Count pending records created by this vet
+      const pendingRecords = records.filter(record => 
+        record.veterinarian === user.email && record.status === 'pending'
+      ).length;
+      
+      setVetStats({ todayAppointments, pendingRecords });
+    } catch (error) {
+      console.error('Error fetching vet stats:', error);
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -69,12 +107,12 @@ export default function VetMobile() {
         <View style={styles.quickStats}>
           <TouchableOpacity style={styles.statCard}>
             <Ionicons name="calendar" size={32} color="#800020" />
-            <ThemedText style={styles.statValue}>8</ThemedText>
+            <ThemedText style={styles.statValue}>{vetStats.todayAppointments}</ThemedText>
             <ThemedText style={styles.statLabel}>Today's Appointments</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity style={styles.statCard}>
             <Ionicons name="document-text" size={32} color="#800020" />
-            <ThemedText style={styles.statValue}>3</ThemedText>
+            <ThemedText style={styles.statValue}>{vetStats.pendingRecords}</ThemedText>
             <ThemedText style={styles.statLabel}>Pending Records</ThemedText>
           </TouchableOpacity>
         </View>
