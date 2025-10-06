@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { getMedicalRecordById, deleteMedicalRecord, getFormFields } from '@/lib/services/firebaseService';
+import { getMedicalRecordById, deleteMedicalRecord, getFormFields, getVeterinarianByEmail } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
 
 export default function MedicalRecordDetailScreen() {
@@ -10,6 +10,7 @@ export default function MedicalRecordDetailScreen() {
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [formFields, setFormFields] = useState([]);
+  const [veterinarianName, setVeterinarianName] = useState('');
 
   useEffect(() => {
     if (id && userEmail) {
@@ -20,17 +21,19 @@ export default function MedicalRecordDetailScreen() {
   const loadRecord = async () => {
     try {
       const recordData = await getMedicalRecordById(userEmail, id as string);
-      console.log('Loaded record data:', recordData);
-      console.log('Record formData:', recordData?.formData);
-      console.log('Record formData type:', typeof recordData?.formData);
-      console.log('Record formData keys:', recordData?.formData ? Object.keys(recordData.formData) : 'no formData');
       setRecord(recordData);
+      
+      // Load veterinarian name if veterinarian email exists
+      if (recordData?.veterinarian || recordData?.createdBy) {
+        const vetEmail = recordData.veterinarian || recordData.createdBy;
+        const vet = await getVeterinarianByEmail(userEmail, vetEmail);
+        setVeterinarianName(vet?.name || vetEmail || 'N/A');
+      }
       
       // Load form fields if form template exists
       if (recordData?.formTemplate || recordData?.formType) {
         const formName = recordData.formTemplate || recordData.formType;
         const fields = await getFormFields(formName, userEmail);
-        console.log('Loaded form fields:', fields);
         setFormFields(fields);
       }
     } catch (error) {
@@ -137,14 +140,6 @@ export default function MedicalRecordDetailScreen() {
               <View style={styles.tableBody}>
                 {formFields.map((field) => {
                   const fieldValue = record.formData?.[field.label] || 'No data entered';
-                  console.log('=== FIELD MAPPING DEBUG ===');
-                  console.log('Field ID:', field.id);
-                  console.log('Field Label:', field.label);
-                  console.log('Record FormData:', record.formData);
-                  console.log('Looking for key:', field.label);
-                  console.log('Found Value:', record.formData?.[field.label]);
-                  console.log('Final Value:', fieldValue);
-                  console.log('=== END DEBUG ===');
                   return (
                     <View key={field.id} style={styles.tableRow}>
                       <Text style={styles.cell}>{field.label}</Text>

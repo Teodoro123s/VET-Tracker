@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { getAppointments, updateAppointment, deleteAppointment } from '../../lib/services/firebaseService';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -11,6 +12,7 @@ export default function VetAppointments() {
   const [appointments, setAppointments] = useState([]);
   const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [selectedFilter, setSelectedFilter] = useState('All');
+  const [selectedDateFilter, setSelectedDateFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -20,7 +22,7 @@ export default function VetAppointments() {
 
   useEffect(() => {
     filterAppointments();
-  }, [appointments, selectedFilter, searchTerm]);
+  }, [appointments, selectedFilter, selectedDateFilter, searchTerm]);
 
   const loadAppointments = async () => {
     try {
@@ -35,8 +37,11 @@ export default function VetAppointments() {
       // Smart status assignment
       const now = new Date();
       const smartAppointments = myAppointments.map(appointment => {
-        // Keep completed/cancelled status unchanged
-        if (appointment.status === 'Completed' || appointment.status === 'completed' || appointment.status === 'cancelled') {
+        console.log('Processing appointment:', appointment.id, 'Status:', appointment.status);
+        // Keep completed/cancelled status unchanged - check all possible variations
+        if (appointment.status === 'completed' || appointment.status === 'Completed' || 
+            appointment.status === 'cancelled') {
+          console.log('Found completed appointment:', appointment.id);
           return { ...appointment, status: 'Completed' };
         }
         
@@ -51,7 +56,7 @@ export default function VetAppointments() {
           return { ...appointment, status: 'Pending' };
         }
         
-        // Smart status assignment: Due = overdue, Pending = future, Completed = done
+        // Smart status assignment: Due = overdue, Pending = future
         const timeDiff = appointmentDateTime.getTime() - now.getTime();
         const hoursDiff = timeDiff / (1000 * 60 * 60);
         
@@ -78,8 +83,53 @@ export default function VetAppointments() {
 
     // Filter by status
     if (selectedFilter !== 'All') {
-      const filterStatus = selectedFilter === 'Completed' ? 'Completed' : selectedFilter;
-      filtered = appointments.filter(apt => apt.status === filterStatus);
+      if (selectedFilter === 'Completed') {
+        filtered = appointments.filter(apt => 
+          apt.status === 'Completed' || apt.status === 'completed' || apt.status === 'Done'
+        );
+      } else {
+        filtered = appointments.filter(apt => apt.status === selectedFilter);
+      }
+    }
+
+    // Filter by date category
+    if (selectedDateFilter !== 'All') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - today.getDay());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      const nextWeekStart = new Date(weekEnd);
+      nextWeekStart.setDate(weekEnd.getDate() + 1);
+      const nextWeekEnd = new Date(nextWeekStart);
+      nextWeekEnd.setDate(nextWeekStart.getDate() + 6);
+
+      filtered = filtered.filter(apt => {
+        let aptDate;
+        if (apt.appointmentDate?.seconds) {
+          aptDate = new Date(apt.appointmentDate.seconds * 1000);
+        } else {
+          aptDate = new Date(apt.appointmentDate || apt.dateTime);
+        }
+        
+        if (isNaN(aptDate.getTime())) return false;
+        
+        const aptDateOnly = new Date(aptDate.getFullYear(), aptDate.getMonth(), aptDate.getDate());
+        
+        switch (selectedDateFilter) {
+          case 'Today':
+            return aptDateOnly.getTime() === today.getTime();
+          case 'This Week':
+            return aptDateOnly >= weekStart && aptDateOnly <= weekEnd;
+          case 'Next Week':
+            return aptDateOnly >= nextWeekStart && aptDateOnly <= nextWeekEnd;
+          case 'Later':
+            return aptDateOnly > nextWeekEnd;
+          default:
+            return true;
+        }
+      });
     }
 
     // Filter by search term
@@ -200,6 +250,22 @@ export default function VetAppointments() {
         </ScrollView>
       </View>
 
+      <View style={styles.dateFilterHeader}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+          {['All', 'Today', 'This Week', 'Next Week', 'Later'].map((filter) => (
+            <TouchableOpacity
+              key={filter}
+              style={[styles.dateFilterButton, selectedDateFilter === filter && styles.dateFilterButtonActive]}
+              onPress={() => setSelectedDateFilter(filter)}
+            >
+              <Text style={[styles.dateFilterText, selectedDateFilter === filter && styles.dateFilterTextActive]}>
+                {filter}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
       {/* Appointments List */}
       <ScrollView style={styles.appointmentsList} showsVerticalScrollIndicator={false}>
         {filteredAppointments.length === 0 ? (
@@ -218,45 +284,22 @@ export default function VetAppointments() {
                 });
               }}
             >
-              <View style={styles.appointmentHeader}>
-                <View style={styles.timeContainer}>
-                  <Text style={styles.appointmentTime}>
-                    {appointment.dateTime?.split('\n')[1] || 'Time TBD'}
-                  </Text>
-                  <Text style={styles.appointmentDate}>
-                    {appointment.dateTime?.split('\n')[0] || 'Date TBD'}
-                  </Text>
-                </View>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(appointment.status) }]}>
-                  <Text style={styles.statusText}>{appointment.status}</Text>
-                </View>
+              <View style={styles.statusIcon}>
+                <Ionicons 
+                  name={appointment.status === 'Pending' ? 'time' : appointment.status === 'Due' ? 'alert-circle' : appointment.status === 'Completed' ? 'checkmark-circle' : 'time'} 
+                  size={20} 
+                  color={getStatusColor(appointment.status)} 
+                />
               </View>
-
-              <View style={styles.appointmentInfo}>
+              <View style={styles.appointmentContent}>
                 <Text style={styles.patientName}>{appointment.customerName}</Text>
-                <Text style={styles.petInfo}>{appointment.petName} - {appointment.reason || appointment.service}</Text>
+                <Text style={styles.petInfo}>{appointment.petName}</Text>
+                <Text style={styles.appointmentTime}>
+                  {appointment.createdAt ? new Date(appointment.createdAt.seconds * 1000 || appointment.createdAt).toLocaleDateString() + ' ' + new Date(appointment.createdAt.seconds * 1000 || appointment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Created: N/A'}
+                </Text>
               </View>
 
-              <View style={styles.appointmentActions}>
-                {appointment.status !== 'Completed' && (
-                  <>
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.completeButton]}
-                      onPress={() => updateAppointmentStatus(appointment.id, 'Completed')}
-                    >
-                      <Text style={styles.actionButtonText}>Done</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.cancelButton]}
-                      onPress={() => handleDeleteAppointment(appointment.id)}
-                    >
-                      <Text style={styles.actionButtonText}>Delete</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
 
-
-              </View>
             </TouchableOpacity>
           ))
         )}
@@ -269,6 +312,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f7fa',
+    paddingBottom: 0,
+    marginBottom: -34,
   },
 
   searchContainer: {
@@ -314,7 +359,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
   },
   filterButtonActive: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#7B2C2C',
   },
   filterText: {
     fontSize: 14,
@@ -324,37 +369,66 @@ const styles = StyleSheet.create({
   filterTextActive: {
     color: '#fff',
   },
+  dateFilterHeader: {
+    backgroundColor: '#f8f9fa',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  dateFilterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+    borderRadius: 15,
+    backgroundColor: '#e9ecef',
+  },
+  dateFilterButtonActive: {
+    backgroundColor: '#7B2C2C',
+  },
+  dateFilterText: {
+    fontSize: 12,
+    color: '#7B2C2C',
+    fontWeight: '500',
+  },
+  dateFilterTextActive: {
+    color: '#fff',
+  },
   appointmentsList: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 15,
+    padding: 16,
   },
   appointmentCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#fff',
     borderRadius: 8,
-    padding: 8,
-    marginBottom: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-    borderLeftWidth: 4,
-    borderLeftColor: '#2196F3',
+    borderWidth: 1,
+    borderColor: 'rgba(123, 44, 44, 0.1)',
+    marginBottom: 4,
+    elevation: 8,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 12,
   },
   appointmentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 3,
+    marginBottom: 2,
   },
   timeContainer: {
     flex: 1,
   },
   appointmentTime: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#800020',
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   appointmentDate: {
     fontSize: 12,
@@ -372,22 +446,58 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   appointmentInfo: {
-    marginBottom: 6,
+    marginBottom: 4,
   },
   patientName: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 2,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   petInfo: {
-    fontSize: 12,
+    fontSize: 15,
     color: '#666',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  statusIcon: {
+    marginRight: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusIconText: {
+    fontSize: 16,
+    color: '#000',
+  },
+  appointmentContent: {
+    flex: 1,
   },
   appointmentActions: {
     flexDirection: 'row',
-    marginTop: 6,
-    gap: 8,
+    marginTop: 4,
+    gap: 6,
+  },
+  statusEdge: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 30,
+    borderTopRightRadius: 12,
+    borderBottomRightRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusVerticalText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+    writingMode: 'vertical-rl',
+    textOrientation: 'mixed',
   },
   actionButton: {
     flex: 1,

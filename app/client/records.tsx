@@ -69,6 +69,13 @@ export default function RecordsScreen() {
         }
         setFormDetails(formDetailsData);
         
+        // Update medical forms list with field counts
+        const updatedFormsList = formsList.map(form => ({
+          ...form,
+          fieldCount: formDetailsData[form.formName]?.length || 0
+        }));
+        setMedicalFormsList(updatedFormsList);
+        
         const categoryList = categories.map(cat => ({
           id: cat.id,
           category: cat.name || cat.category,

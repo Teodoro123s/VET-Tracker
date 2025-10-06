@@ -1,11 +1,13 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, Modal, Animated, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
+import Tesseract from 'tesseract.js';
 import SearchableDropdown from '@/components/SearchableDropdown';
 import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '../../lib/services/firebaseService';
 import { generateSecurePassword } from '../../lib/utils/emailService';
 import { sendStaffCredentialsViaEmailJS } from '../../lib/utils/freeEmailService';
 import { registerUser } from '../../lib/services/firebaseService';
 import { useTenant } from '../../contexts/TenantContext';
+import { awsService } from '../../services/aws-service';
 
 export default function VeterinariansScreen() {
   const { userEmail } = useTenant();
@@ -41,7 +43,8 @@ export default function VeterinariansScreen() {
     specialty: '',
     contact: '',
     email: '',
-    license: ''
+    license: '',
+    licenseImage: null
   });
   
 
@@ -59,6 +62,8 @@ export default function VeterinariansScreen() {
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [isGeneratingPassword, setIsGeneratingPassword] = useState(false);
   const [lastPasswordGenerated, setLastPasswordGenerated] = useState(null);
+  const [isVerifyingLicense, setIsVerifyingLicense] = useState(false);
+  const [licenseVerified, setLicenseVerified] = useState(null);
 
   
   const specializations = [
@@ -146,12 +151,26 @@ export default function VeterinariansScreen() {
       const fullName = `Dr. ${newVeterinarian.firstname} ${newVeterinarian.surname}`;
       const generatedPassword = generateSecurePassword();
       
+      let licenseImageUrl = '';
+      if (newVeterinarian.licenseImage) {
+        try {
+          licenseImageUrl = await awsService.uploadImage(
+            newVeterinarian.licenseImage,
+            `license-${Date.now()}.jpg`
+          );
+        } catch (imageError) {
+          console.error('Image upload failed:', imageError);
+          Alert.alert('Warning', 'License image upload failed, but veterinarian will be added without image.');
+        }
+      }
+      
       const veterinarian = {
         name: fullName,
         specialization: newVeterinarian.specialty,
         phone: newVeterinarian.contact,
         email: newVeterinarian.email,
         license: newVeterinarian.license,
+        licenseImageUrl: licenseImageUrl,
         role: 'veterinarian',
         hasAccount: true,
         createdBy: userEmail,
@@ -222,8 +241,10 @@ export default function VeterinariansScreen() {
         specialty: '', 
         contact: '', 
         email: '', 
-        license: ''
+        license: '',
+        licenseImage: null
       });
+      setLicenseVerified(null);
       
       // Close drawer with animation
       Animated.timing(addSlideAnim, {
@@ -399,7 +420,8 @@ export default function VeterinariansScreen() {
                     specialty: selectedVeterinarian.specialization,
                     contact: selectedVeterinarian.phone,
                     email: selectedVeterinarian.email,
-                    license: selectedVeterinarian.license || ''
+                    license: selectedVeterinarian.license || '',
+                    licenseImage: null
                   });
                   setShowEditVetDrawer(true);
                 }}>
@@ -589,6 +611,77 @@ export default function VeterinariansScreen() {
                     onChangeText={(text) => setNewVeterinarian({...newVeterinarian, license: text})}
                   />
                   
+                  <Text style={styles.fieldLabel}>License Image</Text>
+                  <TouchableOpacity 
+                    style={styles.imageImportButton}
+                    onPress={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          setNewVeterinarian({...newVeterinarian, licenseImage: file});
+                          setLicenseVerified(null);
+                        }
+                      };
+                      input.click();
+                    }}
+                  >
+                    <Text style={styles.imageImportText}>
+                      {newVeterinarian.licenseImage ? 'Change License Image' : 'Import License Image'}
+                    </Text>
+                  </TouchableOpacity>
+                  {newVeterinarian.licenseImage && (
+                    <View>
+                      <Image 
+                        source={{ uri: URL.createObjectURL(newVeterinarian.licenseImage) }} 
+                        style={styles.previewImage} 
+                      />
+                      <View style={styles.imageActions}>
+                        <TouchableOpacity 
+                          style={[styles.verifyButton, isVerifyingLicense && styles.disabledButton]}
+                          disabled={isVerifyingLicense || !newVeterinarian.license}
+                          onPress={async () => {
+                            if (!newVeterinarian.license.trim()) {
+                              Alert.alert('Error', 'Please enter license number first');
+                              return;
+                            }
+                            setIsVerifyingLicense(true);
+                            try {
+                              const { data: { text } } = await Tesseract.recognize(newVeterinarian.licenseImage, 'eng');
+                              const isValid = text.replace(/\s+/g, '').toLowerCase().includes(newVeterinarian.license.replace(/\s+/g, '').toLowerCase());
+                              setLicenseVerified(isValid);
+                              Alert.alert(isValid ? 'Verified' : 'Not Found', isValid ? 'License number found in image' : 'License number not found in image');
+                            } catch (error) {
+                              Alert.alert('Error', 'Failed to verify license');
+                            } finally {
+                              setIsVerifyingLicense(false);
+                            }
+                          }}
+                        >
+                          <Text style={styles.verifyButtonText}>
+                            {isVerifyingLicense ? 'Verifying...' : 'Verify License'}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={styles.removeButton}
+                          onPress={() => {
+                            setNewVeterinarian({...newVeterinarian, licenseImage: null});
+                            setLicenseVerified(null);
+                          }}
+                        >
+                          <Text style={styles.removeButtonText}>Remove</Text>
+                        </TouchableOpacity>
+                      </View>
+                      {licenseVerified !== null && (
+                        <Text style={[styles.verificationResult, { color: licenseVerified ? '#28a745' : '#dc3545' }]}>
+                          {licenseVerified ? '✓ License Verified' : '✗ License Not Found'}
+                        </Text>
+                      )}
+                    </View>
+                  )}
+                  
                   <View style={styles.accountSection}>
                     <Text style={styles.accountNote}>
                       A login account will be automatically created for this veterinarian. Login credentials will be sent to the provided email address.
@@ -680,6 +773,33 @@ export default function VeterinariansScreen() {
                   value={editVetData.license}
                   onChangeText={(text) => setEditVetData({...editVetData, license: text})}
                 />
+                
+                <Text style={styles.fieldLabel}>License Image</Text>
+                <TouchableOpacity 
+                  style={styles.imageImportButton}
+                  onPress={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'image/*';
+                    input.onchange = (e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        setEditVetData({...editVetData, licenseImage: file});
+                      }
+                    };
+                    input.click();
+                  }}
+                >
+                  <Text style={styles.imageImportText}>
+                    {editVetData.licenseImage ? 'Change License Image' : 'Import License Image'}
+                  </Text>
+                </TouchableOpacity>
+                {editVetData.licenseImage && (
+                  <Image 
+                    source={{ uri: URL.createObjectURL(editVetData.licenseImage) }} 
+                    style={styles.previewImage} 
+                  />
+                )}
                 
 
               </ScrollView>
@@ -1581,5 +1701,42 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: '#6c757d',
     opacity: 0.6,
+  },
+  verifyButton: {
+    backgroundColor: '#007BFF',
+    borderRadius: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+    flex: 1,
+  },
+  verifyButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  verificationResult: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 5,
+  },
+  imageActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  removeButton: {
+    backgroundColor: '#dc3545',
+    borderRadius: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+    flex: 1,
+  },
+  removeButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

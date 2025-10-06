@@ -57,7 +57,7 @@ export default function CustomerDetailScreen() {
         getBreeds(userEmail)
       ]);
       setCustomer(customerData);
-      setPets(allPets.filter(pet => pet.owner === id));
+      setPets(allPets.filter(pet => pet.owner === id || pet.ownerId === id));
       setSpecies(speciesData);
       setBreeds(breedsData);
     } catch (error) {

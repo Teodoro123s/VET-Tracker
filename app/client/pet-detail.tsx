@@ -81,8 +81,9 @@ export default function PetDetailScreen() {
       }));
       setFormTemplates(formTemplatesList);
       
-      if (petData?.owner) {
-        const ownerData = await getCustomerById(userEmail, petData.owner);
+      if (petData?.owner || petData?.ownerId) {
+        const ownerId = petData.owner || petData.ownerId;
+        const ownerData = await getCustomerById(userEmail, ownerId);
         setOwner(ownerData);
       }
       
@@ -160,12 +161,14 @@ export default function PetDetailScreen() {
 
   const confirmDelete = async () => {
     try {
+      console.log('Deleting pet with ID:', id, 'for user:', userEmail);
       await deletePet(id as string, userEmail);
       Alert.alert('Success', 'Pet deleted successfully', [
         { text: 'OK', onPress: () => router.canGoBack() ? router.back() : router.push('/client/customers') }
       ]);
     } catch (error) {
-      Alert.alert('Error', 'Failed to delete pet');
+      console.error('Delete pet error:', error);
+      Alert.alert('Error', 'Failed to delete pet: ' + error.message);
     }
   };
 
@@ -229,10 +232,7 @@ export default function PetDetailScreen() {
         date: new Date().toISOString().split('T')[0],
         createdAt: new Date(),
         veterinarian: userEmail,
-        createdBy: userEmail,
-        diagnosis: mappedFormData.diagnosis || 'N/A',
-        treatment: mappedFormData.treatment || 'N/A',
-        notes: mappedFormData.notes || Object.values(mappedFormData).join(', ') || 'N/A'
+        createdBy: userEmail
       };
       
       console.log('Final record data:', recordData);

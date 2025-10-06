@@ -89,20 +89,26 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
       <View style={styles.leftSection}>
         {showBackButton ? (
           <>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.push('/veterinarian/vet-mobile')}>
+            <TouchableOpacity style={styles.backButton} onPress={onBackPress || (() => router.push('/veterinarian/vet-mobile'))}>
               <Ionicons name="arrow-back" size={24} color={Colors.primary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>{title}</Text>
           </>
         ) : (
           <>
-            <TouchableOpacity style={styles.avatar} onPress={() => router.push('/veterinarian/vet-profile')}>
-              <Ionicons name="person" size={24} color={Colors.text.inverse} />
-            </TouchableOpacity>
-            <View style={styles.userInfo}>
-              <Text style={styles.name}>{vetData?.name || getDisplayName(userEmail)}</Text>
-              <Text style={styles.email}>{vetData?.email || userEmail}</Text>
-            </View>
+            {title ? (
+              <Text style={styles.pageTitle}>{title}</Text>
+            ) : (
+              <>
+                <TouchableOpacity style={styles.avatar} onPress={() => router.push('/veterinarian/vet-profile')}>
+                  <Ionicons name="person" size={24} color={Colors.text.inverse} />
+                </TouchableOpacity>
+                <View style={styles.userInfo}>
+                  <Text style={styles.name}>{vetData?.name || getDisplayName(userEmail)}</Text>
+                  <Text style={styles.email}>{vetData?.email || userEmail}</Text>
+                </View>
+              </>
+            )}
           </>
         )}
       </View>
@@ -216,6 +222,12 @@ const styles = StyleSheet.create({
     color: Colors.text.inverse,
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  pageTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.text.primary,
+    marginLeft: 16,
   },
 
 });

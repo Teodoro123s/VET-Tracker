@@ -2,7 +2,7 @@ import { DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-n
 import { useFonts } from 'expo-font';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, ImageBackground } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
 import { useEffect, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
@@ -70,7 +70,7 @@ function AppContent() {
   const showBottomMenu = isVetRoute;
   const showMobileHeader = isVetRoute;
   
-  const { selectedCustomer, showPetsView, selectedPet, showMedicalView, selectedMedicalRecord } = useCustomer();
+  const { selectedCustomer, setSelectedCustomer, showPetsView, setShowPetsView, selectedPet, setSelectedPet, showMedicalView, setShowMedicalView, selectedMedicalRecord, setSelectedMedicalRecord } = useCustomer();
   
   // Get page title and determine if should show back button
   const getHeaderProps = () => {
@@ -79,7 +79,7 @@ function AppContent() {
     }
     if (pathname === '/veterinarian/vet-customers') {
       return { 
-        showBackButton: true, 
+        showBackButton: selectedMedicalRecord || showMedicalView || selectedPet || showPetsView || selectedCustomer, 
         title: selectedMedicalRecord ? 'Medical Record Details' :
                showMedicalView ? 'Medical History' : 
                selectedPet ? 'Pet Details' : 
@@ -88,10 +88,10 @@ function AppContent() {
       };
     }
     if (pathname === '/veterinarian/vet-calendar') {
-      return { showBackButton: true, title: 'Calendar' };
+      return { showBackButton: false, title: 'Calendar' };
     }
     if (pathname === '/veterinarian/vet-appointments') {
-      return { showBackButton: true, title: 'Appointments' };
+      return { showBackButton: false, title: 'Appointments' };
     }
     if (pathname === '/veterinarian/vet-notifications') {
       return { showBackButton: true, title: 'Notifications' };
@@ -99,15 +99,34 @@ function AppContent() {
     if (pathname === '/veterinarian/appointment-details') {
       return { showBackButton: true, title: 'Appointment Details', hideActions: true };
     }
+    if (pathname === '/veterinarian/vet-medical-record-detail') {
+      return { showBackButton: true, title: 'Medical Record', hideActions: true };
+    }
     return { showBackButton: true, title: 'Veterinarian' };
   };
   
   return (
     <NavigationThemeProvider value={DefaultTheme}>
-      <ImageBackground source={require('@/assets/BG.png')} style={styles.container} resizeMode="cover">
+      <View style={styles.container}>
         {showMainSidebar && <Sidebar />}
         <View style={!showMainSidebar ? styles.fullContent : styles.content}>
-          {showMobileHeader && <VetMobileHeader {...getHeaderProps()} onBackPress={() => {}} />}
+          {showMobileHeader && <VetMobileHeader {...getHeaderProps()} onBackPress={() => {
+            if (pathname === '/veterinarian/vet-customers') {
+              if (selectedMedicalRecord) {
+                setSelectedMedicalRecord(null);
+              } else if (showMedicalView) {
+                setShowMedicalView(false);
+              } else if (selectedPet) {
+                setSelectedPet(null);
+              } else if (showPetsView) {
+                setShowPetsView(false);
+              } else if (selectedCustomer) {
+                setSelectedCustomer(null);
+              }
+            } else {
+              require('expo-router').router.back();
+            }
+          }} />}
           <View style={showBottomMenu ? styles.contentWithMenu : styles.fullHeight}>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
@@ -131,6 +150,7 @@ function AppContent() {
             <Stack.Screen name="veterinarian/vet-calendar" />
             <Stack.Screen name="veterinarian/vet-appointments" />
             <Stack.Screen name="veterinarian/vet-medical-record" />
+            <Stack.Screen name="veterinarian/vet-medical-record-detail" />
             <Stack.Screen name="veterinarian/vet-profile" />
             <Stack.Screen name="veterinarian/mobile-login" />
             <Stack.Screen name="auth/admin-login" />
@@ -145,7 +165,7 @@ function AppContent() {
         {isClientRoute && <ChatBot tenantId="default" />}
         
 
-      </ImageBackground>
+      </View>
       <StatusBar style="dark" translucent backgroundColor="transparent" />
     </NavigationThemeProvider>
   );

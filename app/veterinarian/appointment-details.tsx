@@ -286,7 +286,7 @@ export default function AppointmentDetails() {
             {appointment.status !== 'Completed' && (
               <View style={styles.headerActions}>
                 <TouchableOpacity style={styles.menuButton} onPress={() => setShowDropdown(!showDropdown)}>
-                  <Ionicons name="ellipsis-vertical" size={20} color="#666" />
+                  <Ionicons name="ellipsis-vertical" size={20} color="#7B2C2C" />
                 </TouchableOpacity>
               </View>
             )}
@@ -316,15 +316,13 @@ export default function AppointmentDetails() {
             <Text style={styles.detailCell}>{appointment.veterinarian || 'Not assigned'}</Text>
           </View>
           <View style={styles.detailTableRow}>
+            <Text style={styles.detailCell}>Notes</Text>
+            <Text style={styles.detailCell}>{appointment.notes || 'No notes'}</Text>
+          </View>
+          <View style={styles.detailTableRow}>
             <Text style={styles.detailCell}>Status</Text>
             <Text style={[styles.detailCell, { color: getStatusColor(appointment.status), fontWeight: 'bold' }]}>{appointment.status}</Text>
           </View>
-          {appointment.notes && (
-            <View style={styles.detailTableRow}>
-              <Text style={styles.detailCell}>Notes</Text>
-              <Text style={styles.detailCell}>{appointment.notes}</Text>
-            </View>
-          )}
         </View>
       </ScrollView>
       {showDropdown && (
@@ -521,8 +519,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: 'rgba(123, 44, 44, 0.1)',
     marginBottom: 20,
+    elevation: 8,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   detailTableHeader: {
     flexDirection: 'row',
@@ -542,12 +545,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontWeight: 'bold',
     fontSize: 14,
-    color: '#333',
+    color: '#7B2C2C',
   },
   detailCell: {
     flex: 1,
     fontSize: 12,
-    color: '#555',
+    color: '#7B2C2C',
   },
   headerActions: {
     position: 'relative',
@@ -567,12 +570,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
+    borderColor: 'rgba(123, 44, 44, 0.1)',
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   dropdownItem: {
     paddingHorizontal: 15,
@@ -582,7 +585,7 @@ const styles = StyleSheet.create({
   },
   dropdownText: {
     fontSize: 14,
-    color: '#333',
+    color: '#7B2C2C',
   },
   recordModalOverlay: {
     flex: 1,
@@ -606,7 +609,7 @@ const styles = StyleSheet.create({
   recordModalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#7B2C2C',
   },
   recordModalForm: {
     padding: 20,
@@ -618,7 +621,7 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#7B2C2C',
     marginBottom: 8,
   },
   dropdownButton: {
@@ -633,7 +636,7 @@ const styles = StyleSheet.create({
   },
   dropdownButtonText: {
     fontSize: 16,
-    color: '#333',
+    color: '#7B2C2C',
   },
   dropdownArrow: {
     fontSize: 12,
@@ -662,7 +665,7 @@ const styles = StyleSheet.create({
   },
   dropdownOptionText: {
     fontSize: 16,
-    color: '#333',
+    color: '#7B2C2C',
   },
   disabledDropdown: {
     backgroundColor: '#f5f5f5',

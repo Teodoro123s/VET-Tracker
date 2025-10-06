@@ -279,7 +279,7 @@ export default function AppointmentsScreen() {
       setFormData({});
       
       // Show success alert
-      Alert.alert('Success', 'Medical record saved successfully!');
+      Alert.alert('Success', 'Medical record saved successfully! You can now mark this appointment as done.');
     } catch (error) {
       Alert.alert('Error', 'Failed to save medical record');
     }
@@ -526,7 +526,7 @@ export default function AppointmentsScreen() {
   // Get pets for selected customer
   const getCustomerPets = () => {
     if (!selectedCustomer) return [];
-    return pets.filter(pet => pet.owner === selectedCustomer.id);
+    return pets.filter(pet => pet.ownerId === selectedCustomer.id || pet.owner === selectedCustomer.id);
   };
 
   // Generate calendar options
@@ -863,6 +863,46 @@ export default function AppointmentsScreen() {
           <View style={styles.tableContainer}>
 
             <ScrollView style={styles.detailTable} showsVerticalScrollIndicator={false}>
+              <View style={[styles.subHeader, { justifyContent: 'space-between' }]}>
+                <View style={styles.filterTabs}>
+                  <TouchableOpacity onPress={() => setSelectedAppointment(null)} style={styles.returnButton}>
+                    <Text style={styles.returnIcon}>←</Text>
+                  </TouchableOpacity>
+                  <View style={styles.filterTab}>
+                    <Text style={styles.filterTabText}>Appointment Details</Text>
+                  </View>
+                </View>
+                <View style={styles.categoryActions}>
+                  <TouchableOpacity style={styles.addRecordButton} onPress={() => {
+                    Animated.timing(recordSlideAnim, {
+                      toValue: 0,
+                      duration: 200,
+                      useNativeDriver: false,
+                    }).start(() => setShowAddRecordModal(true));
+                  }}>
+                    <Text style={styles.addRecordButtonText}>Add Record</Text>
+                  </TouchableOpacity>
+                  {(selectedAppointment.status === 'pending' || selectedAppointment.status === 'due') && (
+                    <TouchableOpacity style={styles.doneCategoryButton} onPress={async () => {
+                      try {
+                        await updateAppointment(user.email, selectedAppointment.id, { 
+                          status: 'completed',
+                          completedAt: new Date()
+                        });
+                        await loadAppointments();
+                        setSelectedAppointment(null);
+                      } catch (error) {
+                        console.error('Failed to update appointment:', error);
+                      }
+                    }}>
+                      <Text style={styles.doneCategoryButtonText}>Done</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity style={styles.deleteCategoryButton} onPress={() => handleDeleteAppointment(selectedAppointment.id)}>
+                    <Text style={styles.deleteCategoryButtonText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
               <View style={styles.detailTableHeader}>
                 <Text style={styles.detailHeaderCell}>Field</Text>
                 <Text style={styles.detailHeaderCell}>Value</Text>
@@ -1162,6 +1202,10 @@ export default function AppointmentsScreen() {
                   
                   for (let day = 1; day <= daysInMonth; day++) {
                     const dayDate = new Date(year, month, day);
+                    const today = new Date();
+                    const isToday = dayDate.toDateString() === today.toDateString();
+                    const isSelected = selectedDate.toDateString() === dayDate.toDateString();
+                    
                     const dayAppointments = appointments.filter(apt => {
                       try {
                         let aptDate;
@@ -1183,36 +1227,55 @@ export default function AppointmentsScreen() {
                       }
                     });
                     
+                    const hasAppointments = dayAppointments.length > 0;
+                    
                     days.push(
                       <TouchableOpacity 
                         key={day} 
-                        style={[styles.calendarDay, selectedDate.toDateString() === dayDate.toDateString() && styles.selectedCalendarDay]}
+                        style={[
+                          styles.calendarDay, 
+                          isSelected && styles.selectedCalendarDay,
+                          isToday && styles.todayCalendarDay,
+                          hasAppointments && styles.dayWithAppointments
+                        ]}
                         onPress={() => setSelectedDate(dayDate)}
                       >
-                        <Text style={[styles.dayNumber, selectedDate.toDateString() === dayDate.toDateString() && styles.selectedDayNumber]}>{day}</Text>
+                        <Text style={[
+                          styles.dayNumber, 
+                          isSelected && styles.selectedDayNumber,
+                          isToday && styles.todayDayNumber
+                        ]}>{day}</Text>
                         <View style={styles.appointmentDots}>
-                          {dayAppointments.slice(0, 3).map((apt, idx) => {
-                            const getStatusColor = () => {
-                              switch(apt.status) {
-                                case 'completed': return '#007bff';
-                                case 'cancelled': return '#dc3545';
-                                case 'pending': return '#28a745';
-                                case 'due': return '#dc3545';
-                                case 'scheduled': return '#dc3545';
-                                default: return '#007bff';
+                          {(() => {
+                            const uniqueStatuses = new Set();
+                            dayAppointments.forEach(apt => {
+                              let normalizedStatus;
+                              if (apt.status === 'completed') {
+                                normalizedStatus = 'Done';
+                              } else if (apt.status === 'due' || apt.status === 'scheduled') {
+                                normalizedStatus = 'Due';
+                              } else {
+                                normalizedStatus = 'Pending';
                               }
-                            };
-                            return (
-                              <TouchableOpacity
-                                key={idx}
-                                style={[styles.appointmentDot, { backgroundColor: getStatusColor() }]}
-                                onPress={() => setSelectedAppointment(apt)}
-                              />
-                            );
-                          })}
-                          {dayAppointments.length > 3 && (
-                            <Text style={styles.moreCount}>+{dayAppointments.length - 3}</Text>
-                          )}
+                              uniqueStatuses.add(normalizedStatus);
+                            });
+                            return Array.from(uniqueStatuses).slice(0, 3).map((status) => {
+                              const getStatusColor = () => {
+                                switch(status) {
+                                  case 'Done': return '#007bff';
+                                  case 'Pending': return '#28a745';
+                                  case 'Due': return '#dc3545';
+                                  default: return '#007bff';
+                                }
+                              };
+                              return (
+                                <View
+                                  key={status}
+                                  style={[styles.appointmentDot, { backgroundColor: getStatusColor() }]}
+                                />
+                              );
+                            });
+                          })()}
                         </View>
                       </TouchableOpacity>
                     );
@@ -1230,85 +1293,64 @@ export default function AppointmentsScreen() {
             <View style={styles.appointmentListContainer}>
               <Text style={styles.listTitle}>{selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
               <ScrollView style={styles.appointmentList} showsVerticalScrollIndicator={true}>
-                {appointments
-                  .filter(apt => {
-                    try {
-                      let aptDate;
-                      if (apt.appointmentDate?.seconds) {
-                        aptDate = new Date(apt.appointmentDate.seconds * 1000);
-                      } else {
-                        aptDate = new Date(apt.appointmentDate);
+                {(() => {
+                  const filteredAppointments = appointments
+                    .filter(apt => {
+                      try {
+                        let aptDate;
+                        if (apt.appointmentDate?.seconds) {
+                          aptDate = new Date(apt.appointmentDate.seconds * 1000);
+                        } else {
+                          aptDate = new Date(apt.appointmentDate);
+                        }
+                        
+                        if (isNaN(aptDate.getTime())) return false;
+                        if (aptDate.toDateString() !== selectedDate.toDateString()) return false;
+                        if (vetFilter !== 'all' && apt.veterinarian !== vetFilter) return false;
+                        return true;
+                      } catch {
+                        return false;
                       }
-                      
-                      if (isNaN(aptDate.getTime())) return false;
-                      if (aptDate.toDateString() !== selectedDate.toDateString()) return false;
-                      if (vetFilter !== 'all' && apt.veterinarian !== vetFilter) return false;
-                      return true;
-                    } catch {
-                      return false;
-                    }
-                  })
-                  .sort((a, b) => {
-                    try {
-                      let dateA = a.appointmentDate?.seconds ? new Date(a.appointmentDate.seconds * 1000) : new Date(a.appointmentDate);
-                      let dateB = b.appointmentDate?.seconds ? new Date(b.appointmentDate.seconds * 1000) : new Date(b.appointmentDate);
-                      return dateA.getTime() - dateB.getTime();
-                    } catch {
-                      return 0;
-                    }
-                  })
-                  .map((appointment) => (
-                    <View key={appointment.id} style={[styles.appointmentListItem, {
-                      backgroundColor: appointment.status === 'due' || appointment.status === 'scheduled' ? '#f8d7da' : '#ffffff'
-                    }]}>
-                      <TouchableOpacity 
-                        style={styles.appointmentContent}
-                        onPress={() => setSelectedAppointment(appointment)}
-                      >
-                        <View style={styles.appointmentTime}>
-                          <Text style={styles.timeText}>{formatDateTime(appointment.appointmentDate).time}</Text>
-                          <Text style={styles.dateText}>{formatDateTime(appointment.appointmentDate).date}</Text>
-                        </View>
-                        <View style={styles.appointmentInfo}>
-                          <Text style={styles.customerText}>{appointment.customerName}</Text>
-                          <Text style={styles.petText}>{appointment.petName} - {appointment.reason}</Text>
-                        </View>
-                      </TouchableOpacity>
-                      <View style={styles.appointmentActions}>
-                        {(appointment.status === 'pending' || appointment.status === 'due' || appointment.status === 'scheduled') ? (
-                          <>
-                            <TouchableOpacity 
-                              style={styles.calendarDoneButton}
-                              onPress={async () => {
-                                try {
-                                  await updateAppointment(user.email, appointment.id, { 
-                                    status: 'completed',
-                                    completedAt: new Date()
-                                  });
-                                  await loadAppointments();
-                                } catch (error) {
-                                  console.error('Failed to update appointment:', error);
-                                }
-                              }}
-                            >
-                              <Text style={styles.calendarDoneButtonText}>Done</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity 
-                              style={styles.calendarDeleteButton}
-                              onPress={() => handleDeleteAppointment(appointment.id)}
-                            >
-                              <Text style={styles.calendarDeleteButtonText}>Delete</Text>
-                            </TouchableOpacity>
-                          </>
-                        ) : (
-                          <View style={styles.calendarCompletedBadge}>
-                            <Text style={styles.calendarCompletedText}>Done</Text>
-                          </View>
-                        )}
+                    })
+                    .sort((a, b) => {
+                      try {
+                        let dateA = a.appointmentDate?.seconds ? new Date(a.appointmentDate.seconds * 1000) : new Date(a.appointmentDate);
+                        let dateB = b.appointmentDate?.seconds ? new Date(b.appointmentDate.seconds * 1000) : new Date(b.appointmentDate);
+                        return dateA.getTime() - dateB.getTime();
+                      } catch {
+                        return 0;
+                      }
+                    });
+                  
+                  if (filteredAppointments.length === 0) {
+                    return (
+                      <View style={styles.noAppointmentsContainer}>
+                        <Text style={styles.noAppointmentsText}>No appointments scheduled for this day</Text>
                       </View>
-                    </View>
-                  ))
-                }
+                    );
+                  }
+                  
+                  return filteredAppointments.map((appointment) => (
+                    <TouchableOpacity 
+                      key={appointment.id} 
+                      style={styles.appointmentCard}
+                      onPress={() => setSelectedAppointment(appointment)}
+                    >
+                      <View style={[styles.statusIcon, { backgroundColor: appointment.status === 'pending' ? '#28a745' : appointment.status === 'due' ? '#dc3545' : appointment.status === 'completed' ? '#007bff' : '#6c757d' }]}>
+                        <Text style={styles.statusIconText}>
+                          {appointment.status === 'pending' ? '⏳' : appointment.status === 'due' ? '⚠️' : appointment.status === 'completed' ? '✅' : '⏳'}
+                        </Text>
+                      </View>
+                      <View style={styles.appointmentContent}>
+                        <Text style={styles.patientName}>{appointment.customerName}</Text>
+                        <Text style={styles.petInfo}>{appointment.petName} - {appointment.reason}</Text>
+                        <Text style={styles.appointmentTime}>
+                          {formatDateTime(appointment.appointmentDate).date} {formatDateTime(appointment.appointmentDate).time}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ));
+                })()}
               </ScrollView>
             </View>
             </View>
@@ -1498,17 +1540,25 @@ export default function AppointmentsScreen() {
                   {showCustomerDropdown && (
                     <View style={styles.dropdownMenu}>
                       <ScrollView style={styles.dropdownScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
-                        {customers.map((customer) => (
-                          <TouchableOpacity
-                            key={customer.id}
-                            style={styles.dropdownOption}
-                            onPress={() => selectCustomer(customer)}
-                          >
-                            <Text style={styles.dropdownOptionText}>
-                              {`${customer.firstname || ''} ${customer.surname || ''}`.trim() || customer.email || 'Unknown'}
+                        {customers.length === 0 ? (
+                          <View style={styles.dropdownOption}>
+                            <Text style={[styles.dropdownOptionText, {fontStyle: 'italic', color: '#999'}]}>
+                              No customers found
                             </Text>
-                          </TouchableOpacity>
-                        ))}
+                          </View>
+                        ) : (
+                          customers.map((customer) => (
+                            <TouchableOpacity
+                              key={customer.id}
+                              style={styles.dropdownOption}
+                              onPress={() => selectCustomer(customer)}
+                            >
+                              <Text style={styles.dropdownOptionText}>
+                                {`${customer.firstname || ''} ${customer.surname || ''}`.trim() || customer.email || 'Unknown'}
+                              </Text>
+                            </TouchableOpacity>
+                          ))
+                        )}
                       </ScrollView>
                     </View>
                   )}
@@ -2320,19 +2370,19 @@ const styles = StyleSheet.create({
   },
   customerSelector: {
     position: 'relative',
-    zIndex: 1000,
+    zIndex: 4000,
   },
   petSelector: {
     position: 'relative',
-    zIndex: 999,
+    zIndex: 3000,
   },
   vetSelector: {
     position: 'relative',
-    zIndex: 998,
+    zIndex: 2000,
   },
   reasonSelector: {
     position: 'relative',
-    zIndex: 997,
+    zIndex: 1000,
   },
   dropdownButton: {
     flexDirection: 'row',
@@ -2990,6 +3040,18 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
   },
+  todayCalendarDay: {
+    backgroundColor: 'rgba(128, 0, 32, 0.2)',
+    borderWidth: 1,
+    borderColor: '#800020',
+  },
+  todayDayNumber: {
+    color: '#000',
+    fontWeight: 'bold',
+  },
+  dayWithAppointments: {
+    backgroundColor: 'rgba(40, 167, 69, 0.2)',
+  },
   returnRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3038,35 +3100,55 @@ const styles = StyleSheet.create({
   appointmentList: {
     flex: 1,
   },
-  appointmentListItem: {
-    flexDirection: 'row',
-    padding: 12,
+  appointmentCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 0,
+    padding: 16,
+    marginBottom: 1,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#e0e0e0',
+    flexDirection: 'row',
     alignItems: 'center',
+    height: 80,
+  },
+  statusIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusIconText: {
+    fontSize: 16,
+    color: '#000',
   },
   appointmentContent: {
-    flexDirection: 'row',
     flex: 1,
   },
-  appointmentTime: {
-    width: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appointmentInfo: {
-    flex: 1,
-    marginLeft: 10,
-  },
-  customerText: {
-    fontSize: 14,
+  patientName: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+    marginBottom: 2,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
-  petText: {
+  petInfo: {
+    fontSize: 15,
+    color: '#666',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  appointmentTime: {
     fontSize: 12,
     color: '#666',
-    marginTop: 2,
+    marginTop: 4,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   doneButton: {
     backgroundColor: '#28a745',
@@ -3180,6 +3262,16 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
+  },
+  noAppointmentsContainer: {
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noAppointmentsText: {
+    fontSize: 14,
+    color: '#666',
+    fontStyle: 'italic',
   },
   moreCount: {
     fontSize: 8,

@@ -471,7 +471,7 @@ export const deleteCustomerWithPets = async (customerId, userEmail?: string) => 
   try {
     // First get all pets for this customer
     const pets = await getPets(userEmail);
-    const customerPets = pets.filter(pet => pet.owner === customerId);
+    const customerPets = pets.filter(pet => pet.owner === customerId || pet.ownerId === customerId);
     
     // Delete all pets
     for (const pet of customerPets) {
@@ -488,6 +488,15 @@ export const deleteCustomerWithPets = async (customerId, userEmail?: string) => 
 
 export const deletePet = async (id, userEmail?: string) => {
   try {
+    // First delete all medical records for this pet
+    const medicalRecords = await getMedicalRecords(userEmail);
+    const petRecords = medicalRecords.filter(record => record.petId === id);
+    
+    for (const record of petRecords) {
+      await deleteMedicalRecord(record.id, userEmail);
+    }
+    
+    // Then delete the pet
     const tenantId = await getTenantId(userEmail || '');
     const collectionPath = tenantId ? `tenants/${tenantId}/pets` : 'pets';
     await deleteDoc(doc(db, collectionPath, id));

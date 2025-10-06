@@ -55,7 +55,7 @@ export default function VetCustomers() {
   });
   const [newPet, setNewPet] = useState({
     name: '',
-    type: '',
+    species: '',
     breed: ''
   });
   const [newRecord, setNewRecord] = useState({
@@ -311,7 +311,7 @@ export default function VetCustomers() {
   };
   
   const handleAddPet = async () => {
-    if (!newPet.name || !newPet.type) {
+    if (!newPet.name || !newPet.species) {
       Alert.alert('Error', 'Please fill in required fields');
       return;
     }
@@ -320,7 +320,7 @@ export default function VetCustomers() {
       const ownerName = selectedCustomer.name || `${selectedCustomer.firstname || ''} ${selectedCustomer.surname || ''}`.trim();
       const pet = {
         name: newPet.name,
-        species: newPet.type,
+        species: newPet.species,
         breed: newPet.breed,
         owner: ownerName,
         ownerId: selectedCustomer.id,
@@ -331,7 +331,7 @@ export default function VetCustomers() {
       await addPet(pet, tenantEmail);
       await loadCustomerPets();
       await loadCustomers(); // Refresh customer list to update pet counts
-      setNewPet({ name: '', type: '', breed: '' });
+      setNewPet({ name: '', species: '', breed: '' });
       setShowAddPetModal(false);
       Alert.alert('Success', 'Pet added successfully');
     } catch (error) {
@@ -535,10 +535,11 @@ export default function VetCustomers() {
     <ThemedView style={styles.container}>
       {!selectedCustomer && !selectedPet && (
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#666" />
+          <Ionicons name="search" size={20} color="#7B2C2C" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search customers..."
+            placeholderTextColor="#7B2C2C"
             value={searchTerm}
             onChangeText={setSearchTerm}
           />
@@ -547,10 +548,11 @@ export default function VetCustomers() {
 
       {showPetsView && (
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#666" />
+          <Ionicons name="search" size={20} color="#7B2C2C" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search pets..."
+            placeholderTextColor="#7B2C2C"
             value={petsSearchTerm}
             onChangeText={setPetsSearchTerm}
           />
@@ -559,10 +561,11 @@ export default function VetCustomers() {
       
       {showMedicalView && (
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#666" />
+          <Ionicons name="search" size={20} color="#7B2C2C" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search medical records..."
+            placeholderTextColor="#7B2C2C"
             value={medicalSearchTerm}
             onChangeText={setMedicalSearchTerm}
           />
@@ -579,10 +582,9 @@ export default function VetCustomers() {
             {console.log('SHOWING PET DETAILS VIEW - selectedPet:', selectedPet, 'showMedicalView:', showMedicalView)}
             <ScrollView style={styles.scrollableList} showsVerticalScrollIndicator={false}>
               <View style={styles.detailTable}>
-                {console.log('VET MOBILE - Selected pet data:', selectedPet)}
                 {[
                   { label: 'Name', value: selectedPet.name || 'N/A' },
-                  { label: 'Type', value: selectedPet.type || selectedPet.species || 'N/A' },
+                  { label: 'Species', value: selectedPet.species || selectedPet.type || 'N/A' },
                   { label: 'Breed', value: selectedPet.breed || 'N/A' },
                   { label: 'See Medical History', value: 'View Records', isAction: true }
                 ].map((item, index) => (
@@ -611,7 +613,7 @@ export default function VetCustomers() {
                   setShowPetsView(false);
                 }}>
                   <Text style={styles.petName}>{pet.name}</Text>
-                  <Text style={styles.petDetails}>{pet.type} - {pet.breed}</Text>
+                  <Text style={styles.petDetails}>{pet.species || pet.type} - {pet.breed}</Text>
                 </TouchableOpacity>
               ))}
               {customerPets.length === 0 && (
@@ -652,7 +654,7 @@ export default function VetCustomers() {
             <ScrollView style={styles.scrollableList} showsVerticalScrollIndicator={false}>
               <View style={styles.detailTable}>
                 {[
-                  { label: 'Name', value: selectedCustomer.name },
+                  { label: 'Name', value: `${selectedCustomer.firstname || ''} ${selectedCustomer.surname || ''}`.trim() || 'Unknown Customer' },
                   { label: 'Phone', value: selectedCustomer.contact },
                   { label: 'Email', value: selectedCustomer.email || 'Not provided' },
                   { label: 'Address', value: selectedCustomer.address || 'Not provided' },
@@ -768,9 +770,9 @@ export default function VetCustomers() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <ThemedText type="subtitle">Add New Customer</ThemedText>
+              <Text style={styles.modalTitle}>Add New Customer</Text>
               <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={24} color="#7B2C2C" />
               </TouchableOpacity>
             </View>
 
@@ -782,6 +784,7 @@ export default function VetCustomers() {
                   value={newCustomer.firstname}
                   onChangeText={(text) => setNewCustomer({...newCustomer, firstname: text})}
                   placeholder="Enter first name"
+                  placeholderTextColor="rgba(123, 44, 44, 0.5)"
                 />
               </View>
 
@@ -792,6 +795,7 @@ export default function VetCustomers() {
                   value={newCustomer.surname}
                   onChangeText={(text) => setNewCustomer({...newCustomer, surname: text})}
                   placeholder="Enter surname"
+                  placeholderTextColor="rgba(123, 44, 44, 0.5)"
                 />
               </View>
 
@@ -802,6 +806,7 @@ export default function VetCustomers() {
                   value={newCustomer.email}
                   onChangeText={(text) => setNewCustomer({...newCustomer, email: text})}
                   placeholder="Enter email address"
+                  placeholderTextColor="rgba(123, 44, 44, 0.5)"
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
@@ -814,6 +819,7 @@ export default function VetCustomers() {
                   value={newCustomer.contact}
                   onChangeText={(text) => setNewCustomer({...newCustomer, contact: text})}
                   placeholder="Enter contact number"
+                  placeholderTextColor="rgba(123, 44, 44, 0.5)"
                   keyboardType="phone-pad"
                 />
               </View>
@@ -825,6 +831,7 @@ export default function VetCustomers() {
                   value={newCustomer.address}
                   onChangeText={(text) => setNewCustomer({...newCustomer, address: text})}
                   placeholder="Enter address"
+                  placeholderTextColor="rgba(123, 44, 44, 0.5)"
                 />
               </View>
             </ScrollView>
@@ -839,6 +846,8 @@ export default function VetCustomers() {
               <TouchableOpacity 
                 style={styles.saveButton}
                 onPress={handleAddCustomer}
+                activeOpacity={1}
+                underlayColor="#28a745"
               >
                 <Text style={styles.saveButtonText}>Add Customer</Text>
               </TouchableOpacity>
@@ -857,9 +866,9 @@ export default function VetCustomers() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <ThemedText type="subtitle">Add New Pet</ThemedText>
+              <Text style={styles.modalTitle}>Add New Pet</Text>
               <TouchableOpacity onPress={() => setShowAddPetModal(false)}>
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={24} color="#7B2C2C" />
               </TouchableOpacity>
             </View>
 
@@ -871,17 +880,18 @@ export default function VetCustomers() {
                   value={newPet.name}
                   onChangeText={(text) => setNewPet({...newPet, name: text})}
                   placeholder="Enter pet name"
+                  placeholderTextColor="rgba(123, 44, 44, 0.5)"
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Type *</Text>
+                <Text style={styles.inputLabel}>Species *</Text>
                 <TouchableOpacity 
                   style={styles.dropdownButton}
                   onPress={() => setShowTypeDropdown(!showTypeDropdown)}
                 >
-                  <Text style={styles.dropdownText}>{newPet.type || 'Select animal type'}</Text>
-                  <Ionicons name="chevron-down" size={20} color="#666" />
+                  <Text style={styles.dropdownText}>{newPet.species || 'Select species'}</Text>
+                  <Ionicons name="chevron-down" size={20} color="#7B2C2C" />
                 </TouchableOpacity>
                 {showTypeDropdown && (
                   <View style={styles.dropdownList}>
@@ -893,14 +903,14 @@ export default function VetCustomers() {
                           setShowCustomTypeModal(true);
                         }}
                       >
-                        <Text style={styles.addNewText}>+ Add New Type</Text>
+                        <Text style={styles.addNewText}>+ Add New Species</Text>
                       </TouchableOpacity>
                       {animalTypes.map((type) => (
                         <View key={type.id} style={styles.dropdownItemWithDelete}>
                           <TouchableOpacity
                             style={styles.dropdownItemMain}
                             onPress={() => {
-                              setNewPet({...newPet, type: type.name, breed: ''});
+                              setNewPet({...newPet, species: type.name, breed: ''});
                               setShowTypeDropdown(false);
                             }}
                           >
@@ -924,14 +934,14 @@ export default function VetCustomers() {
                 <TouchableOpacity 
                   style={styles.dropdownButton}
                   onPress={() => setShowBreedDropdown(!showBreedDropdown)}
-                  disabled={!newPet.type}
+                  disabled={!newPet.species}
                 >
-                  <Text style={[styles.dropdownText, !newPet.type && styles.disabledText]}>
+                  <Text style={[styles.dropdownText, !newPet.species && styles.disabledText]}>
                     {newPet.breed || 'Select breed'}
                   </Text>
-                  <Ionicons name="chevron-down" size={20} color="#666" />
+                  <Ionicons name="chevron-down" size={20} color="#7B2C2C" />
                 </TouchableOpacity>
-                {showBreedDropdown && newPet.type && (
+                {showBreedDropdown && newPet.species && (
                   <View style={styles.dropdownList}>
                     <ScrollView style={styles.dropdownScroll} nestedScrollEnabled={true}>
                       <TouchableOpacity
@@ -943,7 +953,7 @@ export default function VetCustomers() {
                       >
                         <Text style={styles.addNewText}>+ Add New Breed</Text>
                       </TouchableOpacity>
-                      {getBreedsByType(newPet.type).map((breed) => (
+                      {getBreedsByType(newPet.species).map((breed) => (
                         <View key={breed} style={styles.dropdownItemWithDelete}>
                           <TouchableOpacity
                             style={styles.dropdownItemMain}
@@ -956,7 +966,7 @@ export default function VetCustomers() {
                           </TouchableOpacity>
                           <TouchableOpacity
                             style={styles.deleteButton}
-                            onPress={() => handleDeleteBreed(breed, newPet.type)}
+                            onPress={() => handleDeleteBreed(breed, newPet.species)}
                           >
                             <Text style={styles.deleteButtonText}>×</Text>
                           </TouchableOpacity>
@@ -998,9 +1008,9 @@ export default function VetCustomers() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <ThemedText type="subtitle">Add Medical Record</ThemedText>
+              <Text style={styles.modalTitle}>Add Medical Record</Text>
               <TouchableOpacity onPress={() => setShowAddRecordModal(false)}>
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={24} color="#7B2C2C" />
               </TouchableOpacity>
             </View>
 
@@ -1138,12 +1148,12 @@ export default function VetCustomers() {
       >
         <View style={styles.customModalOverlay}>
           <View style={styles.customModalContent}>
-            <Text style={styles.customModalTitle}>Add New Animal Type</Text>
+            <Text style={styles.customModalTitle}>Add New Species</Text>
             <TextInput
               style={styles.customInput}
               value={customType}
               onChangeText={setCustomType}
-              placeholder="Enter new animal type"
+              placeholder="Enter new species"
               autoFocus={true}
             />
             <View style={styles.customModalButtons}>
@@ -1164,13 +1174,13 @@ export default function VetCustomers() {
                       const newTypeData = { name: customType.trim() };
                       const savedType = await addAnimalType(newTypeData, tenantEmail);
                       setAnimalTypes([...animalTypes, savedType]);
-                      setNewPet({...newPet, type: customType.trim(), breed: ''});
+                      setNewPet({...newPet, species: customType.trim(), breed: ''});
                       setShowCustomTypeModal(false);
                       setCustomType('');
-                      Alert.alert('Success', 'Animal type added successfully');
+                      Alert.alert('Success', 'Species added successfully');
                     } catch (error) {
                       console.error('Error adding animal type:', error);
-                      Alert.alert('Error', 'Failed to add animal type');
+                      Alert.alert('Error', 'Failed to add species');
                     }
                   }
                 }}
@@ -1212,16 +1222,16 @@ export default function VetCustomers() {
               <TouchableOpacity 
                 style={styles.customSaveButton}
                 onPress={async () => {
-                  if (customBreed.trim() && newPet.type) {
+                  if (customBreed.trim() && newPet.species) {
                     try {
-                      const newBreedData = { animalType: newPet.type, name: customBreed.trim() };
+                      const newBreedData = { animalType: newPet.species, name: customBreed.trim() };
                       await addBreed(newBreedData, tenantEmail);
                       
                       const updatedBreeds = { ...breedsByType };
-                      if (!updatedBreeds[newPet.type]) {
-                        updatedBreeds[newPet.type] = [];
+                      if (!updatedBreeds[newPet.species]) {
+                        updatedBreeds[newPet.species] = [];
                       }
-                      updatedBreeds[newPet.type].push(customBreed.trim());
+                      updatedBreeds[newPet.species].push(customBreed.trim());
                       setBreedsByType(updatedBreeds);
                       setNewPet({...newPet, breed: customBreed.trim()});
                       setShowCustomBreedModal(false);
@@ -1336,7 +1346,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginLeft: 8,
     fontSize: 16,
-    color: '#333',
+    color: '#7B2C2C',
   },
   listContainer: {
     flex: 1,
@@ -1351,11 +1361,11 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: 'rgba(123, 44, 44, 0.1)',
   },
   customerName: {
     fontSize: 16,
-    color: '#333',
+    color: '#666',
     fontWeight: '500',
   },
   loadingContainer: {
@@ -1405,16 +1415,21 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#7B2C2C',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: 'rgba(123, 44, 44, 0.1)',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     backgroundColor: '#fafafa',
+    elevation: 2,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   textArea: {
     height: 80,
@@ -1427,7 +1442,9 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'rgba(220, 53, 69, 0.2)',
+    borderWidth: 2,
+    borderColor: '#dc3545',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -1435,11 +1452,13 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
+    color: '#dc3545',
   },
   saveButton: {
     flex: 1,
-    backgroundColor: '#28a745',
+    backgroundColor: 'rgba(40, 167, 69, 0.2)',
+    borderWidth: 2,
+    borderColor: '#28a745',
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -1447,7 +1466,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'white',
+    color: '#28a745',
   },
   customerDetailsView: {
     flex: 1,
@@ -1461,10 +1480,27 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
+  returnButton: {
+    backgroundColor: '#7B2C2C',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  returnIcon: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  headerSpacer: {
+    width: 40,
+  },
   detailTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#7B2C2C',
+    flex: 1,
+    textAlign: 'center',
   },
   detailSearchContainer: {
     flexDirection: 'row',
@@ -1488,12 +1524,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: 'rgba(123, 44, 44, 0.1)',
   },
   detailLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#7B2C2C',
     width: 120,
   },
   detailValue: {
@@ -1503,7 +1539,7 @@ const styles = StyleSheet.create({
   },
   detailActionValue: {
     fontSize: 16,
-    color: '#2196F3',
+    color: '#7B2C2C',
     flex: 1,
     textDecorationLine: 'underline',
   },
@@ -1533,22 +1569,23 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: 'rgba(123, 44, 44, 0.1)',
   },
   petName: {
     fontSize: 16,
-    color: '#333',
+    color: '#7B2C2C',
     fontWeight: '500',
   },
   petDetails: {
     fontSize: 14,
-    color: '#666',
+    color: '#7B2C2C',
     marginTop: 4,
   },
   petDetailsView: {
     flex: 1,
     backgroundColor: 'white',
   },
+
   medicalView: {
     flex: 1,
     backgroundColor: 'white',
@@ -1562,16 +1599,16 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: 'rgba(123, 44, 44, 0.1)',
   },
   medicalType: {
     fontSize: 16,
-    color: '#333',
+    color: '#7B2C2C',
     fontWeight: '500',
   },
   medicalDate: {
     fontSize: 14,
-    color: '#666',
+    color: '#7B2C2C',
     marginTop: 4,
   },
   medicalSection: {
@@ -1607,10 +1644,16 @@ const styles = StyleSheet.create({
   },
   dropdownButton: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: 'rgba(123, 44, 44, 0.1)',
     borderRadius: 8,
     padding: 12,
+    fontSize: 16,
     backgroundColor: '#fafafa',
+    elevation: 2,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1624,11 +1667,16 @@ const styles = StyleSheet.create({
   },
   dropdownList: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: 'rgba(123, 44, 44, 0.1)',
     borderRadius: 8,
     backgroundColor: '#fff',
     marginTop: 4,
     maxHeight: 150,
+    elevation: 4,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
   dropdownScroll: {
     maxHeight: 150,
@@ -1638,7 +1686,7 @@ const styles = StyleSheet.create({
   },
   addNewText: {
     fontSize: 16,
-    color: '#2196F3',
+    color: '#7B2C2C',
     fontWeight: '500',
   },
   customModalOverlay: {
@@ -1689,10 +1737,15 @@ const styles = StyleSheet.create({
   },
   customSaveButton: {
     flex: 1,
-    backgroundColor: '#28a745',
+    backgroundColor: '#7B2C2C',
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#7B2C2C',
   },
   customSaveText: {
     fontSize: 16,
@@ -1702,11 +1755,11 @@ const styles = StyleSheet.create({
   dropdownItem: {
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: 'rgba(123, 44, 44, 0.1)',
   },
   dropdownItemText: {
     fontSize: 16,
-    color: '#333',
+    color: '#7B2C2C',
   },
   dropdownItemWithDelete: {
     flexDirection: 'row',
@@ -1825,7 +1878,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   formPreviewSaveHeaderButton: {
-    backgroundColor: '#28a745',
+    backgroundColor: '#7B2C2C',
     borderRadius: 5,
     paddingHorizontal: 10,
     paddingVertical: 6,

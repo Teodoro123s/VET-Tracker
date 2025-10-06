@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { getMedicalRecordById, deleteMedicalRecord, getFormFields } from '@/lib/services/firebaseService';
+import { getMedicalRecordById, deleteMedicalRecord, getFormFields, getVeterinarianByEmail } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
 
 export default function VetMedicalRecordDetailScreen() {
@@ -10,6 +10,7 @@ export default function VetMedicalRecordDetailScreen() {
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [formFields, setFormFields] = useState([]);
+  const [veterinarianName, setVeterinarianName] = useState('');
 
   useEffect(() => {
     if (id && userEmail) {
@@ -21,6 +22,13 @@ export default function VetMedicalRecordDetailScreen() {
     try {
       const recordData = await getMedicalRecordById(userEmail, id as string);
       setRecord(recordData);
+      
+      // Load veterinarian name if veterinarian email exists
+      if (recordData?.veterinarian || recordData?.createdBy) {
+        const vetEmail = recordData.veterinarian || recordData.createdBy;
+        const vet = await getVeterinarianByEmail(userEmail, vetEmail);
+        setVeterinarianName(vet?.name || vetEmail || 'N/A');
+      }
       
       if (recordData?.formTemplate || recordData?.formType) {
         const formName = recordData.formTemplate || recordData.formType;
@@ -85,18 +93,6 @@ export default function VetMedicalRecordDetailScreen() {
       <View style={styles.content}>
         <View style={styles.tableContainer}>
           <View style={styles.table}>
-            <View style={styles.returnRow}>
-              <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.push('/veterinarian/vet-customers')} style={styles.returnButton}>
-                <Text style={styles.returnIcon}>←</Text>
-              </TouchableOpacity>
-              <View style={styles.returnText} />
-              <View style={styles.returnText} />
-              <View style={styles.actionButtons}>
-                <TouchableOpacity onPress={handleDelete} style={styles.deleteButton}>
-                  <Text style={styles.actionButtonText}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
             
             <View style={styles.tableHeader}>
               <Text style={styles.headerCell}>Field</Text>
@@ -106,19 +102,15 @@ export default function VetMedicalRecordDetailScreen() {
             <View style={styles.tableBody}>
               <View style={styles.tableRow}>
                 <Text style={styles.cell}>Date & Time Created</Text>
-                <Text style={styles.cell}>{record.createdAt ? new Date(record.createdAt.seconds * 1000).toLocaleString() : record.date || 'N/A'}</Text>
+                <Text style={styles.valueCell}>{record.createdAt ? new Date(record.createdAt.seconds * 1000).toLocaleString() : record.date || 'N/A'}</Text>
               </View>
               <View style={styles.tableRow}>
                 <Text style={styles.cell}>Category</Text>
-                <Text style={styles.cell}>{record.category || 'N/A'}</Text>
+                <Text style={styles.valueCell}>{record.category || 'N/A'}</Text>
               </View>
               <View style={styles.tableRow}>
                 <Text style={styles.cell}>Form Template</Text>
-                <Text style={styles.cell}>{record.formTemplate || record.formType || 'N/A'}</Text>
-              </View>
-              <View style={styles.tableRow}>
-                <Text style={styles.cell}>Veterinarian</Text>
-                <Text style={styles.cell}>{record.veterinarian || record.createdBy || 'N/A'}</Text>
+                <Text style={styles.valueCell}>{record.formTemplate || record.formType || 'N/A'}</Text>
               </View>
             </View>
           </View>
@@ -138,14 +130,14 @@ export default function VetMedicalRecordDetailScreen() {
                   return (
                     <View key={field.id} style={styles.tableRow}>
                       <Text style={styles.cell}>{field.label}</Text>
-                      <Text style={styles.cell}>{fieldValue}</Text>
+                      <Text style={styles.valueCell}>{fieldValue}</Text>
                     </View>
                   );
                 })}
                 {formFields.length === 0 && (
                   <View style={styles.tableRow}>
                     <Text style={styles.cell}>No form fields found</Text>
-                    <Text style={styles.cell}>-</Text>
+                    <Text style={styles.valueCell}>-</Text>
                   </View>
                 )}
               </View>
@@ -173,7 +165,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   headerText: {
-    fontSize: 36,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#800020',
   },
@@ -192,11 +184,16 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   tableContainer: {
-    borderWidth: 2,
-    borderColor: '#ddd',
-    borderRadius: 8,
     backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(123, 44, 44, 0.1)',
     marginBottom: 20,
+    elevation: 8,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   table: {
     backgroundColor: '#fff',
@@ -206,6 +203,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
     paddingVertical: 15,
     paddingHorizontal: 20,
+    alignItems: 'center',
   },
   tableRow: {
     flexDirection: 'row',
@@ -218,12 +216,17 @@ const styles = StyleSheet.create({
     flex: 1,
     fontWeight: 'bold',
     fontSize: 14,
-    color: '#333',
+    color: '#7B2C2C',
   },
   cell: {
     flex: 1,
     fontSize: 12,
-    color: '#555',
+    color: '#800000',
+  },
+  valueCell: {
+    flex: 1,
+    fontSize: 12,
+    color: '#666',
   },
   tableBody: {
     flex: 1,

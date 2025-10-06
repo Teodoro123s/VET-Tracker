@@ -50,7 +50,7 @@ export default function VetCalendarScreen() {
     // Smart status assignment
     const now = new Date();
     filtered = filtered.map(apt => {
-      if (apt.status === 'Completed' || apt.status === 'cancelled') {
+      if (apt.status === 'Completed' || apt.status === 'completed' || apt.status === 'cancelled') {
         return apt;
       }
       
@@ -170,7 +170,7 @@ export default function VetCalendarScreen() {
               return vetAppts.filter(apt => {
                 let currentStatus = apt.status;
                 
-                if (apt.status !== 'Completed' && apt.status !== 'cancelled') {
+                if (apt.status !== 'Completed' && apt.status !== 'completed' && apt.status !== 'cancelled') {
                   let appointmentTime;
                   if (apt.appointmentDate?.seconds) {
                     appointmentTime = new Date(apt.appointmentDate.seconds * 1000);
@@ -334,27 +334,36 @@ export default function VetCalendarScreen() {
                         {day}
                       </Text>
                       <View style={styles.appointmentDots}>
-                        {dayAppointments.slice(0, 3).map((apt, idx) => {
-                          const getStatusColor = () => {
-                            switch(apt.status) {
-                              case 'Completed': return '#007bff';
-                              case 'cancelled': return '#dc3545';
-                              case 'Pending': return '#28a745';
-                              case 'Due': return '#dc3545';
-                              case 'scheduled': return '#dc3545';
-                              default: return '#007bff';
+                        {(() => {
+                          const uniqueStatuses = new Set();
+                          dayAppointments.forEach(apt => {
+                            let normalizedStatus;
+                            if (apt.status === 'Completed' || apt.status === 'completed') {
+                              normalizedStatus = 'Done';
+                            } else if (apt.status === 'Due' || apt.status === 'due') {
+                              normalizedStatus = 'Due';
+                            } else {
+                              normalizedStatus = 'Pending';
                             }
-                          };
-                          return (
-                            <View
-                              key={idx}
-                              style={[styles.appointmentDot, { backgroundColor: getStatusColor() }]}
-                            />
-                          );
-                        })}
-                        {dayAppointments.length > 3 && (
-                          <Text style={styles.moreCount}>+{dayAppointments.length - 3}</Text>
-                        )}
+                            uniqueStatuses.add(normalizedStatus);
+                          });
+                          return Array.from(uniqueStatuses).slice(0, 3).map((status, idx) => {
+                            const getStatusColor = () => {
+                              switch(status) {
+                                case 'Done': return '#007bff';
+                                case 'Pending': return '#28a745';
+                                case 'Due': return '#dc3545';
+                                default: return '#007bff';
+                              }
+                            };
+                            return (
+                              <View
+                                key={status}
+                                style={[styles.appointmentDot, { backgroundColor: getStatusColor() }]}
+                              />
+                            );
+                          });
+                        })()}
                       </View>
                     </TouchableOpacity>
                   );
@@ -481,7 +490,9 @@ export default function VetCalendarScreen() {
                   
                   // Smart status assignment
                   let currentStatus = apt.status;
-                  if (apt.status !== 'Completed' && apt.status !== 'cancelled') {
+                  if (apt.status === 'completed' || apt.status === 'Completed') {
+                    currentStatus = 'Completed';
+                  } else if (apt.status !== 'cancelled') {
                     if (!isNaN(appointmentTime.getTime())) {
                       const timeDiff = appointmentTime.getTime() - now.getTime();
                       const hoursDiff = timeDiff / (1000 * 60 * 60);
@@ -494,14 +505,19 @@ export default function VetCalendarScreen() {
                     }
                   }
                   
+                  const getStatusColor = (status) => {
+                    switch (status) {
+                      case 'Pending': return '#28a745';
+                      case 'Due': return '#dc3545';
+                      case 'Completed': return '#007bff';
+                      default: return '#6c757d';
+                    }
+                  };
+                  
                   return (
                     <TouchableOpacity 
                       key={apt.id} 
-                      style={[styles.appointmentCard, {
-                        borderLeftColor: currentStatus === 'Pending' ? '#28a745' : 
-                                       currentStatus === 'Due' ? '#dc3545' :
-                                       currentStatus === 'Completed' ? '#007bff' : '#6c757d'
-                      }]}
+                      style={styles.mobileAppointmentCard}
                       onPress={() => {
                         router.push({
                           pathname: '/veterinarian/appointment-details',
@@ -509,8 +525,17 @@ export default function VetCalendarScreen() {
                         });
                       }}
                     >
-                      <View style={styles.appointmentHeader}>
-                        <Text style={styles.appointmentTime}>
+                      <View style={styles.mobileStatusIcon}>
+                        <Ionicons 
+                          name={currentStatus === 'Pending' ? 'time' : currentStatus === 'Due' ? 'alert-circle' : currentStatus === 'Completed' ? 'checkmark-circle' : 'time'} 
+                          size={20} 
+                          color={getStatusColor(currentStatus)} 
+                        />
+                      </View>
+                      <View style={styles.mobileAppointmentContent}>
+                        <Text style={styles.mobilePatientName}>{apt.customerName || apt.name}</Text>
+                        <Text style={styles.mobilePetInfo}>{apt.petName}</Text>
+                        <Text style={styles.mobileAppointmentTime}>
                           {(() => {
                             let aptDate;
                             if (apt.appointmentDate?.seconds) {
@@ -518,37 +543,11 @@ export default function VetCalendarScreen() {
                             } else {
                               aptDate = new Date(apt.appointmentDate || apt.dateTime);
                             }
-                            return aptDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+                            return aptDate.toLocaleDateString() + ' ' + aptDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
                           })()
                           }
                         </Text>
-                        <View style={[styles.statusBadge, {
-                          backgroundColor: currentStatus === 'Pending' ? '#28a745' : 
-                                         currentStatus === 'Due' ? '#dc3545' :
-                                         currentStatus === 'Completed' ? '#007bff' : '#6c757d'
-                        }]}>
-                          <Text style={styles.statusBadgeText}>{currentStatus}</Text>
-                        </View>
                       </View>
-                      <Text style={styles.appointmentName}>{apt.customerName || apt.name}</Text>
-                      <Text style={styles.appointmentDetails}>{apt.petName} - {apt.reason || apt.service}</Text>
-                      
-                      {currentStatus !== 'Completed' && (
-                        <View style={styles.appointmentActions}>
-                          <TouchableOpacity 
-                            style={styles.doneButton}
-                            onPress={() => handleMarkDone(apt.id)}
-                          >
-                            <Text style={styles.doneButtonText}>Done</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity 
-                            style={styles.deleteButton}
-                            onPress={() => handleDeleteAppointment(apt.id)}
-                          >
-                            <Text style={styles.deleteButtonText}>Delete</Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
                     </TouchableOpacity>
                   );
                 });
@@ -589,7 +588,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
   },
   filterButtonActive: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#7B2C2C',
   },
   filterText: {
     fontSize: 14,
@@ -661,8 +660,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#e8f5e8',
   },
   todayBox: {
-    backgroundColor: '#800020',
-    borderWidth: 2,
+    backgroundColor: 'rgba(128, 0, 32, 0.2)',
+    borderWidth: 1,
     borderColor: '#800020',
   },
   otherMonthBox: {
@@ -674,7 +673,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   todayText: {
-    color: '#ffffff',
+    color: '#000000',
     fontWeight: 'bold',
   },
   otherMonthText: {
@@ -854,11 +853,86 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   appointmentCard: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#fff',
     borderRadius: 8,
-    padding: 8,
-    marginBottom: 6,
-    borderLeftWidth: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(123, 44, 44, 0.1)',
+    marginBottom: 20,
+    elevation: 8,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  mobileAppointmentCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(123, 44, 44, 0.1)',
+    marginBottom: 4,
+    elevation: 8,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 12,
+  },
+  statusIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mobileStatusIcon: {
+    marginRight: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statusIconText: {
+    fontSize: 16,
+    color: '#000',
+  },
+  appointmentContent: {
+    flex: 1,
+  },
+  mobileAppointmentContent: {
+    flex: 1,
+  },
+  patientName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 2,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  mobilePatientName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 2,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  petInfo: {
+    fontSize: 15,
+    color: '#666',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  mobilePetInfo: {
+    fontSize: 15,
+    color: '#666',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   appointmentHeader: {
     flexDirection: 'row',
@@ -867,9 +941,20 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   appointmentTime: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#800020',
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  mobileAppointmentTime: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   appointmentName: {
     fontSize: 14,

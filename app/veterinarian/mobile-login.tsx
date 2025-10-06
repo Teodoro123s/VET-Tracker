@@ -2,7 +2,8 @@ import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } fro
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import ForgotPasswordModal from '@/components/ForgotPasswordModal';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/Colors';
 
 export default function MobileLogin() {
   const router = useRouter();
@@ -11,11 +12,13 @@ export default function MobileLogin() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleLogin = async () => {
+    setErrorMessage('');
+    
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please enter both email and password');
+      setErrorMessage('Please enter both email and password');
       return;
     }
 
@@ -28,7 +31,7 @@ export default function MobileLogin() {
         
         // Restrict client/admin accounts from mobile login
         if (userRole === 'admin' || userRole === 'superadmin') {
-          Alert.alert('Access Denied', 'Client accounts cannot access mobile interface. Please use web login.');
+          setErrorMessage('Client accounts cannot access mobile interface. Please use web login.');
           return;
         }
         
@@ -36,13 +39,13 @@ export default function MobileLogin() {
         if (userRole === 'veterinarian' || userRole === 'staff') {
           router.replace('/veterinarian/vet-mobile');
         } else {
-          Alert.alert('Access Denied', 'Invalid account type for mobile access.');
+          setErrorMessage('Invalid account type for mobile access.');
         }
       } else {
-        Alert.alert('Login Failed', result.error || 'Invalid credentials');
+        setErrorMessage(result.error || 'Invalid credentials');
       }
     } catch (error) {
-      Alert.alert('Error', 'Login failed. Please try again.');
+      setErrorMessage('Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -51,65 +54,78 @@ export default function MobileLogin() {
   return (
     <View style={styles.container}>
       <View style={styles.loginCard}>
-        <View style={styles.logoContainer}>
-          <Image source={require('@/assets/Maroon logo.png')} style={styles.logo} />
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <Image source={require('@/assets/Maroon logo.png')} style={styles.logo} />
+          </View>
+          <Text style={styles.subtitle}>Veterinary Management System</Text>
         </View>
-        <Text style={styles.title}>Vet Clinic Mobile</Text>
-        <Text style={styles.subtitle}>Sign in to continue</Text>
-        
-        <View style={styles.form}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          
-          <Text style={styles.label}>Password</Text>
-          <View style={styles.passwordContainer}>
-            <TextInput
-              style={styles.passwordInput}
-              placeholder="Enter your password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity 
-              style={styles.eyeButton}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              <Text style={styles.eyeText}>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
-            </TouchableOpacity>
+
+        <View style={styles.formContainer}>
+          <View style={styles.errorContainer}>
+            {errorMessage ? (
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            ) : null}
           </View>
           
+          <View style={styles.inputContainer}>
+            <Ionicons name="mail-outline" size={18} color="#7B2C2C" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Email address (e.g., clinic@gmail.com)"
+              placeholderTextColor={Colors.text.muted}
+              value={email}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (errorMessage) setErrorMessage('');
+              }}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              editable={!loading}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="lock-closed-outline" size={18} color="#7B2C2C" style={styles.inputIcon} />
+            <TextInput
+              style={[styles.input, styles.passwordInput]}
+              placeholder="Password"
+              placeholderTextColor={Colors.text.muted}
+              value={password}
+              onChangeText={(text) => {
+                setPassword(text);
+                if (errorMessage) setErrorMessage('');
+              }}
+              secureTextEntry={!showPassword}
+              editable={!loading}
+              onSubmitEditing={handleLogin}
+            />
+            <TouchableOpacity 
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
+              disabled={loading}
+            >
+              <Ionicons 
+                name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                size={18} 
+                color="#7B2C2C" 
+              />
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity 
-            style={[styles.loginButton, loading && styles.loginButtonDisabled]}
+            style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
             onPress={handleLogin}
             disabled={loading}
+            activeOpacity={0.9}
+            underlayColor="#5A1F1F"
           >
             <Text style={styles.loginButtonText}>
               {loading ? 'Signing in...' : 'Sign In'}
             </Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.forgotPasswordButton}
-            onPress={() => setShowForgotPassword(true)}
-          >
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
         </View>
       </View>
-      
-      <ForgotPasswordModal
-        visible={showForgotPassword}
-        onClose={() => setShowForgotPassword(false)}
-        userType="veterinarian"
-      />
     </View>
   );
 }
@@ -117,100 +133,106 @@ export default function MobileLogin() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#800020',
+    backgroundColor: '#F5E6D3',
     justifyContent: 'center',
-    paddingHorizontal: 40,
+    alignItems: 'center',
+    padding: 20,
   },
   loginCard: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    padding: 40,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 4,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 16,
   },
   logoContainer: {
+    width: 120,
+    height: 120,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 8,
   },
   logo: {
-    width: 80,
-    height: 80,
+    width: 120,
+    height: 120,
     resizeMode: 'contain',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#800020',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
   subtitle: {
-    fontSize: 16,
-    color: '#800020',
+    fontSize: 14,
+    color: '#7B2C2C',
     textAlign: 'center',
-    marginBottom: 20,
   },
-  form: {
-    gap: 15,
+  formContainer: {
+    width: '100%',
   },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+  errorContainer: {
+    minHeight: 40,
     marginBottom: 8,
+    justifyContent: 'center',
   },
-  input: {
+  errorText: {
+    color: Colors.status.error,
+    fontSize: 14,
+    textAlign: 'center',
+    backgroundColor: Colors.status.error + '20',
+    borderColor: Colors.status.error,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 15,
-    fontSize: 16,
-    backgroundColor: '#fafafa',
+    borderRadius: 6,
+    padding: 12,
   },
-  passwordContainer: {
+  inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
+    backgroundColor: '#f8f9fa',
     borderRadius: 8,
-    backgroundColor: '#fafafa',
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 14,
+    color: Colors.text.primary,
+    outlineStyle: 'none',
   },
   passwordInput: {
-    flex: 1,
-    padding: 15,
-    fontSize: 16,
+    paddingRight: 40,
   },
-  eyeButton: {
-    padding: 15,
-  },
-  eyeText: {
-    fontSize: 18,
+  eyeIcon: {
+    position: 'absolute',
+    right: 16,
+    padding: 4,
   },
   loginButton: {
-    backgroundColor: '#800020',
+    backgroundColor: '#7B2C2C',
     borderRadius: 8,
-    padding: 15,
+    paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 8,
   },
   loginButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: '#5A1F1F',
   },
   loginButtonText: {
-    color: '#fff',
+    color: Colors.text.inverse,
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  forgotPasswordButton: {
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  forgotPasswordText: {
-    color: '#800020',
-    fontSize: 14,
     fontWeight: '600',
   },
 });
