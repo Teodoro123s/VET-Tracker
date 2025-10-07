@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import Tesseract from 'tesseract.js';
 import SearchableDropdown from '@/components/SearchableDropdown';
 import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '@/lib/services/firebaseService';
-import { generateSecurePassword } from '@/lib/utils/emailService';
+import { generateSecurePassword } from '../../lib/utils/emailService';
 import { sendStaffCredentialsViaEmailJS } from '@/lib/utils/freeEmailService';
 import { registerUser } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
