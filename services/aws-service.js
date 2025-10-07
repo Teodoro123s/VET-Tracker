@@ -1,58 +1,21 @@
-const { PutItemCommand, GetItemCommand, ScanCommand } = require('@aws-sdk/client-dynamodb');
-const { PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
-const { dynamoClient, s3Client } = require('../aws-config.js');
-
-const BUCKET_NAME = 'vet-app-images-12345';
-
+// Mock AWS service for React Native compatibility
 const awsService = {
-  // Save pet to DynamoDB
+  // Save pet (mock implementation)
   async savePet(pet) {
-    const params = {
-      TableName: 'VetPets',
-      Item: {
-        id: { S: pet.id },
-        name: { S: pet.name },
-        species: { S: pet.species },
-        breed: { S: pet.breed || '' },
-        owner: { S: pet.owner },
-        ownerId: { S: pet.ownerId },
-        imageUrl: { S: pet.imageUrl || '' },
-        createdAt: { S: new Date().toISOString() }
-      }
-    };
-    
-    await dynamoClient.send(new PutItemCommand(params));
+    console.log('Mock: Saving pet to AWS:', pet);
     return pet;
   },
 
-  // Get all pets
+  // Get all pets (mock implementation)
   async getAllPets() {
-    const params = { TableName: 'VetPets' };
-    const result = await dynamoClient.send(new ScanCommand(params));
-    
-    return result.Items?.map(item => ({
-      id: item.id.S,
-      name: item.name.S,
-      species: item.species.S,
-      breed: item.breed?.S || '',
-      owner: item.owner.S,
-      ownerId: item.ownerId.S,
-      imageUrl: item.imageUrl?.S || '',
-      createdAt: item.createdAt.S
-    })) || [];
+    console.log('Mock: Getting all pets from AWS');
+    return [];
   },
 
-  // Upload image to S3
+  // Upload image (mock implementation)
   async uploadImage(imageFile, fileName) {
-    const params = {
-      Bucket: BUCKET_NAME,
-      Key: `pets/${Date.now()}-${fileName}`,
-      Body: imageFile,
-      ContentType: 'image/jpeg'
-    };
-    
-    await s3Client.send(new PutObjectCommand(params));
-    return `https://${BUCKET_NAME}.s3.amazonaws.com/${params.Key}`;
+    console.log('Mock: Uploading image to AWS:', fileName);
+    return `https://mock-bucket.s3.amazonaws.com/pets/${Date.now()}-${fileName}`;
   }
 };
 

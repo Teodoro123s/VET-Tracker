@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/config/firebaseConfig';
 import { Colors } from '@/constants/Colors';
+import { getAppointments, getMedicalRecords } from '@/lib/services/firebaseService';
 
 export default function VetMobile() {
   const router = useRouter();
@@ -69,7 +70,6 @@ export default function VetMobile() {
     if (!user?.email) return;
     
     try {
-      const { getAppointments, getMedicalRecords } = await import('@/lib/services/firebaseService');
       const [appointments, records] = await Promise.all([
         getAppointments(user.email),
         getMedicalRecords(user.email)
