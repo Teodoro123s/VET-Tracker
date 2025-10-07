@@ -2,12 +2,14 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView,
 import { useState, useEffect } from 'react';
 import Tesseract from 'tesseract.js';
 import SearchableDropdown from '@/components/SearchableDropdown';
-import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '../../lib/services/firebaseService';
-import { generateSecurePassword } from '../../lib/utils/emailService';
-import { sendStaffCredentialsViaEmailJS } from '../../lib/utils/freeEmailService';
-import { registerUser } from '../../lib/services/firebaseService';
-import { useTenant } from '../../contexts/TenantContext';
-import { awsService } from '../../services/aws-service';
+import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '@/lib/services/firebaseService';
+import { generateSecurePassword } from '@/lib/utils/emailService';
+import { sendStaffCredentialsViaEmailJS } from '@/lib/utils/freeEmailService';
+import { registerUser } from '@/lib/services/firebaseService';
+import { useTenant } from '@/contexts/TenantContext';
+import { awsService } from '@/services/aws-service';
+import { addDoc, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { db } from '@/lib/config/firebaseConfig';
 
 export default function VeterinariansScreen() {
   const { userEmail } = useTenant();
@@ -191,9 +193,7 @@ export default function VeterinariansScreen() {
       
       // Create tenant entry for login authentication
       try {
-        const { useTenant } = require('../../contexts/TenantContext');
-        const { addDoc, collection } = require('firebase/firestore');
-        const { db } = require('../../lib/config/firebaseConfig');
+        // Using imported modules
         
         await addDoc(collection(db, 'tenants'), {
           email: newVeterinarian.email,
@@ -476,8 +476,7 @@ export default function VeterinariansScreen() {
                       
                       try {
                         // Update tenant password in database
-                        const { query, where, getDocs, updateDoc, doc, collection } = require('firebase/firestore');
-                        const { db } = require('../../lib/config/firebaseConfig');
+                        // Using imported modules
                         
                         const tenantQuery = query(
                           collection(db, 'tenants'),
