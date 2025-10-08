@@ -1,12 +1,7 @@
-const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { S3Client } = require('@aws-sdk/client-s3');
+// AWS configuration - web only
+const awsConfig = {
+  region: 'us-east-1',
+  bucketName: 'vet-app-images-12345'
+};
 
-const dynamoClient = new DynamoDBClient({ 
-  region: 'us-east-1' 
-});
-
-const s3Client = new S3Client({ 
-  region: 'us-east-1' 
-});
-
-module.exports = { dynamoClient, s3Client };
+export { awsConfig };

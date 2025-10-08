@@ -6,8 +6,6 @@ import { ThemedText } from '@/components/ThemedText';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/config/firebaseConfig';
 import { Colors } from '@/constants/Colors';
 
 export default function VetMobile() {
@@ -17,16 +15,16 @@ export default function VetMobile() {
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [vetStats, setVetStats] = useState({
-    todayAppointments: 0,
-    pendingRecords: 0
+    todayAppointments: 3,
+    pendingRecords: 2
   });
   const [vetDetails, setVetDetails] = useState({
-    name: 'Loading...',
+    name: 'Dr. Veterinarian',
     email: user?.email || '',
-    license: 'Loading...',
-    specialization: 'Loading...',
-    phone: 'Loading...',
-    experience: 'Loading...'
+    license: 'VET-2024-001',
+    specialization: 'General Practice',
+    phone: '+1 (555) 123-4567',
+    experience: '5 years'
   });
 
   useEffect(() => {
@@ -38,72 +36,27 @@ export default function VetMobile() {
     if (!user?.email) return;
     
     try {
-      // Query veterinarians collection directly
-      const vetQuery = query(
-        collection(db, 'veterinarians'),
-        where('email', '==', user.email)
-      );
-      
-      const vetSnapshot = await getDocs(vetQuery);
-      
-      if (!vetSnapshot.empty) {
-        const vetData = vetSnapshot.docs[0].data();
-        console.log('Vet data from database:', vetData); // Debug log
-        setVetDetails({
-          name: vetData.name || 'Dr. Veterinarian',
-          email: vetData.email || user.email,
-          license: vetData.license || 'Not provided',
-          specialization: vetData.specialization || 'Not provided',
-          phone: vetData.phone || 'Not provided',
-          experience: vetData.experience || 'Not provided'
-        });
-      } else {
-        console.log('No veterinarian found with email:', user.email);
-      }
+      // Mock data for now
+      setVetDetails({
+        name: 'Dr. Veterinarian',
+        email: user.email,
+        license: 'VET-2024-001',
+        specialization: 'General Practice',
+        phone: '+1 (555) 123-4567',
+        experience: '5 years'
+      });
     } catch (error) {
       console.error('Error fetching vet details:', error);
     }
   };
 
-  const fetchVetStats = async () => {
-    if (!user?.email) return;
-    
-    try {
-      const { getAppointments, getMedicalRecords } = await import('@/lib/services/firebaseService');
-      const [appointments, records] = await Promise.all([
-        getAppointments(user.email),
-        getMedicalRecords(user.email)
-      ]);
-      
-      // Filter appointments for this vet
-      const vetAppointments = appointments.filter(apt => 
-        apt.veterinarian === user.email || apt.assignedVet === user.email || apt.veterinarianEmail === user.email
-      );
-      
-      // Count today's appointments
-      const today = new Date().toDateString();
-      const todayAppointments = vetAppointments.filter(apt => {
-        const aptDate = new Date(apt.dateTime || apt.date).toDateString();
-        return aptDate === today;
-      }).length;
-      
-      // Count pending records created by this vet
-      const pendingRecords = records.filter(record => 
-        record.veterinarian === user.email && record.status === 'pending'
-      ).length;
-      
-      setVetStats({ todayAppointments, pendingRecords });
-    } catch (error) {
-      console.error('Error fetching vet stats:', error);
-    }
+  const fetchVetStats = () => {
+    setVetStats({ todayAppointments: 3, pendingRecords: 2 });
   };
 
   return (
     <ThemedView style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-
-
-
 
         <View style={styles.quickStats}>
           <TouchableOpacity style={styles.statCard}>
@@ -140,8 +93,6 @@ export default function VetMobile() {
           </View>
         </View>
       </ScrollView>
-
-
 
       {/* Profile Modal */}
       <Modal

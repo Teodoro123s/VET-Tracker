@@ -7,7 +7,7 @@ import { generateSecurePassword } from '../../lib/utils/emailService';
 import { sendStaffCredentialsViaEmailJS } from '@/lib/utils/freeEmailService';
 import { registerUser } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
-import { awsService } from '@/services/aws-service';
+import { awsService } from '../../services/aws-service';
 import { addDoc, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/config/firebaseConfig';
 

@@ -14,6 +14,12 @@ config.resolver.alias = {
   '@': path.resolve(__dirname, '.'),
 };
 
+// Exclude AWS SDK from web bundling
+config.resolver.resolverMainFields = ['react-native', 'browser', 'main'];
+config.resolver.blockList = [
+  /node_modules\/@aws-sdk\/.*/, // Block all AWS SDK packages
+];
+
 // Fix transformer settings for web
 config.transformer = {
   ...config.transformer,
