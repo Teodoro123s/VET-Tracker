@@ -9,6 +9,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/config/firebaseConfig';
 import { Colors } from '@/constants/Colors';
+import { getAppointments, getMedicalRecords } from '@/lib/services/firebaseService';
+import { paginatedFirebaseService } from '@/lib/services/paginatedFirebaseService';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export default function VetMobile() {
   const router = useRouter();
@@ -16,6 +19,7 @@ export default function VetMobile() {
   const [showProfile, setShowProfile] = useState(false);
 
   const [showNotifications, setShowNotifications] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [vetStats, setVetStats] = useState({
     todayAppointments: 0,
     pendingRecords: 0
@@ -30,8 +34,10 @@ export default function VetMobile() {
   });
 
   useEffect(() => {
-    fetchVetDetails();
-    fetchVetStats();
+    if (user?.email) {
+      Promise.all([fetchVetDetails(), fetchVetStats()])
+        .finally(() => setLoading(false));
+    }
   }, [user]);
 
   const fetchVetDetails = async () => {
@@ -69,34 +75,21 @@ export default function VetMobile() {
     if (!user?.email) return;
     
     try {
-      const { getAppointments, getMedicalRecords } = await import('@/lib/services/firebaseService');
-      const [appointments, records] = await Promise.all([
-        getAppointments(user.email),
-        getMedicalRecords(user.email)
-      ]);
+      // Use optimized count queries instead of loading all data
+      const todayCount = await paginatedFirebaseService.getTodayAppointmentsCount(user.email);
       
-      // Filter appointments for this vet
-      const vetAppointments = appointments.filter(apt => 
-        apt.veterinarian === user.email || apt.assignedVet === user.email || apt.veterinarianEmail === user.email
-      );
-      
-      // Count today's appointments
-      const today = new Date().toDateString();
-      const todayAppointments = vetAppointments.filter(apt => {
-        const aptDate = new Date(apt.dateTime || apt.date).toDateString();
-        return aptDate === today;
-      }).length;
-      
-      // Count pending records created by this vet
-      const pendingRecords = records.filter(record => 
-        record.veterinarian === user.email && record.status === 'pending'
-      ).length;
-      
-      setVetStats({ todayAppointments, pendingRecords });
+      setVetStats({ 
+        todayAppointments: todayCount,
+        pendingRecords: 0 // TODO: Add optimized count query
+      });
     } catch (error) {
       console.error('Error fetching vet stats:', error);
     }
   };
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -108,12 +101,16 @@ export default function VetMobile() {
         <View style={styles.quickStats}>
           <TouchableOpacity style={styles.statCard}>
             <Ionicons name="calendar" size={32} color={Colors.primary} />
-            <ThemedText style={styles.statValue}>{vetStats.todayAppointments}</ThemedText>
+            <ThemedText style={styles.statValue}>
+              {loading ? '...' : vetStats.todayAppointments}
+            </ThemedText>
             <ThemedText style={styles.statLabel}>Today's Appointments</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity style={styles.statCard}>
             <Ionicons name="document-text" size={32} color={Colors.primary} />
-            <ThemedText style={styles.statValue}>{vetStats.pendingRecords}</ThemedText>
+            <ThemedText style={styles.statValue}>
+              {loading ? '...' : vetStats.pendingRecords}
+            </ThemedText>
             <ThemedText style={styles.statLabel}>Pending Records</ThemedText>
           </TouchableOpacity>
         </View>

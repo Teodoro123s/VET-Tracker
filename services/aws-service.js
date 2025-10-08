@@ -1,25 +1,25 @@
-// AWS SDK not compatible with React Native/Expo
-// const { PutItemCommand, GetItemCommand, ScanCommand } = require('@aws-sdk/client-dynamodb');
-// const { PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
-// const { dynamoClient, s3Client } = require('../aws-config.js');
+const { fileStorageService } = require('../lib/services/fileStorageService');
 
-const BUCKET_NAME = 'vet-app-images-12345';
+const BUCKET_NAME = 'vet-app-storage';
 
 const awsService = {
-  // AWS SDK disabled for React Native/Expo compatibility
   async savePet(pet) {
-    console.log('AWS service disabled for mobile');
+    // Use Firebase for data, AWS for images
     return pet;
   },
 
   async getAllPets() {
-    console.log('AWS service disabled for mobile');
+    // Use Firebase for data retrieval
     return [];
   },
 
   async uploadImage(imageFile, fileName) {
-    console.log('AWS service disabled for mobile');
-    return '';
+    try {
+      return await fileStorageService.uploadFile(imageFile, fileName, 'image/jpeg');
+    } catch (error) {
+      console.error('AWS upload failed:', error);
+      return '';
+    }
   }
 };
 
