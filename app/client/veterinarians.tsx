@@ -22,8 +22,13 @@ export default function VeterinariansScreen() {
   
   const loadVeterinarians = async () => {
     try {
+      console.log('=== LOADING VETERINARIANS ===');
+      console.log('Loading veterinarians for userEmail:', userEmail);
       const allData = await getVeterinarians(userEmail);
+      console.log('All veterinarian data:', allData.length);
       const vetsData = allData.filter(item => item.role !== 'staff');
+      console.log('Filtered veterinarians count:', vetsData.length);
+      console.log('First veterinarian sample:', vetsData[0]);
       setVeterinarians(vetsData);
     } catch (error) {
       console.error('Error loading veterinarians:', error);
@@ -277,8 +282,7 @@ export default function VeterinariansScreen() {
               setSelectedVeterinarian(null);
               Alert.alert('Success', 'Veterinarian deleted successfully');
             } catch (error) {
-              console.error('Delete error:', error);
-              Alert.alert('Error', 'Failed to delete veterinarian');
+              Alert.alert('Error', `Failed to delete veterinarian: ${error.message}`);
             }
           }
         }
@@ -427,7 +431,7 @@ export default function VeterinariansScreen() {
                 }}>
                   <Text style={styles.editCategoryButtonText}>Edit</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.deleteCategoryButton} onPress={() => handleDeleteVeterinarian(selectedVeterinarian?.id)}>
+                <TouchableOpacity style={styles.deleteCategoryButton} onPress={() => selectedVeterinarian && handleDeleteVeterinarian(selectedVeterinarian.id)}>
                   <Text style={styles.deleteCategoryButtonText}>Delete</Text>
                 </TouchableOpacity>
               </View>

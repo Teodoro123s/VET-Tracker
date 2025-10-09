@@ -14,10 +14,10 @@ export const paginatedFirebaseService = {
     lastDoc?: DocumentSnapshot
   ): Promise<PaginationResult<any>> {
     try {
+      const tenantId = userEmail.split('@')[0];
       let q = query(
-        collection(db, 'appointments'),
-        where('veterinarian', '==', userEmail),
-        orderBy('dateTime', 'desc'),
+        collection(db, `tenants/${tenantId}/appointments`),
+        orderBy('appointmentDate', 'desc'),
         limit(pageSize)
       );
 
@@ -46,11 +46,11 @@ export const paginatedFirebaseService = {
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
 
+      const tenantId = userEmail.split('@')[0];
       const q = query(
-        collection(db, 'appointments'),
-        where('veterinarian', '==', userEmail),
-        where('dateTime', '>=', today),
-        where('dateTime', '<', tomorrow)
+        collection(db, `tenants/${tenantId}/appointments`),
+        where('appointmentDate', '>=', today),
+        where('appointmentDate', '<', tomorrow)
       );
 
       const snapshot = await getDocs(q);

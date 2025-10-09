@@ -304,6 +304,14 @@ export default function VetAppointments() {
           ))
         )}
       </ScrollView>
+
+      {/* Floating Add Button */}
+      <TouchableOpacity 
+        style={styles.addButton}
+        onPress={() => router.push('/veterinarian/add-appointment')}
+      >
+        <Ionicons name="add" size={24} color="#fff" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -536,5 +544,21 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#666',
     fontStyle: 'italic',
+  },
+  addButton: {
+    position: 'absolute',
+    bottom: 60,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#28a745',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
 });

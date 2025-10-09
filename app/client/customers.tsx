@@ -57,9 +57,11 @@ export default function CustomersScreen() {
 
   const loadCustomers = async () => {
     try {
-      console.log('Loading customers for:', userEmail);
+      console.log('=== LOADING CUSTOMERS ===');
+      console.log('Loading customers for userEmail:', userEmail);
       const customersData = await getCustomers(userEmail);
-      console.log('Loaded customers:', customersData.length);
+      console.log('Loaded customers count:', customersData.length);
+      console.log('First customer sample:', customersData[0]);
       setCustomers(customersData);
     } catch (error) {
       console.error('Error loading customers:', error);
@@ -208,10 +210,10 @@ export default function CustomersScreen() {
           onPress: async () => {
             try {
               await deleteCustomer(customer.id, userEmail);
-              loadCustomers();
+              await loadCustomers();
               Alert.alert('Success', 'Customer deleted successfully');
             } catch (error) {
-              Alert.alert('Error', 'Failed to delete customer');
+              Alert.alert('Error', `Failed to delete customer: ${error.message}`);
             }
           }
         }
@@ -325,10 +327,7 @@ export default function CustomersScreen() {
                         </TouchableOpacity>
                         <TouchableOpacity 
                           style={styles.deleteButton} 
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleDeleteCustomer(customer);
-                          }}
+                          onPress={() => handleDeleteCustomer(customer)}
                         >
                           <Text style={styles.deleteButtonText}>Del</Text>
                         </TouchableOpacity>
@@ -363,10 +362,7 @@ export default function CustomersScreen() {
                       </TouchableOpacity>
                       <TouchableOpacity 
                         style={styles.deleteButton} 
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleDeleteCustomer(customer);
-                        }}
+                        onPress={() => handleDeleteCustomer(customer)}
                       >
                         <Text style={styles.deleteButtonText}>Del</Text>
                       </TouchableOpacity>
