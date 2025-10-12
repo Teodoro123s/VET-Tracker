@@ -132,7 +132,7 @@ export default function CustomerDetailScreen() {
   const handleSaveEdit = async () => {
     try {
       if (!editCustomer.firstname || !editCustomer.surname) {
-        Alert.alert('Error', 'Please fill in first name and surname');
+        alert('Please fill in first name and surname');
         return;
       }
       
@@ -147,32 +147,27 @@ export default function CustomerDetailScreen() {
         useNativeDriver: false,
       }).start(() => setShowEditModal(false));
       
-      Alert.alert('Success', 'Customer updated successfully');
+      alert('Customer updated successfully');
     } catch (error) {
       console.error('Error updating customer:', error);
-      Alert.alert('Error', 'Failed to update customer');
+      alert('Failed to update customer');
     }
   };
 
   const handleDelete = () => {
-    Alert.alert(
-      'Delete Customer',
-      'Are you sure you want to delete this customer and all their pets? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: confirmDelete }
-      ]
-    );
+    const confirmed = confirm('Are you sure you want to delete this customer and all their pets? This action cannot be undone.');
+    if (confirmed) {
+      confirmDelete();
+    }
   };
 
   const confirmDelete = async () => {
     try {
       await deleteCustomerWithPets(id as string, userEmail);
-      Alert.alert('Success', 'Customer deleted successfully', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
+      alert('Customer deleted successfully');
+      router.back();
     } catch (error) {
-      Alert.alert('Error', 'Failed to delete customer');
+      alert('Failed to delete customer');
     }
   };
 
@@ -189,7 +184,7 @@ export default function CustomerDetailScreen() {
   const handleSavePet = async () => {
     try {
       if (!newPet.name) {
-        Alert.alert('Error', 'Please enter pet name');
+        alert('Please enter pet name');
         return;
       }
       
@@ -201,9 +196,9 @@ export default function CustomerDetailScreen() {
       }).start(() => setShowAddPetModal(false));
       setNewPet({ name: '', species: '', breed: '', age: '', owner: id as string });
       loadData();
-      Alert.alert('Success', 'Pet added successfully');
+      alert('Pet added successfully');
     } catch (error) {
-      Alert.alert('Error', 'Failed to add pet');
+      alert('Failed to add pet');
     }
   };
 

@@ -265,29 +265,23 @@ export default function VeterinariansScreen() {
   };
   
   const handleDeleteVeterinarian = async (vetId) => {
-    Alert.alert(
-      'Confirm Delete',
-      'Are you sure you want to delete this veterinarian?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteVeterinarian(vetId, userEmail);
-              const updatedVets = veterinarians.filter(v => v.id !== vetId);
-              setVeterinarians(updatedVets);
-              setVeterinarianList(updatedVets);
-              setSelectedVeterinarian(null);
-              Alert.alert('Success', 'Veterinarian deleted successfully');
-            } catch (error) {
-              Alert.alert('Error', `Failed to delete veterinarian: ${error.message}`);
-            }
-          }
-        }
-      ]
-    );
+    console.log('handleDeleteVeterinarian called with ID:', vetId);
+    const confirmed = confirm('Are you sure you want to delete this veterinarian?');
+    if (confirmed) {
+      try {
+        console.log('Deleting veterinarian with ID:', vetId);
+        await deleteVeterinarian(vetId, userEmail);
+        console.log('Delete successful, updating local state');
+        const updatedVets = veterinarians.filter(v => v.id !== vetId);
+        setVeterinarians(updatedVets);
+        setVeterinarianList(updatedVets);
+        setSelectedVeterinarian(null);
+        alert('Veterinarian deleted successfully');
+      } catch (error) {
+        console.error('Delete error:', error);
+        alert(`Failed to delete veterinarian: ${error.message}`);
+      }
+    }
   };
   
 
@@ -431,7 +425,10 @@ export default function VeterinariansScreen() {
                 }}>
                   <Text style={styles.editCategoryButtonText}>Edit</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.deleteCategoryButton} onPress={() => selectedVeterinarian && handleDeleteVeterinarian(selectedVeterinarian.id)}>
+                <TouchableOpacity style={styles.deleteCategoryButton} onPress={() => {
+                  console.log('Delete button clicked for:', selectedVeterinarian.name, selectedVeterinarian.id);
+                  handleDeleteVeterinarian(selectedVeterinarian.id);
+                }}>
                   <Text style={styles.deleteCategoryButtonText}>Delete</Text>
                 </TouchableOpacity>
               </View>

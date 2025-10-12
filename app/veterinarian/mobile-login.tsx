@@ -56,7 +56,7 @@ export default function MobileLogin() {
       <View style={styles.loginCard}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Image source={require('@/assets/Maroon logo.png')} style={styles.logo} />
+            <Image source={require('@/assets/maroon-logo.png')} style={styles.logo} />
           </View>
           <Text style={styles.subtitle}>Veterinary Management System</Text>
         </View>
