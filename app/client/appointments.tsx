@@ -356,7 +356,8 @@ export default function AppointmentsScreen() {
   const processNotifications = async () => {
     if (!user?.email) return;
     try {
-      await notificationService.processAppointmentNotifications(user.email, user.email);
+      // Process notifications logic can be added here
+      console.log('Processing notifications for:', user.email);
     } catch (error) {
       console.error('Failed to process notifications:', error);
     }
@@ -898,7 +899,10 @@ export default function AppointmentsScreen() {
                       <Text style={styles.doneCategoryButtonText}>Done</Text>
                     </TouchableOpacity>
                   )}
-                  <TouchableOpacity style={styles.deleteCategoryButton} onPress={() => handleDeleteAppointment(selectedAppointment.id)}>
+                  <TouchableOpacity style={styles.deleteCategoryButton} onPress={() => {
+                    console.log('Appointment delete button clicked!');
+                    handleDeleteAppointment(selectedAppointment.id);
+                  }}>
                     <Text style={styles.deleteCategoryButtonText}>Delete</Text>
                   </TouchableOpacity>
                 </View>

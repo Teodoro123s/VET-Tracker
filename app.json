@@ -1,45 +1,55 @@
 {
   "expo": {
-    "name": "VetClinic Staff",
-    "slug": "vetclinic-staff",
+    "name": "VetApp",
+    "slug": "vet-app",
     "version": "1.0.0",
-    "orientation": "default",
-    "icon": "./assets/images/icon.png",
-    "scheme": "vetclinic",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
+<<<<<<< HEAD
       "supportsTablet": true,
       "bundleIdentifier": "com.vetclinic.staff",
       "requireFullScreen": false
+=======
+      "supportsTablet": true
+>>>>>>> 1655e85bc42227e2567f3d4f4d666ee9988d860d
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
+<<<<<<< HEAD
       },
       "package": "com.vetclinic.staff"
+=======
+      }
+>>>>>>> 1655e85bc42227e2567f3d4f4d666ee9988d860d
     },
     "web": {
       "bundler": "metro",
-      "output": "server",
-      "favicon": "./assets/images/favicon.png"
+      "output": "static",
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ]
+      "expo-router"
     ],
-
     "experiments": {
-      "typedRoutes": false
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0f576b05-5e61-482a-993c-3148425593f3"
+      }
     }
   }
 }

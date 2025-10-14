@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ScrollView, StyleSheet, Animated, Modal } from 'react-native';
 import { firebaseService } from '../lib/services/firebaseService';
+import { notificationService } from '../lib/services/notificationService';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Message {
   id: string;
@@ -14,6 +16,7 @@ interface ChatBotProps {
 }
 
 export default function ChatBot({ tenantId }: ChatBotProps) {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', text: 'Hello! I\'m your veterinary assistant. I can help you find information about customers, pets, and medical records. What would you like to know?', isBot: true, timestamp: new Date() }
@@ -52,6 +55,34 @@ export default function ChatBot({ tenantId }: ChatBotProps) {
     const lowerMessage = userMessage.toLowerCase();
     
     try {
+      // Notification commands
+      if (lowerMessage.startsWith('/announce ')) {
+        const message = userMessage.substring(10);
+        const result = await notificationService.sendAnnouncement(message, user?.email || '');
+        return result.success ? 
+          `✅ Announcement sent: "${message}"` : 
+          '❌ Failed to send announcement';
+      }
+      
+      if (lowerMessage.startsWith('/alert ')) {
+        const message = userMessage.substring(7);
+        const result = await notificationService.sendUrgentAlert(message, user?.email || '');
+        return result.success ? 
+          `🚨 Urgent alert sent: "${message}"` : 
+          '❌ Failed to send alert';
+      }
+      
+      if (lowerMessage.startsWith('/vets ')) {
+        const message = userMessage.substring(6);
+        const result = await notificationService.sendAnnouncement(message, user?.email || '', 'vets');
+        return result.success ? 
+          `👨‍⚕️ Message sent to all veterinarians: "${message}"` : 
+          '❌ Failed to send to veterinarians';
+      }
+      
+      if (lowerMessage.includes('notification') || lowerMessage.includes('announce')) {
+        return 'Commands:\n• /announce [message] - Send to all users\n• /vets [message] - Send to veterinarians only\n• /alert [message] - Send urgent alert\n\nExample: /vets Surgery schedule updated';
+      }
       // Customer queries
       if (lowerMessage.includes('customer') || lowerMessage.includes('client')) {
         if (lowerMessage.includes('how many') || lowerMessage.includes('count')) {
@@ -96,7 +127,7 @@ export default function ChatBot({ tenantId }: ChatBotProps) {
 
       // General help
       if (lowerMessage.includes('help') || lowerMessage.includes('what can you do')) {
-        return 'I can help you with:\n• Finding customer information\n• Pet management guidance\n• Medical records navigation\n• System statistics\n• General navigation tips\n\nJust ask me anything about your veterinary system!';
+        return 'I can help you with:\n• Finding customer information\n• Pet management guidance\n• Medical records navigation\n• System statistics\n• Send notifications (/announce, /alert)\n• General navigation tips\n\nJust ask me anything about your veterinary system!';
       }
 
       // Default response

@@ -140,7 +140,6 @@ export default function VetCustomers() {
   
   const loadFormFields = async () => {
     try {
-      const { getFormFields } = await import('@/lib/services/firebaseService');
       const formName = selectedMedicalRecord.formType || selectedMedicalRecord.formTemplate;
       if (formName) {
         const fields = await getFormFields(formName, tenantEmail);

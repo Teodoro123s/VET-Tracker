@@ -4,45 +4,51 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, on
 
 // Get tenant ID from user email by looking up in tenants collection
 const getTenantId = async (userEmail: string): Promise<string | null> => {
-  if (userEmail?.includes('superadmin')) return null;
+  console.log('=== GET TENANT ID ===');
+  console.log('Input userEmail:', userEmail);
+  
+  if (userEmail?.includes('superadmin')) {
+    console.log('Superadmin detected, returning null');
+    return null;
+  }
+  
   try {
     // First check if user is directly a tenant
     const q = query(collection(db, 'tenants'), where('email', '==', userEmail));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
       const userData = querySnapshot.docs[0].data();
-      return userData.tenantId || userData.id || null;
+      const tenantId = userData.tenantId || userData.id || null;
+      console.log('Found tenant ID from direct lookup:', tenantId);
+      return tenantId;
     }
     
     // Check all tenants to find matching tenant ID
     const allTenants = await getDocs(collection(db, 'tenants'));
+    console.log('Checking all tenants, count:', allTenants.docs.length);
+    
     for (const tenantDoc of allTenants.docs) {
-      const tenantId = tenantDoc.id;
       const tenantData = tenantDoc.data();
       
-      // Check if tenant ID matches user email prefix (e.g., edmo.teodoro.swu)
-      const emailPrefix = userEmail.split('@')[0];
-      if (tenantId === emailPrefix || tenantData.id === emailPrefix) {
-        return tenantId;
+      // Check if user created this tenant (for admin users)
+      if (tenantData.createdBy === userEmail) {
+        return tenantData.tenantId || tenantData.id || null;
       }
       
-      // Check veterinarians collection
-      try {
-        const vetQuery = query(
-          collection(db, `tenants/${tenantId}/veterinarians`),
-          where('email', '==', userEmail)
-        );
-        const vetSnapshot = await getDocs(vetQuery);
-        if (!vetSnapshot.empty) {
-          return tenantId;
-        }
-      } catch (error) {
-        // Continue to next tenant if this one fails
+      // Check if this tenant record matches the user email
+      if (tenantData.email === userEmail) {
+        return tenantData.tenantId || tenantData.id || null;
       }
     }
+    
+    // Fallback: use email prefix as tenant ID
+    const emailPrefix = userEmail.split('@')[0];
+    return emailPrefix;
   } catch (error) {
     console.error('Error getting tenant ID:', error);
   }
+  
+  console.log('No tenant ID found, returning null');
   return null;
 };
 
@@ -445,11 +451,26 @@ export const createTenant = async (tenantId: string, clinicData: any) => {
 // Delete functions
 export const deleteCustomer = async (id, userEmail?: string) => {
   try {
+    console.log('=== FIREBASE DELETE CUSTOMER ===');
+    console.log('Customer ID:', id);
+    console.log('User email:', userEmail);
+    
     const tenantId = await getTenantId(userEmail || '');
+    console.log('Resolved tenant ID:', tenantId);
+    
     const collectionPath = tenantId ? `tenants/${tenantId}/customers` : 'customers';
-    await deleteDoc(doc(db, collectionPath, id));
+    console.log('Collection path:', collectionPath);
+    
+    const docRef = doc(db, collectionPath, id);
+    console.log('Document reference created:', docRef.path);
+    
+    await deleteDoc(docRef);
+    console.log('Document deleted successfully');
   } catch (error) {
+    console.error('=== FIREBASE DELETE CUSTOMER ERROR ===');
     console.error('Error deleting customer:', error);
+    console.error('Error code:', error.code);
+    console.error('Error message:', error.message);
     throw error;
   }
 };
@@ -508,11 +529,26 @@ export const deletePet = async (id, userEmail?: string) => {
 
 export const deleteVeterinarian = async (id, userEmail?: string) => {
   try {
+    console.log('=== FIREBASE DELETE VETERINARIAN ===');
+    console.log('Veterinarian ID:', id);
+    console.log('User email:', userEmail);
+    
     const tenantId = await getTenantId(userEmail || '');
+    console.log('Resolved tenant ID:', tenantId);
+    
     const collectionPath = tenantId ? `tenants/${tenantId}/veterinarians` : 'veterinarians';
-    await deleteDoc(doc(db, collectionPath, id));
+    console.log('Collection path:', collectionPath);
+    
+    const docRef = doc(db, collectionPath, id);
+    console.log('Document reference created:', docRef.path);
+    
+    await deleteDoc(docRef);
+    console.log('Document deleted successfully');
   } catch (error) {
+    console.error('=== FIREBASE DELETE VETERINARIAN ERROR ===');
     console.error('Error deleting veterinarian:', error);
+    console.error('Error code:', error.code);
+    console.error('Error message:', error.message);
     throw error;
   }
 };

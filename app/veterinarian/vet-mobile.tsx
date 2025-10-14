@@ -8,6 +8,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/config/firebaseConfig';
 import { Colors } from '@/constants/Colors';
+import { getAppointments, getMedicalRecords } from '@/lib/services/firebaseService';
+import { paginatedFirebaseService } from '@/lib/services/paginatedFirebaseService';
+import { LoadingScreen } from '@/components/LoadingScreen';
 
 export default function VetMobile() {
   const router = useRouter();
@@ -15,6 +18,7 @@ export default function VetMobile() {
   const [showProfile, setShowProfile] = useState(false);
 
   const [showNotifications, setShowNotifications] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [vetStats, setVetStats] = useState({
     todayAppointments: 0,
     pendingRecords: 0,
@@ -95,8 +99,10 @@ export default function VetMobile() {
   });
 
   useEffect(() => {
-    fetchVetDetails();
-    fetchVetStats();
+    if (user?.email) {
+      Promise.all([fetchVetDetails(), fetchVetStats()])
+        .finally(() => setLoading(false));
+    }
   }, [user]);
 
   const fetchVetDetails = async () => {
@@ -128,6 +134,7 @@ export default function VetMobile() {
   };
 
   const fetchVetStats = async () => {
+<<<<<<< HEAD
     if (!user?.email) {
       setVetStats({
         todayAppointments: 0,
@@ -138,6 +145,20 @@ export default function VetMobile() {
         totalPatients: 0
       });
       return;
+=======
+    if (!user?.email) return;
+    
+    try {
+      // Use optimized count queries instead of loading all data
+      const todayCount = await paginatedFirebaseService.getTodayAppointmentsCount(user.email);
+      
+      setVetStats({ 
+        todayAppointments: todayCount,
+        pendingRecords: 0 // TODO: Add optimized count query
+      });
+    } catch (error) {
+      console.error('Error fetching vet stats:', error);
+>>>>>>> 1655e85bc42227e2567f3d4f4d666ee9988d860d
     }
     
     const mockStats = {
@@ -151,6 +172,10 @@ export default function VetMobile() {
     
     setVetStats(mockStats);
   };
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -169,6 +194,7 @@ export default function VetMobile() {
 
 
 
+<<<<<<< HEAD
         {/* Enhanced Stats Grid */}
         <View style={styles.statsGrid}>
           <TouchableOpacity style={styles.statCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
@@ -190,6 +216,22 @@ export default function VetMobile() {
             <Ionicons name="people" size={24} color="#8b5cf6" />
             <ThemedText style={styles.statValue}>{vetStats.totalPatients}</ThemedText>
             <ThemedText style={styles.statLabel}>Patients</ThemedText>
+=======
+        <View style={styles.quickStats}>
+          <TouchableOpacity style={styles.statCard}>
+            <Ionicons name="calendar" size={32} color={Colors.primary} />
+            <ThemedText style={styles.statValue}>
+              {loading ? '...' : vetStats.todayAppointments}
+            </ThemedText>
+            <ThemedText style={styles.statLabel}>Today's Appointments</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statCard}>
+            <Ionicons name="document-text" size={32} color={Colors.primary} />
+            <ThemedText style={styles.statValue}>
+              {loading ? '...' : vetStats.pendingRecords}
+            </ThemedText>
+            <ThemedText style={styles.statLabel}>Pending Records</ThemedText>
+>>>>>>> 1655e85bc42227e2567f3d4f4d666ee9988d860d
           </TouchableOpacity>
         </View>
 
@@ -403,10 +445,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 24,
     elevation: 3,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     borderWidth: 1,
     borderColor: Colors.border.light,
   },
@@ -447,10 +486,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '48%',
     elevation: 3,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     borderWidth: 1,
     borderColor: Colors.border.light,
     marginBottom: 12,
@@ -488,10 +524,7 @@ const styles = StyleSheet.create({
     width: '48%',
     marginBottom: 12,
     elevation: 2,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
     borderWidth: 1,
     borderColor: Colors.border.light,
   },

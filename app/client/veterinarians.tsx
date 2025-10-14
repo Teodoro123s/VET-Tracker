@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView,
 import { useState, useEffect } from 'react';
 import Tesseract from 'tesseract.js';
 import SearchableDropdown from '@/components/SearchableDropdown';
+<<<<<<< HEAD
 import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '../../lib/services/firebaseService';
 import { generateSecurePassword } from '../../lib/utils/emailService.ts';
 import { sendStaffCredentialsViaEmailJS } from '../../lib/utils/freeEmailService';
@@ -9,6 +10,16 @@ import { registerUser } from '../../lib/services/firebaseService';
 import { useTenant } from '../../contexts/TenantContext';
 import { uploadImage } from '../../lib/services/storageService';
 import { sendCredentialsEmail } from '../../lib/services/resendService';
+=======
+import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '@/lib/services/firebaseService';
+import { generateSecurePassword } from '@/lib/utils/emailService';
+import { sendStaffCredentialsViaEmailJS } from '@/lib/utils/freeEmailService';
+import { registerUser } from '@/lib/services/firebaseService';
+import { useTenant } from '@/contexts/TenantContext';
+import { awsService } from '@/services/aws-service';
+import { addDoc, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { db } from '@/lib/config/firebaseConfig';
+>>>>>>> 1655e85bc42227e2567f3d4f4d666ee9988d860d
 
 export default function VeterinariansScreen() {
   const { userEmail } = useTenant();
@@ -21,8 +32,13 @@ export default function VeterinariansScreen() {
   
   const loadVeterinarians = async () => {
     try {
+      console.log('=== LOADING VETERINARIANS ===');
+      console.log('Loading veterinarians for userEmail:', userEmail);
       const allData = await getVeterinarians(userEmail);
+      console.log('All veterinarian data:', allData.length);
       const vetsData = allData.filter(item => item.role !== 'staff');
+      console.log('Filtered veterinarians count:', vetsData.length);
+      console.log('First veterinarian sample:', vetsData[0]);
       setVeterinarians(vetsData);
     } catch (error) {
       console.error('Error loading veterinarians:', error);
@@ -192,9 +208,7 @@ export default function VeterinariansScreen() {
       
       // Create tenant entry for login authentication
       try {
-        const { useTenant } = require('../../contexts/TenantContext');
-        const { addDoc, collection } = require('firebase/firestore');
-        const { db } = require('../../lib/config/firebaseConfig');
+        // Using imported modules
         
         await addDoc(collection(db, 'tenants'), {
           email: newVeterinarian.email,
@@ -262,30 +276,23 @@ export default function VeterinariansScreen() {
   };
   
   const handleDeleteVeterinarian = async (vetId) => {
-    Alert.alert(
-      'Confirm Delete',
-      'Are you sure you want to delete this veterinarian?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteVeterinarian(vetId, userEmail);
-              const updatedVets = veterinarians.filter(v => v.id !== vetId);
-              setVeterinarians(updatedVets);
-              setVeterinarianList(updatedVets);
-              setSelectedVeterinarian(null);
-              Alert.alert('Success', 'Veterinarian deleted successfully');
-            } catch (error) {
-              console.error('Delete error:', error);
-              Alert.alert('Error', 'Failed to delete veterinarian');
-            }
-          }
-        }
-      ]
-    );
+    console.log('handleDeleteVeterinarian called with ID:', vetId);
+    const confirmed = confirm('Are you sure you want to delete this veterinarian?');
+    if (confirmed) {
+      try {
+        console.log('Deleting veterinarian with ID:', vetId);
+        await deleteVeterinarian(vetId, userEmail);
+        console.log('Delete successful, updating local state');
+        const updatedVets = veterinarians.filter(v => v.id !== vetId);
+        setVeterinarians(updatedVets);
+        setVeterinarianList(updatedVets);
+        setSelectedVeterinarian(null);
+        alert('Veterinarian deleted successfully');
+      } catch (error) {
+        console.error('Delete error:', error);
+        alert(`Failed to delete veterinarian: ${error.message}`);
+      }
+    }
   };
   
 
@@ -429,7 +436,10 @@ export default function VeterinariansScreen() {
                 }}>
                   <Text style={styles.editCategoryButtonText}>Edit</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.deleteCategoryButton} onPress={() => handleDeleteVeterinarian(selectedVeterinarian?.id)}>
+                <TouchableOpacity style={styles.deleteCategoryButton} onPress={() => {
+                  console.log('Delete button clicked for:', selectedVeterinarian.name, selectedVeterinarian.id);
+                  handleDeleteVeterinarian(selectedVeterinarian.id);
+                }}>
                   <Text style={styles.deleteCategoryButtonText}>Delete</Text>
                 </TouchableOpacity>
               </View>
@@ -478,8 +488,7 @@ export default function VeterinariansScreen() {
                       
                       try {
                         // Update tenant password in database
-                        const { query, where, getDocs, updateDoc, doc, collection } = require('firebase/firestore');
-                        const { db } = require('../../lib/config/firebaseConfig');
+                        // Using imported modules
                         
                         const tenantQuery = query(
                           collection(db, 'tenants'),

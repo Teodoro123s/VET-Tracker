@@ -57,9 +57,11 @@ export default function CustomersScreen() {
 
   const loadCustomers = async () => {
     try {
-      console.log('Loading customers for:', userEmail);
+      console.log('=== LOADING CUSTOMERS ===');
+      console.log('Loading customers for userEmail:', userEmail);
       const customersData = await getCustomers(userEmail);
-      console.log('Loaded customers:', customersData.length);
+      console.log('Loaded customers count:', customersData.length);
+      console.log('First customer sample:', customersData[0]);
       setCustomers(customersData);
     } catch (error) {
       console.error('Error loading customers:', error);
@@ -73,14 +75,14 @@ export default function CustomersScreen() {
   const handleAddCustomer = async () => {
     try {
       if (!newCustomer.firstname || !newCustomer.surname) {
-        Alert.alert('Error', 'Please fill in first name and surname');
+        alert('Please fill in first name and surname');
         return;
       }
       
       await addCustomer(newCustomer, userEmail);
       setNewCustomer({ firstname: '', surname: '', email: '', contact: '', address: '' });
       loadCustomers();
-      Alert.alert('Success', 'Customer added successfully');
+      alert('Customer added successfully');
       
       Animated.timing(addSlideAnim, {
         toValue: -350,
@@ -88,7 +90,7 @@ export default function CustomersScreen() {
         useNativeDriver: false,
       }).start(() => setShowAddModal(false));
     } catch (error) {
-      Alert.alert('Error', 'Failed to add customer');
+      alert('Failed to add customer');
     }
   };
 
@@ -173,7 +175,7 @@ export default function CustomersScreen() {
   const handleUpdateCustomer = async () => {
     try {
       if (!editCustomer.firstname || !editCustomer.surname) {
-        Alert.alert('Error', 'Please fill in first name and surname');
+        alert('Please fill in first name and surname');
         return;
       }
       
@@ -181,7 +183,7 @@ export default function CustomersScreen() {
       setEditCustomer({ firstname: '', surname: '', email: '', contact: '', address: '' });
       setEditingCustomer(null);
       loadCustomers();
-      Alert.alert('Success', 'Customer updated successfully');
+      alert('Customer updated successfully');
       
       Animated.timing(editSlideAnim, {
         toValue: -350,
@@ -189,34 +191,23 @@ export default function CustomersScreen() {
         useNativeDriver: false,
       }).start(() => setShowEditModal(false));
     } catch (error) {
-      Alert.alert('Error', 'Failed to update customer');
+      alert('Failed to update customer');
     }
   };
 
   const handleDeleteCustomer = (customer) => {
-    Alert.alert(
-      'Delete Customer',
-      `Are you sure you want to delete ${customer.name || `${customer.firstname} ${customer.surname}`}? This action cannot be undone.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteCustomer(customer.id, userEmail);
-              loadCustomers();
-              Alert.alert('Success', 'Customer deleted successfully');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete customer');
-            }
-          }
+    const confirmed = confirm(`Are you sure you want to delete ${customer.name || `${customer.firstname} ${customer.surname}`}? This action cannot be undone.`);
+    if (confirmed) {
+      (async () => {
+        try {
+          await deleteCustomer(customer.id, userEmail);
+          await loadCustomers();
+          alert('Customer deleted successfully');
+        } catch (error) {
+          alert(`Failed to delete customer: ${error.message}`);
         }
-      ]
-    );
+      })();
+    }
   };
 
   const handleAddRecord = async () => {
@@ -325,10 +316,7 @@ export default function CustomersScreen() {
                         </TouchableOpacity>
                         <TouchableOpacity 
                           style={styles.deleteButton} 
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleDeleteCustomer(customer);
-                          }}
+                          onPress={() => handleDeleteCustomer(customer)}
                         >
                           <Text style={styles.deleteButtonText}>Del</Text>
                         </TouchableOpacity>
@@ -363,10 +351,7 @@ export default function CustomersScreen() {
                       </TouchableOpacity>
                       <TouchableOpacity 
                         style={styles.deleteButton} 
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleDeleteCustomer(customer);
-                        }}
+                        onPress={() => handleDeleteCustomer(customer)}
                       >
                         <Text style={styles.deleteButtonText}>Del</Text>
                       </TouchableOpacity>
