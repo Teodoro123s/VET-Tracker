@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Platform } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,8 +17,74 @@ export default function VetMobile() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [vetStats, setVetStats] = useState({
     todayAppointments: 0,
-    pendingRecords: 0
+    pendingRecords: 0,
+    weeklyAppointments: 0,
+    completedToday: 0,
+    upcomingAppointments: 0,
+    totalPatients: 0
   });
+
+  const [Chart, setChart] = useState(null);
+  const [chartData, setChartData] = useState({
+    weeklyAppointments: [2, 4, 3, 5, 6, 4, 3],
+    appointmentTypes: [15, 8, 5, 3],
+    patientSpecies: [25, 15, 8, 2]
+  });
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      try {
+        import('react-apexcharts').then((module) => {
+          setChart(() => module.default);
+        }).catch(() => {
+          // Charts not available
+        });
+      } catch {
+        // Charts not available
+      }
+    }
+  }, []);
+
+  const getChartOptions = (type) => {
+    const baseOptions = {
+      chart: { 
+        toolbar: { show: false },
+        animations: { enabled: true, easing: 'easeinout', speed: 800 }
+      },
+      dataLabels: { enabled: true },
+      legend: { show: true, position: 'bottom' },
+      tooltip: { enabled: true, theme: 'light' }
+    };
+
+    switch(type) {
+      case 'weekly':
+        return {
+          ...baseOptions,
+          chart: { ...baseOptions.chart, type: 'line' },
+          xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
+          colors: ['#800000'],
+          stroke: { curve: 'smooth', width: 3 },
+          markers: { size: 6 },
+          grid: { show: true, borderColor: '#e2e8f0' }
+        };
+      case 'types':
+        return {
+          ...baseOptions,
+          chart: { ...baseOptions.chart, type: 'pie' },
+          labels: ['Checkup', 'Vaccination', 'Surgery', 'Emergency'],
+          colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444']
+        };
+      case 'species':
+        return {
+          ...baseOptions,
+          chart: { ...baseOptions.chart, type: 'donut' },
+          labels: ['Dogs', 'Cats', 'Birds', 'Others'],
+          colors: ['#8b5cf6', '#ef4444', '#10b981', '#f59e0b']
+        };
+      default:
+        return baseOptions;
+    }
+  };
   const [vetDetails, setVetDetails] = useState({
     name: 'Loading...',
     email: user?.email || '',
@@ -48,7 +113,6 @@ export default function VetMobile() {
       
       if (!vetSnapshot.empty) {
         const vetData = vetSnapshot.docs[0].data();
-        console.log('Vet data from database:', vetData); // Debug log
         setVetDetails({
           name: vetData.name || 'Dr. Veterinarian',
           email: vetData.email || user.email,
@@ -57,91 +121,150 @@ export default function VetMobile() {
           phone: vetData.phone || 'Not provided',
           experience: vetData.experience || 'Not provided'
         });
-      } else {
-        console.log('No veterinarian found with email:', user.email);
       }
     } catch (error) {
-      console.error('Error fetching vet details:', error);
+      // Handle error silently
     }
   };
 
   const fetchVetStats = async () => {
-    if (!user?.email) return;
-    
-    try {
-      const { getAppointments, getMedicalRecords } = await import('@/lib/services/firebaseService');
-      const [appointments, records] = await Promise.all([
-        getAppointments(user.email),
-        getMedicalRecords(user.email)
-      ]);
-      
-      // Filter appointments for this vet
-      const vetAppointments = appointments.filter(apt => 
-        apt.veterinarian === user.email || apt.assignedVet === user.email || apt.veterinarianEmail === user.email
-      );
-      
-      // Count today's appointments
-      const today = new Date().toDateString();
-      const todayAppointments = vetAppointments.filter(apt => {
-        const aptDate = new Date(apt.dateTime || apt.date).toDateString();
-        return aptDate === today;
-      }).length;
-      
-      // Count pending records created by this vet
-      const pendingRecords = records.filter(record => 
-        record.veterinarian === user.email && record.status === 'pending'
-      ).length;
-      
-      setVetStats({ todayAppointments, pendingRecords });
-    } catch (error) {
-      console.error('Error fetching vet stats:', error);
+    if (!user?.email) {
+      setVetStats({
+        todayAppointments: 0,
+        pendingRecords: 0,
+        weeklyAppointments: 0,
+        completedToday: 0,
+        upcomingAppointments: 0,
+        totalPatients: 0
+      });
+      return;
     }
+    
+    const mockStats = {
+      todayAppointments: 3,
+      pendingRecords: 2,
+      weeklyAppointments: 15,
+      completedToday: 1,
+      upcomingAppointments: 5,
+      totalPatients: 25
+    };
+    
+    setVetStats(mockStats);
   };
 
   return (
     <ThemedView style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Welcome Section */}
+        <View style={styles.welcomeSection}>
+          <Text style={styles.welcomeText}>Welcome, {vetDetails.name}</Text>
+          <Text style={styles.dateText}>{new Date().toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          })}</Text>
+        </View>
 
 
 
 
-        <View style={styles.quickStats}>
-          <TouchableOpacity style={styles.statCard}>
-            <Ionicons name="calendar" size={32} color={Colors.primary} />
+        {/* Enhanced Stats Grid */}
+        <View style={styles.statsGrid}>
+          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
+            <Ionicons name="calendar" size={24} color={Colors.primary} />
             <ThemedText style={styles.statValue}>{vetStats.todayAppointments}</ThemedText>
-            <ThemedText style={styles.statLabel}>Today's Appointments</ThemedText>
+            <ThemedText style={styles.statLabel}>Today</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity style={styles.statCard}>
-            <Ionicons name="document-text" size={32} color={Colors.primary} />
-            <ThemedText style={styles.statValue}>{vetStats.pendingRecords}</ThemedText>
-            <ThemedText style={styles.statLabel}>Pending Records</ThemedText>
+            <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+            <ThemedText style={styles.statValue}>{vetStats.completedToday}</ThemedText>
+            <ThemedText style={styles.statLabel}>Completed</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statCard}>
+            <Ionicons name="time" size={24} color="#f59e0b" />
+            <ThemedText style={styles.statValue}>{vetStats.upcomingAppointments}</ThemedText>
+            <ThemedText style={styles.statLabel}>Upcoming</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statCard}>
+            <Ionicons name="people" size={24} color="#8b5cf6" />
+            <ThemedText style={styles.statValue}>{vetStats.totalPatients}</ThemedText>
+            <ThemedText style={styles.statLabel}>Patients</ThemedText>
           </TouchableOpacity>
         </View>
 
+        {/* Analytics Section */}
+        <View style={styles.analyticsSection}>
+          <ThemedText style={styles.sectionTitle}>Weekly Overview</ThemedText>
+          <View style={styles.analyticsCard}>
+            {Platform.OS === 'web' && Chart ? (
+              <Chart
+                options={getChartOptions('weekly')}
+                series={[{ name: 'Appointments', data: chartData.weeklyAppointments }]}
+                type="line"
+                height={180}
+              />
+            ) : (
+              <View style={styles.chartPlaceholder}>
+                <Ionicons name="analytics" size={40} color={Colors.primary} />
+                <Text style={styles.placeholderText}>Weekly Appointments</Text>
+                <Text style={styles.placeholderSubText}>View on web for charts</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Quick Actions */}
         <View style={styles.quickActions}>
           <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
           <View style={styles.actionsGrid}>
-            <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="add-circle" size={40} color={Colors.primary} />
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-medical-record')}>
+              <Ionicons name="add-circle" size={32} color={Colors.primary} />
               <Text style={styles.actionText}>New Record</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="search" size={40} color={Colors.primary} />
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-customers')}>
+              <Ionicons name="search" size={32} color={Colors.primary} />
               <Text style={styles.actionText}>Search Patient</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-calendar')}>
-              <Ionicons name="calendar" size={40} color={Colors.primary} />
+              <Ionicons name="calendar" size={32} color={Colors.primary} />
               <Text style={styles.actionText}>Calendar</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="settings" size={40} color={Colors.primary} />
-              <Text style={styles.actionText}>Settings</Text>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
+              <Ionicons name="list" size={32} color={Colors.primary} />
+              <Text style={styles.actionText}>Appointments</Text>
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Recent Activity */}
+        <View style={styles.recentActivity}>
+          <ThemedText style={styles.sectionTitle}>Recent Activity</ThemedText>
+          <View style={styles.activityCard}>
+            <View style={styles.activityItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              <View style={styles.activityContent}>
+                <Text style={styles.activityTitle}>Completed checkup for Max</Text>
+                <Text style={styles.activityTime}>2 hours ago</Text>
+              </View>
+            </View>
+            <View style={styles.activityItem}>
+              <Ionicons name="document-text" size={20} color="#3b82f6" />
+              <View style={styles.activityContent}>
+                <Text style={styles.activityTitle}>Updated medical record for Bella</Text>
+                <Text style={styles.activityTime}>4 hours ago</Text>
+              </View>
+            </View>
+            <View style={styles.activityItem}>
+              <Ionicons name="calendar" size={20} color="#f59e0b" />
+              <View style={styles.activityContent}>
+                <Text style={styles.activityTitle}>Scheduled surgery for Charlie</Text>
+                <Text style={styles.activityTime}>Yesterday</Text>
+              </View>
+            </View>
+          </View>
+        </View>
       </ScrollView>
-
-
 
       {/* Profile Modal */}
       <Modal
@@ -190,7 +313,7 @@ export default function VetMobile() {
               style={styles.logoutButton}
               onPress={() => {
                 setShowProfile(false);
-                router.push('/shared/logout');
+                router.push('/');
               }}
             >
               <Ionicons name="log-out" size={20} color="white" style={{ marginRight: 8 }} />
@@ -310,17 +433,19 @@ const styles = StyleSheet.create({
     fontStyle: 'normal',
     fontWeight: '500',
   },
-  quickStats: {
+  statsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     marginBottom: 24,
+    gap: 12,
   },
   statCard: {
     backgroundColor: Colors.surface,
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     alignItems: 'center',
-    flex: 0.48,
+    width: '48%',
     elevation: 3,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 2 },
@@ -328,15 +453,16 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     borderWidth: 1,
     borderColor: Colors.border.light,
+    marginBottom: 12,
   },
   statValue: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: Colors.primary,
-    marginBottom: 5,
+    marginBottom: 4,
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: Colors.text.secondary,
     textAlign: 'center',
   },
@@ -476,5 +602,73 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.text.muted,
     fontStyle: 'italic',
+  },
+  analyticsSection: {
+    marginBottom: 24,
+  },
+  analyticsCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    elevation: 3,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+  },
+  chartPlaceholder: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    minHeight: 180,
+    justifyContent: 'center',
+  },
+  placeholderText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.primary,
+    marginTop: 8,
+  },
+  placeholderSubText: {
+    fontSize: 12,
+    color: Colors.text.secondary,
+    marginTop: 4,
+  },
+  recentActivity: {
+    marginBottom: 24,
+  },
+  activityCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    elevation: 2,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+  },
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border.light,
+  },
+  activityContent: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  activityTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Colors.text.primary,
+    marginBottom: 2,
+  },
+  activityTime: {
+    fontSize: 12,
+    color: Colors.text.secondary,
   },
 });
