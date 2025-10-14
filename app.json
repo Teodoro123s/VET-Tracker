@@ -11,21 +11,14 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.vetclinic.staff",
-      "requireFullScreen": false,
-      "statusBarStyle": "dark"
+      "requireFullScreen": false
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.vetclinic.staff",
-      "edgeToEdgeEnabled": true,
-      "softwareKeyboardLayoutMode": "pan",
-      "statusBarStyle": "dark",
-      "compileSdkVersion": 54,
-      "targetSdkVersion": 54,
-      "buildToolsVersion": "35.0.0"
+      "package": "com.vetclinic.staff"
     },
     "web": {
       "bundler": "metro",

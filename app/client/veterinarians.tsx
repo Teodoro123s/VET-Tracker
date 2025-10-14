@@ -3,11 +3,12 @@ import { useState, useEffect } from 'react';
 import Tesseract from 'tesseract.js';
 import SearchableDropdown from '@/components/SearchableDropdown';
 import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '../../lib/services/firebaseService';
-import { generateSecurePassword } from '../../lib/utils/emailService';
+import { generateSecurePassword } from '../../lib/utils/emailService.ts';
 import { sendStaffCredentialsViaEmailJS } from '../../lib/utils/freeEmailService';
 import { registerUser } from '../../lib/services/firebaseService';
 import { useTenant } from '../../contexts/TenantContext';
-import { awsService } from '../../services/aws-service';
+import { uploadImage } from '../../lib/services/storageService';
+import { sendCredentialsEmail } from '../../lib/services/resendService';
 
 export default function VeterinariansScreen() {
   const { userEmail } = useTenant();
@@ -154,9 +155,9 @@ export default function VeterinariansScreen() {
       let licenseImageUrl = '';
       if (newVeterinarian.licenseImage) {
         try {
-          licenseImageUrl = await awsService.uploadImage(
+          licenseImageUrl = await uploadImage(
             newVeterinarian.licenseImage,
-            `license-${Date.now()}.jpg`
+            `licenses/license-${Date.now()}.jpg`
           );
         } catch (imageError) {
           console.error('Image upload failed:', imageError);
@@ -213,10 +214,11 @@ export default function VeterinariansScreen() {
       
       // Send credentials via EmailJS
       try {
-        const emailResult = await sendStaffCredentialsViaEmailJS(
+        const emailResult = await sendCredentialsEmail(
           newVeterinarian.email,
-          generatedPassword,
-          fullName
+          fullName,
+          newVeterinarian.email,
+          generatedPassword
         );
         
         if (emailResult.success) {
