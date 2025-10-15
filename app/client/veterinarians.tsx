@@ -2,24 +2,15 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView,
 import { useState, useEffect } from 'react';
 import Tesseract from 'tesseract.js';
 import SearchableDropdown from '@/components/SearchableDropdown';
-<<<<<<< HEAD
-import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '../../lib/services/firebaseService';
-import { generateSecurePassword } from '../../lib/utils/emailService.ts';
-import { sendStaffCredentialsViaEmailJS } from '../../lib/utils/freeEmailService';
-import { registerUser } from '../../lib/services/firebaseService';
-import { useTenant } from '../../contexts/TenantContext';
-import { uploadImage } from '../../lib/services/storageService';
-import { sendCredentialsEmail } from '../../lib/services/resendService';
-=======
 import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '@/lib/services/firebaseService';
 import { generateSecurePassword } from '@/lib/utils/emailService';
 import { sendStaffCredentialsViaEmailJS } from '@/lib/utils/freeEmailService';
 import { registerUser } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
-import { awsService } from '@/services/aws-service';
+import { uploadImage } from '@/lib/services/storageService';
+import { sendCredentialsEmail } from '@/lib/services/resendService';
 import { addDoc, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/config/firebaseConfig';
->>>>>>> 1655e85bc42227e2567f3d4f4d666ee9988d860d
 
 export default function VeterinariansScreen() {
   const { userEmail } = useTenant();

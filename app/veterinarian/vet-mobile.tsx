@@ -134,7 +134,6 @@ export default function VetMobile() {
   };
 
   const fetchVetStats = async () => {
-<<<<<<< HEAD
     if (!user?.email) {
       setVetStats({
         todayAppointments: 0,
@@ -145,20 +144,6 @@ export default function VetMobile() {
         totalPatients: 0
       });
       return;
-=======
-    if (!user?.email) return;
-    
-    try {
-      // Use optimized count queries instead of loading all data
-      const todayCount = await paginatedFirebaseService.getTodayAppointmentsCount(user.email);
-      
-      setVetStats({ 
-        todayAppointments: todayCount,
-        pendingRecords: 0 // TODO: Add optimized count query
-      });
-    } catch (error) {
-      console.error('Error fetching vet stats:', error);
->>>>>>> 1655e85bc42227e2567f3d4f4d666ee9988d860d
     }
     
     const mockStats = {
@@ -194,7 +179,6 @@ export default function VetMobile() {
 
 
 
-<<<<<<< HEAD
         {/* Enhanced Stats Grid */}
         <View style={styles.statsGrid}>
           <TouchableOpacity style={styles.statCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
@@ -216,22 +200,6 @@ export default function VetMobile() {
             <Ionicons name="people" size={24} color="#8b5cf6" />
             <ThemedText style={styles.statValue}>{vetStats.totalPatients}</ThemedText>
             <ThemedText style={styles.statLabel}>Patients</ThemedText>
-=======
-        <View style={styles.quickStats}>
-          <TouchableOpacity style={styles.statCard}>
-            <Ionicons name="calendar" size={32} color={Colors.primary} />
-            <ThemedText style={styles.statValue}>
-              {loading ? '...' : vetStats.todayAppointments}
-            </ThemedText>
-            <ThemedText style={styles.statLabel}>Today's Appointments</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.statCard}>
-            <Ionicons name="document-text" size={32} color={Colors.primary} />
-            <ThemedText style={styles.statValue}>
-              {loading ? '...' : vetStats.pendingRecords}
-            </ThemedText>
-            <ThemedText style={styles.statLabel}>Pending Records</ThemedText>
->>>>>>> 1655e85bc42227e2567f3d4f4d666ee9988d860d
           </TouchableOpacity>
         </View>
 

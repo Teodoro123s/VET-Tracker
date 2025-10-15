@@ -70,6 +70,209 @@ export const getSubscribers = async () => {
   }
 };
 
+// SuperAdmin functions for system-wide data
+export const getAllTenants = async () => {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'tenants'));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error('Error fetching tenants:', error);
+    return [];
+  }
+};
+
+export const getSystemStats = async () => {
+  try {
+    const [tenants, transactions] = await Promise.all([
+      getAllTenants(),
+      getTransactions()
+    ]);
+
+    let totalCustomers = 0;
+    let totalAppointments = 0;
+    let totalVeterinarians = 0;
+    let activeSubscriptions = 0;
+
+    for (const tenant of tenants) {
+      try {
+        const [customers, appointments, veterinarians] = await Promise.all([
+          getDocs(collection(db, `tenants/${tenant.id}/customers`)),
+          getDocs(collection(db, `tenants/${tenant.id}/appointments`)),
+          getDocs(collection(db, `tenants/${tenant.id}/veterinarians`))
+        ]);
+        
+        totalCustomers += customers.size;
+        totalAppointments += appointments.size;
+        totalVeterinarians += veterinarians.size;
+        
+        if (tenant.subscriptionStatus === 'active') {
+          activeSubscriptions++;
+        }
+      } catch (error) {
+        console.log(`Skipping tenant ${tenant.id}:`, error.message);
+      }
+    }
+
+    const monthlyRevenue = transactions
+      .filter(t => {
+        const date = new Date(t.date || t.createdAt);
+        const now = new Date();
+        return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+      })
+      .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+
+    const yearlyRevenue = transactions
+      .filter(t => {
+        const date = new Date(t.date || t.createdAt);
+        return date.getFullYear() === new Date().getFullYear();
+      })
+      .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+
+    return {
+      totalClinics: tenants.length,
+      activeSubscriptions,
+      monthlyRevenue: `₱${monthlyRevenue.toLocaleString()}`,
+      yearlyRevenue: `₱${yearlyRevenue.toLocaleString()}`,
+      pendingRenewals: tenants.filter(t => t.subscriptionStatus === 'pending').length,
+      systemUptime: '99.8%',
+      totalTransactions: transactions.length,
+      averageClinicSize: Math.round((totalCustomers + totalVeterinarians) / Math.max(tenants.length, 1))
+    };
+  } catch (error) {
+    console.error('Error fetching system stats:', error);
+    return {
+      totalClinics: 0,
+      activeSubscriptions: 0,
+      monthlyRevenue: '₱0',
+      yearlyRevenue: '₱0',
+      pendingRenewals: 0,
+      systemUptime: '99.8%',
+      totalTransactions: 0,
+      averageClinicSize: 0
+    };
+  }
+};
+
+export const getRevenueData = async (filter = 'month') => {
+  try {
+    const transactions = await getTransactions();
+    const now = new Date();
+    
+    if (filter === 'week') {
+      const weekData = new Array(7).fill(0);
+      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+      
+      transactions.forEach(t => {
+        const date = new Date(t.date || t.createdAt);
+        if (date >= startOfWeek) {
+          const dayIndex = date.getDay();
+          weekData[dayIndex] += parseFloat(t.amount) || 0;
+        }
+      });
+      return weekData;
+    }
+    
+    if (filter === 'month') {
+      const monthData = new Array(4).fill(0);
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      
+      transactions.forEach(t => {
+        const date = new Date(t.date || t.createdAt);
+        if (date >= startOfMonth) {
+          const weekIndex = Math.floor((date.getDate() - 1) / 7);
+          if (weekIndex < 4) monthData[weekIndex] += parseFloat(t.amount) || 0;
+        }
+      });
+      return monthData;
+    }
+    
+    const yearData = new Array(12).fill(0);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    
+    transactions.forEach(t => {
+      const date = new Date(t.date || t.createdAt);
+      if (date >= startOfYear) {
+        yearData[date.getMonth()] += parseFloat(t.amount) || 0;
+      }
+    });
+    return yearData;
+  } catch (error) {
+    console.error('Error fetching revenue data:', error);
+    return filter === 'week' ? [0,0,0,0,0,0,0] : filter === 'month' ? [0,0,0,0] : [0,0,0,0,0,0,0,0,0,0,0,0];
+  }
+};
+
+export const getClinicGrowthData = async (filter = 'month') => {
+  try {
+    const tenants = await getAllTenants();
+    const now = new Date();
+    
+    if (filter === 'week') {
+      const weekData = new Array(7).fill(0);
+      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+      
+      tenants.forEach(t => {
+        const date = new Date(t.createdAt);
+        if (date >= startOfWeek) {
+          const dayIndex = date.getDay();
+          weekData[dayIndex]++;
+        }
+      });
+      return weekData;
+    }
+    
+    if (filter === 'month') {
+      const monthData = new Array(4).fill(0);
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      
+      tenants.forEach(t => {
+        const date = new Date(t.createdAt);
+        if (date >= startOfMonth) {
+          const weekIndex = Math.floor((date.getDate() - 1) / 7);
+          if (weekIndex < 4) monthData[weekIndex]++;
+        }
+      });
+      return monthData;
+    }
+    
+    const yearData = new Array(4).fill(0);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    
+    tenants.forEach(t => {
+      const date = new Date(t.createdAt);
+      if (date >= startOfYear) {
+        const quarter = Math.floor(date.getMonth() / 3);
+        yearData[quarter]++;
+      }
+    });
+    return yearData;
+  } catch (error) {
+    console.error('Error fetching clinic growth data:', error);
+    return filter === 'week' ? [0,0,0,0,0,0,0] : [0,0,0,0];
+  }
+};
+
+export const getSubscriptionData = async () => {
+  try {
+    const tenants = await getAllTenants();
+    const statusCounts = { active: 0, pending: 0, expired: 0, trial: 0 };
+    
+    tenants.forEach(t => {
+      const status = t.subscriptionStatus || 'trial';
+      if (statusCounts[status] !== undefined) {
+        statusCounts[status]++;
+      } else {
+        statusCounts.trial++;
+      }
+    });
+    
+    return [statusCounts.active, statusCounts.pending, statusCounts.expired, statusCounts.trial];
+  } catch (error) {
+    console.error('Error fetching subscription data:', error);
+    return [0, 0, 0, 0];
+  }
+};
+
 // Get all veterinarians (tenant-aware)
 export const getVeterinarians = async (userEmail?: string) => {
   try {

@@ -177,196 +177,196 @@ export default function SuperAdminDashboardScreen() {
             </View>
           ) : (
             <>
-          {/* Revenue Overview */
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Revenue Overview</Text>
-            <View style={styles.revenueGrid}>
-              <View style={styles.revenueCard}>
-                <Text style={styles.revenueValue}>{systemStats.monthlyRevenue}</Text>
-                <Text style={styles.revenueLabel}>Monthly Revenue</Text>
-                <Text style={styles.revenueGrowth}>+12.5% from last month</Text>
-              </View>
-              <View style={styles.revenueCard}>
-                <Text style={styles.revenueValue}>{systemStats.yearlyRevenue}</Text>
-                <Text style={styles.revenueLabel}>Yearly Revenue</Text>
-                <Text style={styles.revenueGrowth}>+28.3% from last year</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Analytics Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Analytics Dashboard</Text>
-            <View style={styles.analyticsGridTwoColumn}>
-              {/* Left Column */}
-              <View style={styles.analyticsColumn}>
-                {/* Revenue Trends */}
-                <View style={styles.analyticsCard}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle}>Revenue Trends</Text>
-                    <TouchableOpacity style={styles.chartFilter} onPress={() => {
-                      const filters = ['week', 'month', 'year'];
-                      const currentIndex = filters.indexOf(chartFilters.revenue);
-                      const nextFilter = filters[(currentIndex + 1) % filters.length];
-                      setChartFilters({...chartFilters, revenue: nextFilter});
-                    }}>
-                      <Text style={styles.chartFilterText}>{chartFilters.revenue}</Text>
-                    </TouchableOpacity>
+              {/* Revenue Overview */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Revenue Overview</Text>
+                <View style={styles.revenueGrid}>
+                  <View style={styles.revenueCard}>
+                    <Text style={styles.revenueValue}>{systemStats.monthlyRevenue}</Text>
+                    <Text style={styles.revenueLabel}>Monthly Revenue</Text>
+                    <Text style={styles.revenueGrowth}>+12.5% from last month</Text>
                   </View>
-                  {Platform.OS === 'web' && Chart ? (
-                    <Chart
-                      options={getChartOptions('revenue', chartFilters.revenue)}
-                      series={[{ name: 'Revenue', data: getChartData('revenue', chartFilters.revenue) }]}
-                      type="area"
-                      height={200}
-                    />
-                  ) : (
-                    <View style={styles.chartPlaceholder}>
-                      <Ionicons name="trending-up" size={40} color={Colors.primary} />
-                      <Text style={styles.placeholderText}>Revenue Chart</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Subscription Status */}
-                <View style={styles.analyticsCard}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle}>Subscription Status</Text>
+                  <View style={styles.revenueCard}>
+                    <Text style={styles.revenueValue}>{systemStats.yearlyRevenue}</Text>
+                    <Text style={styles.revenueLabel}>Yearly Revenue</Text>
+                    <Text style={styles.revenueGrowth}>+28.3% from last year</Text>
                   </View>
-                  {Platform.OS === 'web' && Chart ? (
-                    <Chart
-                      options={getChartOptions('subscriptions', chartFilters.subscriptions)}
-                      series={[{ name: 'Subscriptions', data: getChartData('subscriptions', chartFilters.subscriptions) }]}
-                      type="bar"
-                      height={200}
-                    />
-                  ) : (
-                    <View style={styles.chartPlaceholder}>
-                      <Ionicons name="card" size={40} color={Colors.primary} />
-                      <Text style={styles.placeholderText}>Subscription Chart</Text>
-                    </View>
-                  )}
                 </View>
               </View>
 
-              {/* Right Column */}
-              <View style={styles.analyticsColumn}>
-                {/* Clinic Growth */}
-                <View style={styles.analyticsCard}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle}>Clinic Growth</Text>
-                    <TouchableOpacity style={styles.chartFilter} onPress={() => {
-                      const filters = ['week', 'month', 'year'];
-                      const currentIndex = filters.indexOf(chartFilters.clinics);
-                      const nextFilter = filters[(currentIndex + 1) % filters.length];
-                      setChartFilters({...chartFilters, clinics: nextFilter});
-                    }}>
-                      <Text style={styles.chartFilterText}>{chartFilters.clinics}</Text>
-                    </TouchableOpacity>
-                  </View>
-                  {Platform.OS === 'web' && Chart ? (
-                    <Chart
-                      options={getChartOptions('clinics', chartFilters.clinics)}
-                      series={[{ name: 'New Clinics', data: getChartData('clinics', chartFilters.clinics) }]}
-                      type="line"
-                      height={200}
-                    />
-                  ) : (
-                    <View style={styles.chartPlaceholder}>
-                      <Ionicons name="business" size={40} color={Colors.primary} />
-                      <Text style={styles.placeholderText}>Growth Chart</Text>
+              {/* Analytics Section */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Analytics Dashboard</Text>
+                <View style={styles.analyticsGridTwoColumn}>
+                  {/* Left Column */}
+                  <View style={styles.analyticsColumn}>
+                    {/* Revenue Trends */}
+                    <View style={styles.analyticsCard}>
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardTitle}>Revenue Trends</Text>
+                        <TouchableOpacity style={styles.chartFilter} onPress={() => {
+                          const filters = ['week', 'month', 'year'];
+                          const currentIndex = filters.indexOf(chartFilters.revenue);
+                          const nextFilter = filters[(currentIndex + 1) % filters.length];
+                          setChartFilters({...chartFilters, revenue: nextFilter});
+                        }}>
+                          <Text style={styles.chartFilterText}>{chartFilters.revenue}</Text>
+                        </TouchableOpacity>
+                      </View>
+                      {Platform.OS === 'web' && Chart ? (
+                        <Chart
+                          options={getChartOptions('revenue', chartFilters.revenue)}
+                          series={[{ name: 'Revenue', data: getChartData('revenue', chartFilters.revenue) }]}
+                          type="area"
+                          height={200}
+                        />
+                      ) : (
+                        <View style={styles.chartPlaceholder}>
+                          <Ionicons name="trending-up" size={40} color={Colors.primary} />
+                          <Text style={styles.placeholderText}>Revenue Chart</Text>
+                        </View>
+                      )}
                     </View>
-                  )}
-                </View>
 
-                {/* System Performance */}
-                <View style={styles.analyticsCard}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle}>System Performance</Text>
-                  </View>
-                  {Platform.OS === 'web' && Chart ? (
-                    <Chart
-                      options={{
-                        ...getChartOptions('subscriptions'),
-                        chart: { type: 'pie', toolbar: { show: false } },
-                        labels: ['Uptime', 'Maintenance', 'Issues'],
-                        colors: ['#10b981', '#f59e0b', '#ef4444']
-                      }}
-                      series={[98.5, 1.2, 0.3]}
-                      type="pie"
-                      height={200}
-                    />
-                  ) : (
-                    <View style={styles.chartPlaceholder}>
-                      <Ionicons name="speedometer" size={40} color={Colors.primary} />
-                      <Text style={styles.placeholderText}>Performance Chart</Text>
+                    {/* Subscription Status */}
+                    <View style={styles.analyticsCard}>
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardTitle}>Subscription Status</Text>
+                      </View>
+                      {Platform.OS === 'web' && Chart ? (
+                        <Chart
+                          options={getChartOptions('subscriptions', chartFilters.subscriptions)}
+                          series={[{ name: 'Subscriptions', data: getChartData('subscriptions', chartFilters.subscriptions) }]}
+                          type="bar"
+                          height={200}
+                        />
+                      ) : (
+                        <View style={styles.chartPlaceholder}>
+                          <Ionicons name="card" size={40} color={Colors.primary} />
+                          <Text style={styles.placeholderText}>Subscription Chart</Text>
+                        </View>
+                      )}
                     </View>
-                  )}
+                  </View>
+
+                  {/* Right Column */}
+                  <View style={styles.analyticsColumn}>
+                    {/* Clinic Growth */}
+                    <View style={styles.analyticsCard}>
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardTitle}>Clinic Growth</Text>
+                        <TouchableOpacity style={styles.chartFilter} onPress={() => {
+                          const filters = ['week', 'month', 'year'];
+                          const currentIndex = filters.indexOf(chartFilters.clinics);
+                          const nextFilter = filters[(currentIndex + 1) % filters.length];
+                          setChartFilters({...chartFilters, clinics: nextFilter});
+                        }}>
+                          <Text style={styles.chartFilterText}>{chartFilters.clinics}</Text>
+                        </TouchableOpacity>
+                      </View>
+                      {Platform.OS === 'web' && Chart ? (
+                        <Chart
+                          options={getChartOptions('clinics', chartFilters.clinics)}
+                          series={[{ name: 'New Clinics', data: getChartData('clinics', chartFilters.clinics) }]}
+                          type="line"
+                          height={200}
+                        />
+                      ) : (
+                        <View style={styles.chartPlaceholder}>
+                          <Ionicons name="business" size={40} color={Colors.primary} />
+                          <Text style={styles.placeholderText}>Growth Chart</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* System Performance */}
+                    <View style={styles.analyticsCard}>
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardTitle}>System Performance</Text>
+                      </View>
+                      {Platform.OS === 'web' && Chart ? (
+                        <Chart
+                          options={{
+                            ...getChartOptions('subscriptions'),
+                            chart: { type: 'pie', toolbar: { show: false } },
+                            labels: ['Uptime', 'Maintenance', 'Issues'],
+                            colors: ['#10b981', '#f59e0b', '#ef4444']
+                          }}
+                          series={[98.5, 1.2, 0.3]}
+                          type="pie"
+                          height={200}
+                        />
+                      ) : (
+                        <View style={styles.chartPlaceholder}>
+                          <Ionicons name="speedometer" size={40} color={Colors.primary} />
+                          <Text style={styles.placeholderText}>Performance Chart</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
                 </View>
               </View>
-            </View>
-          </View>
 
-          {/* System Metrics */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>System Metrics</Text>
-            <View style={styles.metricsGrid}>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>{systemStats.totalClinics}</Text>
-                <Text style={styles.metricLabel}>Total Clinics</Text>
+              {/* System Metrics */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>System Metrics</Text>
+                <View style={styles.metricsGrid}>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricValue}>{systemStats.totalClinics}</Text>
+                    <Text style={styles.metricLabel}>Total Clinics</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Text style={[styles.metricValue, styles.activeValue]}>{systemStats.activeSubscriptions}</Text>
+                    <Text style={styles.metricLabel}>Active Subscriptions</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricValue}>{systemStats.totalTransactions}</Text>
+                    <Text style={styles.metricLabel}>Total Transactions</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricValue}>{systemStats.systemUptime}</Text>
+                    <Text style={styles.metricLabel}>System Uptime</Text>
+                  </View>
+                </View>
               </View>
-              <View style={styles.metricCard}>
-                <Text style={[styles.metricValue, styles.activeValue]}>{systemStats.activeSubscriptions}</Text>
-                <Text style={styles.metricLabel}>Active Subscriptions</Text>
-              </View>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>{systemStats.totalTransactions}</Text>
-                <Text style={styles.metricLabel}>Total Transactions</Text>
-              </View>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>{systemStats.systemUptime}</Text>
-                <Text style={styles.metricLabel}>System Uptime</Text>
-              </View>
-            </View>
-          </View>
 
-          {/* Management Actions */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Management</Text>
-            <View style={styles.actionGrid}>
-              <TouchableOpacity style={styles.managementCard} onPress={() => router.push('/superadmin')}>
-                <Text style={styles.managementTitle}>Tenant Management</Text>
-                <Text style={styles.managementCount}>{systemStats.totalClinics} clinics</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.managementCard} onPress={() => router.push('/billing')}>
-                <Text style={styles.managementTitle}>Billing & Subscriptions</Text>
-                <Text style={styles.managementCount}>{systemStats.activeSubscriptions} active</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.managementCard} onPress={() => router.push('/transaction-history')}>
-                <Text style={styles.managementTitle}>Financial Reports</Text>
-                <Text style={styles.managementCount}>{systemStats.totalTransactions} transactions</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+              {/* Management Actions */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Management</Text>
+                <View style={styles.actionGrid}>
+                  <TouchableOpacity style={styles.managementCard} onPress={() => router.push('/superadmin')}>
+                    <Text style={styles.managementTitle}>Tenant Management</Text>
+                    <Text style={styles.managementCount}>{systemStats.totalClinics} clinics</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.managementCard} onPress={() => router.push('/billing')}>
+                    <Text style={styles.managementTitle}>Billing & Subscriptions</Text>
+                    <Text style={styles.managementCount}>{systemStats.activeSubscriptions} active</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.managementCard} onPress={() => router.push('/transaction-history')}>
+                    <Text style={styles.managementTitle}>Financial Reports</Text>
+                    <Text style={styles.managementCount}>{systemStats.totalTransactions} transactions</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-          {/* System Status */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>System Status</Text>
-            <View style={styles.statusCard}>
-              <View style={styles.statusItem}>
-                <Text style={styles.statusLabel}>Pending Renewals</Text>
-                <Text style={[styles.statusValue, styles.warningValue]}>{systemStats.pendingRenewals}</Text>
+              {/* System Status */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>System Status</Text>
+                <View style={styles.statusCard}>
+                  <View style={styles.statusItem}>
+                    <Text style={styles.statusLabel}>Pending Renewals</Text>
+                    <Text style={[styles.statusValue, styles.warningValue]}>{systemStats.pendingRenewals}</Text>
+                  </View>
+                  <View style={styles.statusItem}>
+                    <Text style={styles.statusLabel}>Average Clinic Size</Text>
+                    <Text style={styles.statusValue}>{systemStats.averageClinicSize} users</Text>
+                  </View>
+                  <View style={styles.statusItem}>
+                    <Text style={styles.statusLabel}>System Health</Text>
+                    <Text style={[styles.statusValue, styles.healthyValue]}>Excellent</Text>
+                  </View>
+                </View>
               </View>
-              <View style={styles.statusItem}>
-                <Text style={styles.statusLabel}>Average Clinic Size</Text>
-                <Text style={styles.statusValue}>{systemStats.averageClinicSize} users</Text>
-              </View>
-              <View style={styles.statusItem}>
-                <Text style={styles.statusLabel}>System Health</Text>
-                <Text style={[styles.statusValue, styles.healthyValue]}>Excellent</Text>
-              </View>
-            </View>
-          </View>
             </>
           )}
         </ScrollView>
