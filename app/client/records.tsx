@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, Modal, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { deleteMedicalCategory, deleteMedicalForm, getMedicalForms, getMedicalCategories, addMedicalForm, addMedicalCategory, getFormFields, addFormField, updateMedicalForm, deleteFormField, updateFormField, addMedicalRecord, getVeterinarians } from '../../lib/services/firebaseService';
@@ -317,11 +318,11 @@ export default function RecordsScreen() {
           <Text style={styles.headerText}>Categories</Text>
           <View style={styles.headerActions}>
             <TouchableOpacity style={styles.recordAddButton} onPress={() => setShowAddCategoryDrawer(true)}>
-              <Image source={require('@/assets/ic_round-plus.png')} style={styles.addIcon} />
+              <Ionicons name="add" size={14} color="#ffffff" />
               <Text style={styles.recordAddButtonText}>Add Category</Text>
             </TouchableOpacity>
             <View style={styles.recordSearchContainer}>
-              <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+              <Ionicons name="search" size={14} color="#800000" />
               <TextInput 
                 style={styles.recordSearchInput}
                 placeholder="Search categories..."
@@ -425,12 +426,12 @@ export default function RecordsScreen() {
           <Text style={styles.medicalFormsHeaderText}>Form Templates</Text>
           <View style={styles.medicalFormsHeaderActions}>
             <TouchableOpacity style={styles.formAddButton} onPress={() => setShowAddFormDrawer(true)}>
-              <Image source={require('@/assets/ic_round-plus.png')} style={styles.addIcon} />
+              <Ionicons name="add" size={14} color="#ffffff" />
               <Text style={styles.formAddButtonText}>Add Form</Text>
             </TouchableOpacity>
 
             <View style={styles.formSearchContainer}>
-              <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+              <Ionicons name="search" size={14} color="#800000" />
               <TextInput 
                 style={styles.formSearchInput}
                 placeholder="Search forms..."
@@ -647,7 +648,7 @@ export default function RecordsScreen() {
                         <Text style={styles.previewFormButtonText}>Preview</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.addFieldButton} onPress={() => setShowAddFieldDrawer(true)}>
-                        <Image source={require('@/assets/ic_round-plus.png')} style={styles.addIcon} />
+                        <Ionicons name="add" size={14} color="#ffffff" />
                         <Text style={styles.addFieldButtonText}>Add Field</Text>
                       </TouchableOpacity>
                     </View>
@@ -1513,11 +1514,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  addIcon: {
-    width: 14,
-    height: 14,
-    marginRight: 4,
-  },
+
   recordAddButtonText: {
     color: '#ffffff',
     fontWeight: 'bold',
@@ -1532,11 +1529,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  searchIcon: {
-    width: 14,
-    height: 14,
-    marginRight: 6,
-  },
+
   recordSearchInput: {
     width: 150,
     fontSize: 12,

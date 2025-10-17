@@ -6,6 +6,8 @@ import { Typography, Spacing } from '@/constants/Typography';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { getSystemStats, getRevenueData, getClinicGrowthData, getSubscriptionData } from '@/lib/services/firebaseService';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/config/firebaseConfig';
 
 export default function SuperAdminDashboardScreen() {
   const router = useRouter();
@@ -14,15 +16,15 @@ export default function SuperAdminDashboardScreen() {
   const [systemStats, setSystemStats] = useState({
     totalClinics: 0,
     activeSubscriptions: 0,
-    monthlyRevenue: '₱0',
-    yearlyRevenue: '₱0',
+    monthlyRevenue: 0,
+    yearlyRevenue: 0,
     pendingRenewals: 0,
     systemUptime: '99.8%',
     totalTransactions: 0,
     averageClinicSize: 0
   });
 
-  const [Chart, setChart] = useState(null);
+
   const [chartFilters, setChartFilters] = useState({
     revenue: 'month',
     clinics: 'month',
@@ -36,13 +38,6 @@ export default function SuperAdminDashboardScreen() {
   });
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      import('react-apexcharts').then((module) => {
-        setChart(() => module.default);
-      }).catch((error) => {
-        console.warn('Charts not available:', error);
-      });
-    }
     loadSystemData();
   }, []);
 
@@ -52,10 +47,49 @@ export default function SuperAdminDashboardScreen() {
 
   const loadSystemData = async () => {
     try {
-      const stats = await getSystemStats();
-      setSystemStats(stats);
+      // Fetch real data from Firebase
+      const [tenantsSnapshot, transactionsSnapshot] = await Promise.all([
+        getDocs(collection(db, 'tenants')),
+        getDocs(collection(db, 'transactions'))
+      ]);
+      
+      const tenants = tenantsSnapshot.docs.map(doc => doc.data());
+      const transactions = transactionsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          ...data,
+          amount: parseFloat(data.amount?.toString().replace(/[^0-9.-]+/g, '') || '0'),
+          createdAt: data.createdAt?.toDate() || new Date()
+        };
+      });
+      
+      const totalRevenue = transactions.reduce((sum, t) => sum + t.amount, 0);
+      const monthlyRevenue = totalRevenue / 12;
+      const activeSubscriptions = tenants.filter(t => t.subscriptionStatus === 'active').length;
+      
+      setSystemStats({
+        totalClinics: tenants.length,
+        activeSubscriptions,
+        monthlyRevenue,
+        yearlyRevenue: totalRevenue,
+        pendingRenewals: tenants.filter(t => t.subscriptionStatus === 'pending').length,
+        systemUptime: '99.8%',
+        totalTransactions: transactions.length,
+        averageClinicSize: tenants.length > 0 ? Math.round(transactions.length / tenants.length) : 0
+      });
     } catch (error) {
       console.error('Error loading system data:', error);
+      // Fallback to empty data
+      setSystemStats({
+        totalClinics: 0,
+        activeSubscriptions: 0,
+        monthlyRevenue: 0,
+        yearlyRevenue: 0,
+        pendingRenewals: 0,
+        systemUptime: '99.8%',
+        totalTransactions: 0,
+        averageClinicSize: 0
+      });
     } finally {
       setLoading(false);
     }
@@ -161,216 +195,97 @@ export default function SuperAdminDashboardScreen() {
     }
   };
 
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount || 0);
+  };
+
   return (
     <View style={styles.container}>
       <SuperAdminSidebar />
-      <View style={styles.mainContent}>
+      <ScrollView style={styles.mainContent} showsVerticalScrollIndicator={false}>
+        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerText}>SuperAdmin Dashboard</Text>
-          <Text style={styles.subtitle}>System-wide Analytics & Control</Text>
+          <View style={styles.headerActions}>
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={14} color="#999" />
+              <Text style={styles.searchInput}>Search system...</Text>
+            </View>
+          </View>
         </View>
-        
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {loading ? (
             <View style={styles.loadingContainer}>
               <Text style={styles.loadingText}>Loading system data...</Text>
             </View>
           ) : (
             <>
-          {/* Revenue Overview */
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Revenue Overview</Text>
-            <View style={styles.revenueGrid}>
-              <View style={styles.revenueCard}>
-                <Text style={styles.revenueValue}>{systemStats.monthlyRevenue}</Text>
-                <Text style={styles.revenueLabel}>Monthly Revenue</Text>
-                <Text style={styles.revenueGrowth}>+12.5% from last month</Text>
-              </View>
-              <View style={styles.revenueCard}>
-                <Text style={styles.revenueValue}>{systemStats.yearlyRevenue}</Text>
-                <Text style={styles.revenueLabel}>Yearly Revenue</Text>
-                <Text style={styles.revenueGrowth}>+28.3% from last year</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Analytics Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Analytics Dashboard</Text>
-            <View style={styles.analyticsGridTwoColumn}>
-              {/* Left Column */}
-              <View style={styles.analyticsColumn}>
-                {/* Revenue Trends */}
-                <View style={styles.analyticsCard}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle}>Revenue Trends</Text>
-                    <TouchableOpacity style={styles.chartFilter} onPress={() => {
-                      const filters = ['week', 'month', 'year'];
-                      const currentIndex = filters.indexOf(chartFilters.revenue);
-                      const nextFilter = filters[(currentIndex + 1) % filters.length];
-                      setChartFilters({...chartFilters, revenue: nextFilter});
-                    }}>
-                      <Text style={styles.chartFilterText}>{chartFilters.revenue}</Text>
-                    </TouchableOpacity>
+              {/* Revenue Overview */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Revenue Overview</Text>
+                <View style={styles.revenueGrid}>
+                  <View style={styles.revenueCard}>
+                    <Text style={styles.revenueValue}>{formatCurrency(systemStats.monthlyRevenue)}</Text>
+                    <Text style={styles.revenueLabel}>Monthly Revenue</Text>
+                    <Text style={styles.revenueGrowth}>+12.5% from last month</Text>
                   </View>
-                  {Platform.OS === 'web' && Chart ? (
-                    <Chart
-                      options={getChartOptions('revenue', chartFilters.revenue)}
-                      series={[{ name: 'Revenue', data: getChartData('revenue', chartFilters.revenue) }]}
-                      type="area"
-                      height={200}
-                    />
-                  ) : (
-                    <View style={styles.chartPlaceholder}>
-                      <Ionicons name="trending-up" size={40} color={Colors.primary} />
-                      <Text style={styles.placeholderText}>Revenue Chart</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Subscription Status */}
-                <View style={styles.analyticsCard}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle}>Subscription Status</Text>
+                  <View style={styles.revenueCard}>
+                    <Text style={styles.revenueValue}>{formatCurrency(systemStats.yearlyRevenue)}</Text>
+                    <Text style={styles.revenueLabel}>Yearly Revenue</Text>
+                    <Text style={styles.revenueGrowth}>+28.3% from last year</Text>
                   </View>
-                  {Platform.OS === 'web' && Chart ? (
-                    <Chart
-                      options={getChartOptions('subscriptions', chartFilters.subscriptions)}
-                      series={[{ name: 'Subscriptions', data: getChartData('subscriptions', chartFilters.subscriptions) }]}
-                      type="bar"
-                      height={200}
-                    />
-                  ) : (
-                    <View style={styles.chartPlaceholder}>
-                      <Ionicons name="card" size={40} color={Colors.primary} />
-                      <Text style={styles.placeholderText}>Subscription Chart</Text>
-                    </View>
-                  )}
                 </View>
               </View>
 
-              {/* Right Column */}
-              <View style={styles.analyticsColumn}>
-                {/* Clinic Growth */}
-                <View style={styles.analyticsCard}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle}>Clinic Growth</Text>
-                    <TouchableOpacity style={styles.chartFilter} onPress={() => {
-                      const filters = ['week', 'month', 'year'];
-                      const currentIndex = filters.indexOf(chartFilters.clinics);
-                      const nextFilter = filters[(currentIndex + 1) % filters.length];
-                      setChartFilters({...chartFilters, clinics: nextFilter});
-                    }}>
-                      <Text style={styles.chartFilterText}>{chartFilters.clinics}</Text>
-                    </TouchableOpacity>
-                  </View>
-                  {Platform.OS === 'web' && Chart ? (
-                    <Chart
-                      options={getChartOptions('clinics', chartFilters.clinics)}
-                      series={[{ name: 'New Clinics', data: getChartData('clinics', chartFilters.clinics) }]}
-                      type="line"
-                      height={200}
-                    />
-                  ) : (
-                    <View style={styles.chartPlaceholder}>
-                      <Ionicons name="business" size={40} color={Colors.primary} />
-                      <Text style={styles.placeholderText}>Growth Chart</Text>
-                    </View>
-                  )}
-                </View>
 
-                {/* System Performance */}
-                <View style={styles.analyticsCard}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle}>System Performance</Text>
+
+              {/* System Metrics */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>System Metrics</Text>
+                <View style={styles.metricsGrid}>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricValue}>{systemStats.totalClinics}</Text>
+                    <Text style={styles.metricLabel}>Total Clinics</Text>
                   </View>
-                  {Platform.OS === 'web' && Chart ? (
-                    <Chart
-                      options={{
-                        ...getChartOptions('subscriptions'),
-                        chart: { type: 'pie', toolbar: { show: false } },
-                        labels: ['Uptime', 'Maintenance', 'Issues'],
-                        colors: ['#10b981', '#f59e0b', '#ef4444']
-                      }}
-                      series={[98.5, 1.2, 0.3]}
-                      type="pie"
-                      height={200}
-                    />
-                  ) : (
-                    <View style={styles.chartPlaceholder}>
-                      <Ionicons name="speedometer" size={40} color={Colors.primary} />
-                      <Text style={styles.placeholderText}>Performance Chart</Text>
-                    </View>
-                  )}
+                  <View style={styles.metricCard}>
+                    <Text style={[styles.metricValue, styles.activeValue]}>{systemStats.activeSubscriptions}</Text>
+                    <Text style={styles.metricLabel}>Active Subscriptions</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricValue}>{systemStats.totalTransactions}</Text>
+                    <Text style={styles.metricLabel}>Total Transactions</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricValue}>{systemStats.systemUptime}</Text>
+                    <Text style={styles.metricLabel}>System Uptime</Text>
+                  </View>
                 </View>
               </View>
-            </View>
-          </View>
 
-          {/* System Metrics */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>System Metrics</Text>
-            <View style={styles.metricsGrid}>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>{systemStats.totalClinics}</Text>
-                <Text style={styles.metricLabel}>Total Clinics</Text>
+              {/* Financial Reports */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Financial Reports</Text>
+                <TouchableOpacity style={styles.financialCard} onPress={() => router.push('/server/financial-analytics')}>
+                  <View style={styles.financialIcon}>
+                    <Ionicons name="analytics" size={32} color="#ffffff" />
+                  </View>
+                  <View style={styles.financialContent}>
+                    <Text style={styles.financialTitle}>Transaction Analytics</Text>
+                    <Text style={styles.financialSubtitle}>View detailed financial reports and transaction history</Text>
+                    <Text style={styles.financialCount}>{systemStats.totalTransactions} total transactions</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={24} color="#800000" />
+                </TouchableOpacity>
               </View>
-              <View style={styles.metricCard}>
-                <Text style={[styles.metricValue, styles.activeValue]}>{systemStats.activeSubscriptions}</Text>
-                <Text style={styles.metricLabel}>Active Subscriptions</Text>
-              </View>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>{systemStats.totalTransactions}</Text>
-                <Text style={styles.metricLabel}>Total Transactions</Text>
-              </View>
-              <View style={styles.metricCard}>
-                <Text style={styles.metricValue}>{systemStats.systemUptime}</Text>
-                <Text style={styles.metricLabel}>System Uptime</Text>
-              </View>
-            </View>
-          </View>
 
-          {/* Management Actions */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Management</Text>
-            <View style={styles.actionGrid}>
-              <TouchableOpacity style={styles.managementCard} onPress={() => router.push('/superadmin')}>
-                <Text style={styles.managementTitle}>Tenant Management</Text>
-                <Text style={styles.managementCount}>{systemStats.totalClinics} clinics</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.managementCard} onPress={() => router.push('/billing')}>
-                <Text style={styles.managementTitle}>Billing & Subscriptions</Text>
-                <Text style={styles.managementCount}>{systemStats.activeSubscriptions} active</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.managementCard} onPress={() => router.push('/transaction-history')}>
-                <Text style={styles.managementTitle}>Financial Reports</Text>
-                <Text style={styles.managementCount}>{systemStats.totalTransactions} transactions</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
 
-          {/* System Status */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>System Status</Text>
-            <View style={styles.statusCard}>
-              <View style={styles.statusItem}>
-                <Text style={styles.statusLabel}>Pending Renewals</Text>
-                <Text style={[styles.statusValue, styles.warningValue]}>{systemStats.pendingRenewals}</Text>
-              </View>
-              <View style={styles.statusItem}>
-                <Text style={styles.statusLabel}>Average Clinic Size</Text>
-                <Text style={styles.statusValue}>{systemStats.averageClinicSize} users</Text>
-              </View>
-              <View style={styles.statusItem}>
-                <Text style={styles.statusLabel}>System Health</Text>
-                <Text style={[styles.statusValue, styles.healthyValue]}>Excellent</Text>
-              </View>
-            </View>
-          </View>
             </>
           )}
-        </ScrollView>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -382,25 +297,39 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
   header: {
-    paddingTop: Spacing.xxlarge,
-    paddingBottom: Spacing.large,
-    paddingHorizontal: Spacing.xxlarge,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    paddingTop: 20,
+    paddingBottom: 5,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
   },
   headerText: {
-    fontSize: Typography.header,
+    fontSize: 36,
     fontWeight: 'bold',
     color: '#800000',
-    marginBottom: Spacing.tiny,
   },
-  subtitle: {
-    fontSize: Typography.body,
-    color: '#666',
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#800000',
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  searchInput: {
+    width: 150,
+    fontSize: 12,
+    color: '#999',
+    marginLeft: 6,
   },
   content: {
     flex: 1,
@@ -408,6 +337,7 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: Spacing.xxlarge,
+    paddingHorizontal: 20,
   },
   sectionTitle: {
     fontSize: Typography.title,
@@ -473,82 +403,12 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
   },
-  actionGrid: {
-    gap: Spacing.medium,
-  },
-  managementCard: {
+  financialCard: {
     backgroundColor: '#fff',
     padding: Spacing.xlarge,
     borderRadius: Spacing.radiusLarge,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    borderLeftWidth: 4,
-    borderLeftColor: '#800000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  managementTitle: {
-    fontSize: Typography.subtitle,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  managementCount: {
-    fontSize: Typography.body,
-    color: '#800000',
-    fontWeight: 'bold',
-  },
-  statusCard: {
-    backgroundColor: '#fff',
-    padding: Spacing.xlarge,
-    borderRadius: Spacing.radiusLarge,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statusItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.medium,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  statusLabel: {
-    fontSize: Typography.body,
-    color: '#666',
-  },
-  statusValue: {
-    fontSize: Typography.body,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  warningValue: {
-    color: '#FFA500',
-  },
-  healthyValue: {
-    color: '#23C062',
-  },
-  analyticsGrid: {
-    gap: Spacing.large,
-  },
-  analyticsGridTwoColumn: {
-    flexDirection: 'row',
-    gap: 24,
-  },
-  analyticsColumn: {
-    flex: 1,
-    gap: 20,
-  },
-  analyticsCard: {
-    backgroundColor: '#fff',
-    padding: Spacing.xlarge,
-    borderRadius: Spacing.radiusLarge,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -556,45 +416,36 @@ const styles = StyleSheet.create({
     elevation: 4,
     borderWidth: 1,
     borderColor: '#f1f5f9',
-    marginBottom: Spacing.large,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  financialIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#800000',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.medium,
+    marginRight: Spacing.large,
   },
-  cardTitle: {
+  financialContent: {
+    flex: 1,
+  },
+  financialTitle: {
     fontSize: Typography.subtitle,
     fontWeight: 'bold',
-    color: '#1e293b',
+    color: '#333',
+    marginBottom: 4,
   },
-  chartFilter: {
-    backgroundColor: '#800000',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    minWidth: 60,
-    alignItems: 'center',
+  financialSubtitle: {
+    fontSize: Typography.small,
+    color: '#666',
+    marginBottom: 8,
   },
-  chartFilterText: {
-    color: '#ffffff',
-    fontSize: 12,
+  financialCount: {
+    fontSize: Typography.body,
+    color: '#800000',
     fontWeight: 'bold',
-    textTransform: 'uppercase',
   },
-  chartPlaceholder: {
-    alignItems: 'center',
-    paddingVertical: 40,
-    minHeight: 200,
-    justifyContent: 'center',
-  },
-  placeholderText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.primary,
-    marginTop: 8,
-  },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',

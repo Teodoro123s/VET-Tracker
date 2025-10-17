@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/config/firebaseConfig';
@@ -142,7 +143,7 @@ export default function TransactionHistoryScreen() {
           <Text style={styles.headerText}>Transaction History</Text>
           <View style={styles.headerActions}>
             <View style={styles.searchContainer}>
-              <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+              <Ionicons name="search" size={14} color="#999" />
               <TextInput 
                 style={styles.searchInput}
                 placeholder="Search by email, clinic, or tenant ID..."
@@ -159,7 +160,7 @@ export default function TransactionHistoryScreen() {
             <View style={styles.tableTopRow}>
               <View style={styles.headerRow}>
                 <TouchableOpacity style={styles.returnButton} onPress={() => router.push('/superadmin')}>
-                  <Image source={require('@/assets/Vector.png')} style={styles.returnIcon} />
+                  <Ionicons name="arrow-back" size={16} color="#ffffff" />
                 </TouchableOpacity>
                 <Text style={styles.detailTitle}>All Subscription Transactions</Text>
                 <View style={styles.filterButtons}>
@@ -184,8 +185,6 @@ export default function TransactionHistoryScreen() {
               <Text style={[styles.headerCell, {flex: 2}]}>Email/Clinic</Text>
               <Text style={[styles.headerCell, {flex: 1}]}>Period</Text>
               <Text style={[styles.headerCell, {flex: 1}]}>Amount</Text>
-              <Text style={[styles.headerCell, {flex: 1}]}>Status</Text>
-              <Text style={[styles.headerCell, {flex: 1}]}>Days Left</Text>
             </View>
             
             <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={false}>
@@ -210,24 +209,6 @@ export default function TransactionHistoryScreen() {
                     </View>
                     <Text style={[styles.cellText, {flex: 1}]}>{transaction.period}</Text>
                     <Text style={[styles.cellText, {flex: 1}]}>{transaction.amount}</Text>
-                    <View style={[styles.statusCell, {flex: 1}]}>
-                      <View style={getStatusBadgeStyle(transaction.periodStatus || 'unknown')}>
-                        <Text style={getStatusTextStyle(transaction.periodStatus || 'unknown')}>
-                          {(transaction.periodStatus || 'Unknown').charAt(0).toUpperCase() + (transaction.periodStatus || 'unknown').slice(1)}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={[styles.cell, {flex: 1}]}>
-                      {transaction.periodStatus === 'active' && transaction.daysRemaining !== undefined ? (
-                        <Text style={styles.cellText}>
-                          {transaction.daysRemaining} days
-                        </Text>
-                      ) : (transaction.periodStatus === 'queued' || !transaction.periodStatus || transaction.periodStatus === 'unknown') ? (
-                        <Text style={styles.cellText}>N/A</Text>
-                      ) : (
-                        <Text style={styles.cellText}>N/A</Text>
-                      )}
-                    </View>
                   </View>
                 ))
               )}

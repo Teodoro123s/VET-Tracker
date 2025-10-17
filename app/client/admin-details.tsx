@@ -162,16 +162,14 @@ export default function AdminDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   header: {
     paddingTop: 20,
     paddingBottom: 5,
     paddingHorizontal: 20,
-    backgroundColor: '#fff',
   },
   headerText: {
-    fontSize: 24,
+    fontSize: 36,
     fontWeight: 'bold',
     color: '#800000',
   },

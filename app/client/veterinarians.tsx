@@ -1,25 +1,17 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, Modal, Animated, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import Tesseract from 'tesseract.js';
 import SearchableDropdown from '@/components/SearchableDropdown';
-<<<<<<< HEAD
-import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '../../lib/services/firebaseService';
-import { generateSecurePassword } from '../../lib/utils/emailService.ts';
-import { sendStaffCredentialsViaEmailJS } from '../../lib/utils/freeEmailService';
-import { registerUser } from '../../lib/services/firebaseService';
-import { useTenant } from '../../contexts/TenantContext';
-import { uploadImage } from '../../lib/services/storageService';
-import { sendCredentialsEmail } from '../../lib/services/resendService';
-=======
 import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '@/lib/services/firebaseService';
 import { generateSecurePassword } from '@/lib/utils/emailService';
-import { sendStaffCredentialsViaEmailJS } from '@/lib/utils/freeEmailService';
+import { sendCredentialsEmail } from '@/lib/services/emailjsService';
 import { registerUser } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
-import { awsService } from '@/services/aws-service';
+// import { uploadImage } from '@/lib/services/storageService';
+
 import { addDoc, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/config/firebaseConfig';
->>>>>>> 1655e85bc42227e2567f3d4f4d666ee9988d860d
 
 export default function VeterinariansScreen() {
   const { userEmail } = useTenant();
@@ -36,7 +28,7 @@ export default function VeterinariansScreen() {
       console.log('Loading veterinarians for userEmail:', userEmail);
       const allData = await getVeterinarians(userEmail);
       console.log('All veterinarian data:', allData.length);
-      const vetsData = allData.filter(item => item.role !== 'staff');
+      const vetsData = allData.filter(item => item.role === 'veterinarian');
       console.log('Filtered veterinarians count:', vetsData.length);
       console.log('First veterinarian sample:', vetsData[0]);
       setVeterinarians(vetsData);
@@ -171,10 +163,9 @@ export default function VeterinariansScreen() {
       let licenseImageUrl = '';
       if (newVeterinarian.licenseImage) {
         try {
-          licenseImageUrl = await uploadImage(
-            newVeterinarian.licenseImage,
-            `licenses/license-${Date.now()}.jpg`
-          );
+          // Image upload functionality disabled - storageService not available
+          console.log('Image upload skipped - service not available');
+          Alert.alert('Info', 'Image upload is currently disabled.');
         } catch (imageError) {
           console.error('Image upload failed:', imageError);
           Alert.alert('Warning', 'License image upload failed, but veterinarian will be added without image.');
@@ -203,6 +194,9 @@ export default function VeterinariansScreen() {
         console.log('Firebase Auth account created successfully');
       } catch (authError) {
         console.error('Auth error:', authError);
+        if (authError.code === 'auth/email-already-in-use') {
+          console.log('Email already has an account, skipping auth creation');
+        }
         // Continue even if auth fails
       }
       
@@ -241,7 +235,7 @@ export default function VeterinariansScreen() {
           Alert.alert('Success', `Veterinarian added successfully!\n\nEmail sending failed. Please share these credentials manually:\n\nEmail: ${newVeterinarian.email}\nPassword: ${generatedPassword}`);
         }
       } catch (emailError) {
-        console.error('Email error:', emailError);
+        console.error('Email service error:', emailError);
         Alert.alert('Success', `Veterinarian added successfully!\n\nEmail sending failed. Please share these credentials manually:\n\nEmail: ${newVeterinarian.email}\nPassword: ${generatedPassword}`);
       }
       
@@ -306,11 +300,11 @@ export default function VeterinariansScreen() {
             style={styles.vetAddButton} 
             onPress={() => setShowAddDrawer(true)}
           >
-            <Image source={require('@/assets/ic_round-plus.png')} style={styles.addIcon} />
+            <Ionicons name="add" size={14} color="#ffffff" style={styles.addIcon} />
             <Text style={styles.vetAddButtonText}>Add Veterinarian</Text>
           </TouchableOpacity>
           <View style={styles.vetSearchContainer}>
-            <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+            <Ionicons name="search" size={14} color="#800000" style={styles.searchIcon} />
             <TextInput 
               style={styles.vetSearchInput}
               placeholder="Search veterinarians..."
@@ -506,10 +500,11 @@ export default function VeterinariansScreen() {
                         }
                         
                         // Send new credentials via EmailJS
-                        const emailResult = await sendStaffCredentialsViaEmailJS(
+                        const emailResult = await sendCredentialsEmail(
                           selectedVeterinarian.email,
-                          newPassword,
-                          selectedVeterinarian.name
+                          selectedVeterinarian.name,
+                          selectedVeterinarian.email,
+                          newPassword
                         );
                         
                         setLastPasswordGenerated(now);
@@ -551,7 +546,7 @@ export default function VeterinariansScreen() {
                     useNativeDriver: false,
                   }).start(() => setShowAddDrawer(false));
                 }}>
-                  <Image source={require('@/assets/Vector (1).png')} style={styles.drawerCloseIcon} />
+                  <Ionicons name="close" size={16} color="#800000" />
                 </TouchableOpacity>
               </View>
               
@@ -732,7 +727,7 @@ export default function VeterinariansScreen() {
                     useNativeDriver: false,
                   }).start(() => setShowEditVetDrawer(false));
                 }}>
-                  <Image source={require('@/assets/Vector (1).png')} style={styles.drawerCloseIcon} />
+                  <Ionicons name="close" size={16} color="#800000" />
                 </TouchableOpacity>
               </View>
               
@@ -947,8 +942,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   addIcon: {
-    width: 14,
-    height: 14,
     marginRight: 4,
   },
   vetAddButtonText: {
@@ -966,8 +959,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   searchIcon: {
-    width: 14,
-    height: 14,
     marginRight: 6,
   },
   vetSearchInput: {

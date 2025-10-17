@@ -56,7 +56,7 @@ export default function MobileLogin() {
       <View style={styles.loginCard}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Image source={require('@/assets/maroon-logo.png')} style={styles.logo} />
+            <Ionicons name="medical" size={48} color="#800000" />
           </View>
           <Text style={styles.subtitle}>Veterinary Management System</Text>
         </View>

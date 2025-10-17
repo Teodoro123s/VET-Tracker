@@ -47,7 +47,7 @@ function CustomerProvider({ children }) {
 import Sidebar from '@/components/Sidebar';
 import VetBottomMenu from '@/components/VetBottomMenu';
 import VetMobileHeader from '@/components/VetMobileHeader';
-import ChatBot from '../components/ChatBot';
+// import ChatBot from '../components/ChatBot'; // Commented out - component not available
 
 
 import { subscriptionScheduler } from '@/lib/utils/subscriptionScheduler';
@@ -64,7 +64,7 @@ function AppContent() {
   const isClientRoute = pathname.startsWith('/client/');
   
   // Routes that should have no sidebar
-  const noSidebarRoutes = pathname === '/server/superadmin' || pathname === '/server/subscriptions' || pathname === '/server/subscription-periods' || pathname === '/server/transaction-history' || pathname === '/server/superadmin-dashboard' || pathname === '/auth/admin-login' || pathname === '/veterinarian/mobile-login' || pathname === '/auth/login' || pathname === '/login' || pathname === '/' || pathname.startsWith('/veterinarian/');
+  const noSidebarRoutes = pathname === '/server/superadmin' || pathname === '/server/subscriptions' || pathname === '/server/subscription-periods' || pathname === '/server/transaction-history' || pathname === '/server/superadmin-dashboard' || pathname === '/server/financial-analytics' || pathname === '/auth/admin-login' || pathname === '/veterinarian/mobile-login' || pathname === '/auth/login' || pathname === '/login' || pathname === '/' || pathname.startsWith('/veterinarian/') || pathname.startsWith('/server/');
   
   const showMainSidebar = !noSidebarRoutes;
   const showBottomMenu = isVetRoute;
@@ -140,8 +140,8 @@ function AppContent() {
             <Stack.Screen name="client/notifications" />
             <Stack.Screen name="client/settings" />
             <Stack.Screen name="client/admin-details" />
-            <Stack.Screen name="client/dashboard-analytics" />
-            <Stack.Screen name="shared/logout" />
+
+
             <Stack.Screen name="server/superadmin" />
             <Stack.Screen name="server/subscriptions" />
             <Stack.Screen name="server/subscription-periods" />
@@ -162,7 +162,7 @@ function AppContent() {
         </View>
         
         {/* AI Chatbot - Show on client routes */}
-        {isClientRoute && <ChatBot tenantId="default" />}
+        {/* {isClientRoute && <ChatBot tenantId="default" />} */}
         
 
       </View>

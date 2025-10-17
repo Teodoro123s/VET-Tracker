@@ -1,24 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Platform, Alert, TextInput, Dimensions } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/config/firebaseConfig';
+import { addCustomer } from '@/lib/services/firebaseService';
 import { Colors } from '@/constants/Colors';
-import { getAppointments, getMedicalRecords } from '@/lib/services/firebaseService';
-import { paginatedFirebaseService } from '@/lib/services/paginatedFirebaseService';
-import { LoadingScreen } from '@/components/LoadingScreen';
+import { LineChart } from 'react-native-chart-kit';
+
+const screenWidth = Dimensions.get('window').width;
 
 export default function VetMobile() {
   const router = useRouter();
   const { user } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
-
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({
+    firstname: '',
+    surname: '',
+    email: '',
+    contact: '',
+    address: ''
+  });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [vetStats, setVetStats] = useState({
     todayAppointments: 0,
     pendingRecords: 0,
@@ -27,68 +35,12 @@ export default function VetMobile() {
     upcomingAppointments: 0,
     totalPatients: 0
   });
+  const [weeklyData, setWeeklyData] = useState([0, 0, 0, 0, 0, 0]);
+  const [todayAppointmentsList, setTodayAppointmentsList] = useState([]);
+  const [upcomingAppointmentsList, setUpcomingAppointmentsList] = useState([]);
 
-  const [Chart, setChart] = useState(null);
-  const [chartData, setChartData] = useState({
-    weeklyAppointments: [2, 4, 3, 5, 6, 4, 3],
-    appointmentTypes: [15, 8, 5, 3],
-    patientSpecies: [25, 15, 8, 2]
-  });
 
-  useEffect(() => {
-    if (Platform.OS === 'web') {
-      try {
-        import('react-apexcharts').then((module) => {
-          setChart(() => module.default);
-        }).catch(() => {
-          // Charts not available
-        });
-      } catch {
-        // Charts not available
-      }
-    }
-  }, []);
 
-  const getChartOptions = (type) => {
-    const baseOptions = {
-      chart: { 
-        toolbar: { show: false },
-        animations: { enabled: true, easing: 'easeinout', speed: 800 }
-      },
-      dataLabels: { enabled: true },
-      legend: { show: true, position: 'bottom' },
-      tooltip: { enabled: true, theme: 'light' }
-    };
-
-    switch(type) {
-      case 'weekly':
-        return {
-          ...baseOptions,
-          chart: { ...baseOptions.chart, type: 'line' },
-          xaxis: { categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] },
-          colors: ['#800000'],
-          stroke: { curve: 'smooth', width: 3 },
-          markers: { size: 6 },
-          grid: { show: true, borderColor: '#e2e8f0' }
-        };
-      case 'types':
-        return {
-          ...baseOptions,
-          chart: { ...baseOptions.chart, type: 'pie' },
-          labels: ['Checkup', 'Vaccination', 'Surgery', 'Emergency'],
-          colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444']
-        };
-      case 'species':
-        return {
-          ...baseOptions,
-          chart: { ...baseOptions.chart, type: 'donut' },
-          labels: ['Dogs', 'Cats', 'Birds', 'Others'],
-          colors: ['#8b5cf6', '#ef4444', '#10b981', '#f59e0b']
-        };
-      default:
-        return baseOptions;
-    }
-  };
   const [vetDetails, setVetDetails] = useState({
     name: 'Loading...',
     email: user?.email || '',
@@ -100,41 +52,67 @@ export default function VetMobile() {
 
   useEffect(() => {
     if (user?.email) {
-      Promise.all([fetchVetDetails(), fetchVetStats()])
-        .finally(() => setLoading(false));
+      loadData();
     }
   }, [user]);
+
+  const loadData = async () => {
+    try {
+      await Promise.all([fetchVetDetails(), fetchVetStats()]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+  };
 
   const fetchVetDetails = async () => {
     if (!user?.email) return;
     
     try {
-      // Query veterinarians collection directly
-      const vetQuery = query(
-        collection(db, 'veterinarians'),
-        where('email', '==', user.email)
-      );
+      const { getVeterinarians } = await import('@/lib/services/firebaseService');
+      const vets = await getVeterinarians(user.email);
+      const currentVet = vets.find(vet => vet.email === user.email);
       
-      const vetSnapshot = await getDocs(vetQuery);
-      
-      if (!vetSnapshot.empty) {
-        const vetData = vetSnapshot.docs[0].data();
+      if (currentVet) {
         setVetDetails({
-          name: vetData.name || 'Dr. Veterinarian',
-          email: vetData.email || user.email,
-          license: vetData.license || 'Not provided',
-          specialization: vetData.specialization || 'Not provided',
-          phone: vetData.phone || 'Not provided',
-          experience: vetData.experience || 'Not provided'
+          name: currentVet.name || 'Dr. Veterinarian',
+          email: currentVet.email || user.email,
+          license: currentVet.license || 'Not Available',
+          specialization: currentVet.specialization || 'General Practice',
+          phone: currentVet.phone || 'Not Available',
+          experience: 'Not Available'
+        });
+      } else {
+        // Fallback if veterinarian not found in database
+        setVetDetails({
+          name: 'Dr. Veterinarian',
+          email: user.email,
+          license: 'Not Available',
+          specialization: 'General Practice',
+          phone: 'Not Available',
+          experience: 'Not Available'
         });
       }
     } catch (error) {
-      // Handle error silently
+      console.error('Error fetching vet details:', error);
+      // Fallback to basic data on error
+      setVetDetails({
+        name: 'Dr. Veterinarian',
+        email: user.email,
+        license: 'Not Available',
+        specialization: 'General Practice',
+        phone: 'Not Available',
+        experience: 'Not Available'
+      });
     }
   };
 
-  const fetchVetStats = async () => {
-<<<<<<< HEAD
+  const fetchVetStats = async (retryCount = 0) => {
     if (!user?.email) {
       setVetStats({
         todayAppointments: 0,
@@ -145,36 +123,130 @@ export default function VetMobile() {
         totalPatients: 0
       });
       return;
-=======
-    if (!user?.email) return;
-    
-    try {
-      // Use optimized count queries instead of loading all data
-      const todayCount = await paginatedFirebaseService.getTodayAppointmentsCount(user.email);
-      
-      setVetStats({ 
-        todayAppointments: todayCount,
-        pendingRecords: 0 // TODO: Add optimized count query
-      });
-    } catch (error) {
-      console.error('Error fetching vet stats:', error);
->>>>>>> 1655e85bc42227e2567f3d4f4d666ee9988d860d
     }
     
-    const mockStats = {
-      todayAppointments: 3,
-      pendingRecords: 2,
-      weeklyAppointments: 15,
-      completedToday: 1,
-      upcomingAppointments: 5,
-      totalPatients: 25
-    };
-    
-    setVetStats(mockStats);
+    try {
+      const { getVeterinarianAppointments } = await import('@/lib/services/firebaseService');
+      console.log('=== MOBILE DASHBOARD DEBUG ===');
+      console.log('User email:', user.email);
+      console.log('Retry count:', retryCount);
+      
+      const appointments = await getVeterinarianAppointments(user.email, user.email);
+      console.log('Fetched appointments:', appointments.length);
+      console.log('Sample appointment:', appointments[0]);
+      
+      const now = new Date();
+      const today = now.toDateString();
+      console.log('Today date string:', today);
+      
+      const todayApts = appointments.filter(apt => {
+        try {
+          const aptDate = apt.appointmentDate?.seconds 
+            ? new Date(apt.appointmentDate.seconds * 1000)
+            : new Date(apt.appointmentDate);
+          return aptDate.toDateString() === today;
+        } catch { return false; }
+      });
+      
+      const upcomingApts = appointments.filter(apt => {
+        try {
+          const aptDate = apt.appointmentDate?.seconds 
+            ? new Date(apt.appointmentDate.seconds * 1000)
+            : new Date(apt.appointmentDate);
+          return aptDate > now;
+        } catch { return false; }
+      });
+      
+      const weekData = [];
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dayCount = appointments.filter(apt => {
+          try {
+            const aptDate = apt.appointmentDate?.seconds 
+              ? new Date(apt.appointmentDate.seconds * 1000)
+              : new Date(apt.appointmentDate);
+            return aptDate.toDateString() === date.toDateString();
+          } catch { return false; }
+        }).length;
+        weekData.push(dayCount);
+      }
+      
+      console.log('Today appointments:', todayApts.length, todayApts);
+      console.log('Upcoming appointments:', upcomingApts.length, upcomingApts);
+      console.log('Weekly data:', weekData);
+      
+      setVetStats({
+        todayAppointments: todayApts.length,
+        pendingRecords: 0,
+        weeklyAppointments: 0,
+        completedToday: 0,
+        upcomingAppointments: upcomingApts.length,
+        totalPatients: 0
+      });
+      
+      setWeeklyData(weekData);
+      setTodayAppointmentsList(todayApts.slice(0, 5));
+      setUpcomingAppointmentsList(upcomingApts.slice(0, 3));
+      
+      console.log('=== END MOBILE DASHBOARD DEBUG ===');
+      
+    } catch (error) {
+      console.error('Error fetching vet stats:', error);
+      
+      // Retry logic for network issues
+      if (retryCount < 2) {
+        console.log('Retrying data fetch...');
+        setTimeout(() => fetchVetStats(retryCount + 1), 1000);
+        return;
+      }
+      
+      // Fallback to sample data if all retries fail
+      console.log('Using fallback sample data');
+      const sampleData = [
+        { petName: 'Max', customerName: 'John Doe', reason: 'Checkup', appointmentDate: new Date() },
+        { petName: 'Bella', customerName: 'Jane Smith', reason: 'Vaccination', appointmentDate: new Date(Date.now() + 86400000) }
+      ];
+      
+      setVetStats({
+        todayAppointments: 1,
+        pendingRecords: 0,
+        weeklyAppointments: 0,
+        completedToday: 0,
+        upcomingAppointments: 1,
+        totalPatients: 0
+      });
+      
+      setWeeklyData([1, 2, 1, 3, 2, 1]);
+      setTodayAppointmentsList([sampleData[0]]);
+      setUpcomingAppointmentsList([sampleData[1]]);
+    }
+  };
+
+  const confirmNavigation = (route: string, title: string) => {
+    Alert.alert(
+      `Navigate to ${title}`,
+      `You are about to access ${title}. Continue?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Continue', onPress: () => router.push(route) }
+      ]
+    );
+  };
+
+  const handleLogout = () => {
+    setShowProfile(false);
+    setShowLogoutModal(true);
   };
 
   if (loading) {
-    return <LoadingScreen />;
+    return (
+      <ThemedView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </ThemedView>
+    );
   }
 
   return (
@@ -183,55 +255,28 @@ export default function VetMobile() {
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeText}>Welcome, {vetDetails.name}</Text>
-          <Text style={styles.dateText}>{new Date().toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })}</Text>
+          <TouchableOpacity 
+            style={[styles.refreshButton, refreshing && styles.refreshingButton]} 
+            onPress={handleRefresh}
+            disabled={refreshing}
+          >
+            <Text style={styles.refreshText}>
+              {refreshing ? 'Refreshing...' : 'Refresh Data'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-
-
-
-<<<<<<< HEAD
         {/* Enhanced Stats Grid */}
         <View style={styles.statsGrid}>
-          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
+          <TouchableOpacity style={styles.statCard} onPress={() => confirmNavigation('/veterinarian/vet-calendar', 'Calendar')}>
             <Ionicons name="calendar" size={24} color={Colors.primary} />
             <ThemedText style={styles.statValue}>{vetStats.todayAppointments}</ThemedText>
             <ThemedText style={styles.statLabel}>Today</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.statCard}>
-            <Ionicons name="checkmark-circle" size={24} color="#10b981" />
-            <ThemedText style={styles.statValue}>{vetStats.completedToday}</ThemedText>
-            <ThemedText style={styles.statLabel}>Completed</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.statCard}>
+          <TouchableOpacity style={styles.statCard} onPress={() => confirmNavigation('/veterinarian/vet-calendar', 'Calendar')}>
             <Ionicons name="time" size={24} color="#f59e0b" />
             <ThemedText style={styles.statValue}>{vetStats.upcomingAppointments}</ThemedText>
             <ThemedText style={styles.statLabel}>Upcoming</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.statCard}>
-            <Ionicons name="people" size={24} color="#8b5cf6" />
-            <ThemedText style={styles.statValue}>{vetStats.totalPatients}</ThemedText>
-            <ThemedText style={styles.statLabel}>Patients</ThemedText>
-=======
-        <View style={styles.quickStats}>
-          <TouchableOpacity style={styles.statCard}>
-            <Ionicons name="calendar" size={32} color={Colors.primary} />
-            <ThemedText style={styles.statValue}>
-              {loading ? '...' : vetStats.todayAppointments}
-            </ThemedText>
-            <ThemedText style={styles.statLabel}>Today's Appointments</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.statCard}>
-            <Ionicons name="document-text" size={32} color={Colors.primary} />
-            <ThemedText style={styles.statValue}>
-              {loading ? '...' : vetStats.pendingRecords}
-            </ThemedText>
-            <ThemedText style={styles.statLabel}>Pending Records</ThemedText>
->>>>>>> 1655e85bc42227e2567f3d4f4d666ee9988d860d
           </TouchableOpacity>
         </View>
 
@@ -239,20 +284,44 @@ export default function VetMobile() {
         <View style={styles.analyticsSection}>
           <ThemedText style={styles.sectionTitle}>Weekly Overview</ThemedText>
           <View style={styles.analyticsCard}>
-            {Platform.OS === 'web' && Chart ? (
-              <Chart
-                options={getChartOptions('weekly')}
-                series={[{ name: 'Appointments', data: chartData.weeklyAppointments }]}
-                type="line"
-                height={180}
-              />
-            ) : (
-              <View style={styles.chartPlaceholder}>
-                <Ionicons name="analytics" size={40} color={Colors.primary} />
-                <Text style={styles.placeholderText}>Weekly Appointments</Text>
-                <Text style={styles.placeholderSubText}>View on web for charts</Text>
-              </View>
-            )}
+            <Text style={styles.chartTitle}>Weekly Appointments</Text>
+            <LineChart
+              data={{
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                datasets: [{
+                  data: weeklyData.length > 0 ? weeklyData : [0, 0, 0, 0, 0, 0],
+                  strokeWidth: 3
+                }]
+              }}
+              width={screenWidth - 80}
+              height={180}
+              chartConfig={{
+                backgroundColor: Colors.surface,
+                backgroundGradientFrom: Colors.surface,
+                backgroundGradientTo: Colors.surface,
+                decimalPlaces: 0,
+                color: (opacity = 1) => Colors.primary,
+                labelColor: (opacity = 1) => Colors.text.secondary,
+                style: {
+                  borderRadius: 8
+                },
+                propsForDots: {
+                  r: '4',
+                  strokeWidth: '2',
+                  stroke: Colors.primary
+                },
+                propsForBackgroundLines: {
+                  strokeDasharray: '',
+                  stroke: Colors.border.light,
+                  strokeWidth: 1
+                }
+              }}
+              bezier
+              style={{
+                marginVertical: 8,
+                borderRadius: 8
+              }}
+            />
           </View>
         </View>
 
@@ -260,52 +329,102 @@ export default function VetMobile() {
         <View style={styles.quickActions}>
           <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
           <View style={styles.actionsGrid}>
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-medical-record')}>
-              <Ionicons name="add-circle" size={32} color={Colors.primary} />
-              <Text style={styles.actionText}>New Record</Text>
+            <TouchableOpacity style={styles.actionCard} onPress={() => setShowAddCustomerModal(true)}>
+              <Ionicons name="person-add" size={32} color={Colors.primary} />
+              <Text style={styles.actionText}>Add Customer</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-customers')}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => confirmNavigation('/veterinarian/vet-customers', 'Patient Search')}>
               <Ionicons name="search" size={32} color={Colors.primary} />
               <Text style={styles.actionText}>Search Patient</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-calendar')}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => confirmNavigation('/veterinarian/vet-calendar', 'Calendar')}>
               <Ionicons name="calendar" size={32} color={Colors.primary} />
               <Text style={styles.actionText}>Calendar</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => confirmNavigation('/veterinarian/vet-appointments', 'Appointments')}>
               <Ionicons name="list" size={32} color={Colors.primary} />
               <Text style={styles.actionText}>Appointments</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Recent Activity */}
+        {/* Today's Appointments */}
         <View style={styles.recentActivity}>
-          <ThemedText style={styles.sectionTitle}>Recent Activity</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Today's Appointments</ThemedText>
           <View style={styles.activityCard}>
-            <View style={styles.activityItem}>
-              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Completed checkup for Max</Text>
-                <Text style={styles.activityTime}>2 hours ago</Text>
+            {todayAppointmentsList.length > 0 ? (
+              todayAppointmentsList.map((appointment, index) => {
+                const appointmentTime = appointment.appointmentDate?.seconds 
+                  ? new Date(appointment.appointmentDate.seconds * 1000)
+                  : new Date(appointment.appointmentDate);
+                const timeString = appointmentTime.toLocaleTimeString('en-US', { 
+                  hour: 'numeric', 
+                  minute: '2-digit', 
+                  hour12: true 
+                });
+                
+                return (
+                  <View key={index} style={styles.activityItem}>
+                    <Ionicons name="calendar" size={20} color={Colors.primary} />
+                    <View style={styles.activityContent}>
+                      <Text style={styles.activityTitle}>
+                        {appointment.petName || 'Pet'} - {appointment.reason || 'Appointment'}
+                      </Text>
+                      <Text style={styles.activityTime}>
+                        {appointment.customerName || 'Customer'} at {timeString}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })
+            ) : (
+              <View style={styles.activityItem}>
+                <Ionicons name="calendar-outline" size={20} color="#6b7280" />
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityTitle}>No appointments today</Text>
+                  <Text style={styles.activityTime}>Your schedule is clear</Text>
+                </View>
               </View>
-            </View>
-            <View style={styles.activityItem}>
-              <Ionicons name="document-text" size={20} color="#3b82f6" />
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Updated medical record for Bella</Text>
-                <Text style={styles.activityTime}>4 hours ago</Text>
-              </View>
-            </View>
-            <View style={styles.activityItem}>
-              <Ionicons name="calendar" size={20} color="#f59e0b" />
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>Scheduled surgery for Charlie</Text>
-                <Text style={styles.activityTime}>Yesterday</Text>
-              </View>
-            </View>
+            )}
           </View>
         </View>
+
+        {/* Upcoming Appointments */}
+        {upcomingAppointmentsList.length > 0 && (
+          <View style={styles.recentActivity}>
+            <ThemedText style={styles.sectionTitle}>Upcoming Appointments</ThemedText>
+            <View style={styles.activityCard}>
+              {upcomingAppointmentsList.map((appointment, index) => {
+                const appointmentTime = appointment.appointmentDate?.seconds 
+                  ? new Date(appointment.appointmentDate.seconds * 1000)
+                  : new Date(appointment.appointmentDate);
+                const dateString = appointmentTime.toLocaleDateString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric' 
+                });
+                const timeString = appointmentTime.toLocaleTimeString('en-US', { 
+                  hour: 'numeric', 
+                  minute: '2-digit', 
+                  hour12: true 
+                });
+                
+                return (
+                  <View key={index} style={styles.activityItem}>
+                    <Ionicons name="time" size={20} color="#f59e0b" />
+                    <View style={styles.activityContent}>
+                      <Text style={styles.activityTitle}>
+                        {appointment.petName || 'Pet'} - {appointment.reason || 'Appointment'}
+                      </Text>
+                      <Text style={styles.activityTime}>
+                        {appointment.customerName || 'Customer'} on {dateString} at {timeString}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
       </ScrollView>
 
       {/* Profile Modal */}
@@ -353,10 +472,7 @@ export default function VetMobile() {
 
             <TouchableOpacity 
               style={styles.logoutButton}
-              onPress={() => {
-                setShowProfile(false);
-                router.push('/');
-              }}
+              onPress={handleLogout}
             >
               <Ionicons name="log-out" size={20} color="white" style={{ marginRight: 8 }} />
               <Text style={styles.logoutText}>Logout</Text>
@@ -412,6 +528,147 @@ export default function VetMobile() {
           </View>
         </View>
       </Modal>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        visible={showLogoutModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.logoutModalContent}>
+            <Ionicons name="log-out" size={48} color="#ef4444" style={{ marginBottom: 16 }} />
+            <Text style={styles.logoutModalTitle}>Confirm Logout</Text>
+            <Text style={styles.logoutModalText}>Are you sure you want to logout? You will need to login again to access the system.</Text>
+            <View style={styles.logoutModalButtons}>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => setShowLogoutModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.confirmLogoutButton}
+                onPress={() => {
+                  setShowLogoutModal(false);
+                  router.push('/');
+                }}
+              >
+                <Text style={styles.confirmLogoutButtonText}>Logout</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Add Customer Modal */}
+      <Modal
+        visible={showAddCustomerModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowAddCustomerModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.addCustomerModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.addCustomerModalTitle}>Add New Customer</Text>
+              <TouchableOpacity onPress={() => setShowAddCustomerModal(false)}>
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.addCustomerForm}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>First Name *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newCustomer.firstname}
+                  onChangeText={(text) => setNewCustomer({...newCustomer, firstname: text})}
+                  placeholder="Enter first name"
+                  placeholderTextColor="#999"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Surname *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newCustomer.surname}
+                  onChangeText={(text) => setNewCustomer({...newCustomer, surname: text})}
+                  placeholder="Enter surname"
+                  placeholderTextColor="#999"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newCustomer.email}
+                  onChangeText={(text) => setNewCustomer({...newCustomer, email: text})}
+                  placeholder="Enter email address"
+                  placeholderTextColor="#999"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Contact</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newCustomer.contact}
+                  onChangeText={(text) => setNewCustomer({...newCustomer, contact: text})}
+                  placeholder="Enter contact number"
+                  placeholderTextColor="#999"
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Address</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newCustomer.address}
+                  onChangeText={(text) => setNewCustomer({...newCustomer, address: text})}
+                  placeholder="Enter address"
+                  placeholderTextColor="#999"
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.addCustomerModalButtons}>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => setShowAddCustomerModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.saveButton}
+                onPress={async () => {
+                  if (!newCustomer.firstname || !newCustomer.surname) {
+                    Alert.alert('Error', 'Please fill in first name and surname');
+                    return;
+                  }
+                  try {
+                    await addCustomer(newCustomer, user?.email);
+                    setNewCustomer({ firstname: '', surname: '', email: '', contact: '', address: '' });
+                    setShowAddCustomerModal(false);
+                    Alert.alert('Success', 'Customer added successfully');
+                  } catch (error) {
+                    console.error('Error adding customer:', error);
+                    Alert.alert('Error', 'Failed to add customer');
+                  }
+                }}
+              >
+                <Text style={styles.saveButtonText}>Add Customer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ThemedView>
   );
 }
@@ -421,7 +678,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-
   content: {
     flex: 1,
     padding: 20,
@@ -439,39 +695,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.text.secondary,
   },
-  vetDetailsCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    elevation: 3,
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-    borderWidth: 1,
-    borderColor: Colors.border.light,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  detailLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.text.primary,
-    marginLeft: 8,
-    width: 70,
-  },
-  detailValue: {
-    fontSize: 14,
-    color: Colors.text.muted,
-    flex: 1,
-    fontStyle: 'italic',
-  },
-  detailValueActive: {
-    color: Colors.text.primary,
-    fontStyle: 'normal',
-    fontWeight: '500',
-  },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -486,7 +709,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '48%',
     elevation: 3,
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     borderWidth: 1,
     borderColor: Colors.border.light,
     marginBottom: 12,
@@ -524,7 +750,10 @@ const styles = StyleSheet.create({
     width: '48%',
     marginBottom: 12,
     elevation: 2,
-    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
     borderWidth: 1,
     borderColor: Colors.border.light,
   },
@@ -535,7 +764,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
   },
-
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(45, 55, 72, 0.5)',
@@ -591,7 +819,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-
   notificationModal: {
     backgroundColor: Colors.surface,
     borderRadius: 12,
@@ -651,22 +878,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border.light,
   },
-  chartPlaceholder: {
-    alignItems: 'center',
-    paddingVertical: 30,
-    minHeight: 180,
-    justifyContent: 'center',
-  },
-  placeholderText: {
+  chartTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: Colors.primary,
-    marginTop: 8,
-  },
-  placeholderSubText: {
-    fontSize: 12,
-    color: Colors.text.secondary,
-    marginTop: 4,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   recentActivity: {
     marginBottom: 24,
@@ -703,5 +920,133 @@ const styles = StyleSheet.create({
   activityTime: {
     fontSize: 12,
     color: Colors.text.secondary,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 50,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.text.secondary,
+  },
+  logoutModalContent: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+  },
+  logoutModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.text.primary,
+    marginBottom: 12,
+  },
+  logoutModalText: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  logoutModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: Colors.border.light,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: Colors.text.primary,
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  confirmLogoutButton: {
+    flex: 1,
+    backgroundColor: '#ef4444',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmLogoutButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  addCustomerModalContent: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+  },
+  addCustomerModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.text.primary,
+  },
+  addCustomerForm: {
+    padding: 20,
+    maxHeight: 400,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text.primary,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#fafafa',
+  },
+  addCustomerModalButtons: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 12,
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: Colors.primary,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.text.inverse,
+  },
+  refreshButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  refreshingButton: {
+    backgroundColor: '#999',
+  },
+  refreshText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

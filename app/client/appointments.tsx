@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Animated, StyleSheet, Alert, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { addAppointment, getAppointments, deleteAppointment, updateAppointment, getCustomers, getPets, getVeterinarians, getReasonOptions, addReasonOption, updateReasonOption, deleteReasonOption, getMedicalForms, getMedicalCategories, addMedicalRecord, getFormFields } from '../../lib/services/firebaseService';
@@ -984,7 +985,7 @@ export default function AppointmentsScreen() {
               </TouchableOpacity>
               
               <View style={styles.searchContainer}>
-                <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+                <Ionicons name="search" size={14} color="#800000" style={styles.searchIcon} />
                 <TextInput
                   style={styles.searchInput}
                   placeholder="Search..."

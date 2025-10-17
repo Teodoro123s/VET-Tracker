@@ -19,7 +19,7 @@ export default function VetSidebar() {
   return (
     <View style={styles.sidebar}>
       <View style={styles.logoSection}>
-        <Image source={require('@/assets/logo.png')} style={styles.logo} />
+        <Image source={require('@/assets/web-logo.png')} style={styles.logo} />
         <Text style={styles.subtitle}>Veterinarian</Text>
       </View>
       {menuItems.map((item) => (
