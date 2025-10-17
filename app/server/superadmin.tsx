@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, Animated, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import SuperAdminSidebar from '@/components/SuperAdminSidebar';
 import SearchableDropdown from '@/components/SearchableDropdown';
 import { createTenant, registerUser } from '../../lib/services/firebaseService';
@@ -90,7 +91,7 @@ function SubscriptionPeriodsTable({ selectedTenant }) {
       <View style={styles.tableTopRow}>
         <Text style={styles.detailTitle}>Subscription Periods</Text>
         <View style={styles.searchContainer}>
-          <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+          <Ionicons name="search" size={14} color="#800000" />
           <TextInput 
             style={styles.searchInput}
             placeholder="Search periods..."
@@ -373,7 +374,7 @@ export default function SuperAdminScreen() {
           <View style={styles.headerActions}>
 
             <View style={styles.searchContainer}>
-              <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+              <Ionicons name="search" size={14} color="#800000" />
               <TextInput 
                 style={styles.searchInput}
                 placeholder="Search subscribers..."
@@ -549,7 +550,7 @@ export default function SuperAdminScreen() {
                   setShowTenantDetails(false);
                   setSelectedTenant(null);
                 }}>
-                  <Image source={require('@/assets/Vector.png')} style={styles.returnIcon} />
+                  <Ionicons name="arrow-back" size={16} color="#ffffff" />
                 </TouchableOpacity>
                 <Text style={styles.detailTitle}>Subscriber Details</Text>
               </View>
@@ -682,7 +683,7 @@ export default function SuperAdminScreen() {
                     useNativeDriver: false,
                   }).start(() => setShowAddDrawer(false));
                 }}>
-                  <Image source={require('@/assets/Vector (1).png')} style={styles.drawerCloseIcon} />
+                  <Ionicons name="close" size={16} color="#800000" />
                 </TouchableOpacity>
               </View>
               
@@ -827,11 +828,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     backgroundColor: '#fff',
   },
-  searchIcon: {
-    width: 14,
-    height: 14,
-    marginRight: 6,
-  },
+
   searchInput: {
     width: 200,
     fontSize: Typography.fieldInput,
@@ -882,11 +879,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: ButtonSizes.height,
   },
-  returnIcon: {
-    width: 16,
-    height: 16,
-    tintColor: '#ffffff',
-  },
+
   detailTitle: {
     fontSize: Typography.title,
     fontWeight: 'bold',
@@ -1214,11 +1207,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  drawerCloseIcon: {
-    width: 16,
-    height: 16,
-    tintColor: '#800000',
-  },
+
   drawerForm: {
     flex: 1,
     padding: 20,

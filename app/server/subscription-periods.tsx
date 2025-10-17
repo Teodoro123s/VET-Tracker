@@ -5,6 +5,7 @@ import SuperAdminSidebar from '@/components/SuperAdminSidebar';
 import { collection, doc, setDoc, getDocs, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { db } from '../../lib/config/firebaseConfig';
 import { Typography, Spacing, ButtonSizes, ModalSizes } from '@/constants/Typography';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function SubscriptionPeriodsScreen() {
   const router = useRouter();
@@ -65,7 +66,7 @@ export default function SubscriptionPeriodsScreen() {
         <View style={styles.header}>
           <Text style={styles.headerText}>Subscription Periods</Text>
           <View style={styles.searchContainer}>
-            <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+            <Ionicons name="search" size={14} color="#800000" style={styles.searchIcon} />
             <TextInput 
               style={styles.searchInput}
               placeholder="Search periods..."
@@ -81,7 +82,7 @@ export default function SubscriptionPeriodsScreen() {
             <View style={styles.tableTopRow}>
               <View style={styles.headerRow}>
                 <TouchableOpacity style={styles.returnButton} onPress={() => router.back()}>
-                  <Image source={require('@/assets/Vector.png')} style={styles.returnIcon} />
+                  <Ionicons name="arrow-back" size={16} color="#ffffff" />
                 </TouchableOpacity>
                 <Text style={styles.detailTitle}>Subscription Period Management</Text>
               </View>
@@ -279,7 +280,7 @@ export default function SubscriptionPeriodsScreen() {
                     setPeriodPrice('');
                   });
                 }}>
-                  <Image source={require('@/assets/Vector (1).png')} style={styles.drawerCloseIcon} />
+                  <Ionicons name="close" size={16} color="#800000" />
                 </TouchableOpacity>
               </View>
               
@@ -453,8 +454,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   searchIcon: {
-    width: 14,
-    height: 14,
     marginRight: 6,
   },
   searchInput: {
@@ -495,11 +494,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: ButtonSizes.height,
   },
-  returnIcon: {
-    width: 16,
-    height: 16,
-    tintColor: '#ffffff',
-  },
+
   detailTitle: {
     fontSize: Typography.title,
     fontWeight: 'bold',
@@ -715,11 +710,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  drawerCloseIcon: {
-    width: 16,
-    height: 16,
-    tintColor: '#800000',
-  },
+
   drawerForm: {
     flex: 1,
     padding: 20,

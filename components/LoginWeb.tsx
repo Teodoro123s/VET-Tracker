@@ -131,7 +131,7 @@ export default function LoginWeb() {
       <View style={styles.loginCard}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Image source={require('@/assets/logo-black.png')} style={styles.logo} />
+            <Image source={require('@/assets/mobile-logo.png')} style={styles.logo} />
           </View>
 
           <Text style={styles.subtitle}>Veterinary Management System</Text>

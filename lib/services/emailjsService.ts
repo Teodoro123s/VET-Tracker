@@ -1,92 +1,150 @@
-// EmailJS Service for VET Tracker
-// Template ID: template_hoxe5k7
+// EmailJS Configuration
+const EMAILJS_SERVICE_ID = 'service_n0fmulh';
+const EMAILJS_USER_ID = '7nYFwpZOJE87ZXU45';
+const EMAILJS_STAFF_TEMPLATE_ID = 'template_7c2cpda';
+const EMAILJS_WELCOME_TEMPLATE_ID = 'template_5vubis9';
 
-interface EmailJSConfig {
-  serviceId: string;
-  templateId: string;
-  publicKey: string;
-  privateKey?: string;
-}
+export const sendCredentialsEmail = async (
+  to: string,
+  name: string,
+  email: string,
+  password: string
+) => {
+  try {
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        service_id: EMAILJS_SERVICE_ID,
+        template_id: EMAILJS_STAFF_TEMPLATE_ID,
+        user_id: EMAILJS_USER_ID,
+        template_params: {
+          email: email,
+          to_email: to,
+          to_name: name,
+          name: name,
+          staff_email: email,
+          staff_password: password,
+          portal_url: 'http://localhost:8081/login',
+          login_email: email,
+          login_password: password
+        }
+      })
+    });
 
-class EmailJSService {
-  private config: EmailJSConfig = {
-    serviceId: 'service_zefpsar',
-    templateId: 'template_6w1b0xi', // Password reset template
-    publicKey: process.env.EMAILJS_PUBLIC_KEY || 'ReUQK_p4eYlnZileo',
-    privateKey: process.env.EMAILJS_PRIVATE_KEY || '',
-  };
-
-  // Method to send password reset emails
-  async sendPasswordReset(email: string, newPassword: string): Promise<boolean> {
-    const templateParams = {
-      to_email: email,
-      from_name: 'VetCare System',
-      password: newPassword,
-      message: `Your new password is: ${newPassword}\n\nPlease log in and change this password immediately.`,
-      subject: 'VetCare - Password Reset'
-    };
-    return await this.sendEmail(templateParams);
-  }
-
-  async sendEmail(templateParams: any): Promise<boolean> {
-    try {
-      const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          service_id: this.config.serviceId,
-          template_id: this.config.templateId,
-          user_id: this.config.publicKey,
-          template_params: templateParams,
-        }),
-      });
-
-      if (response.ok) {
-        console.log(`Email sent successfully via EmailJS template ${this.config.templateId}`);
-        return true;
-      } else {
-        console.error('EmailJS error:', await response.text());
-        return false;
-      }
-    } catch (error) {
-      console.error('EmailJS service error:', error);
-      return false;
+    if (response.ok) {
+      return { success: true, message: `Credentials sent to ${email}` };
+    } else {
+      throw new Error('EmailJS failed');
     }
+  } catch (error) {
+    console.error('EmailJS service error:', error);
+    return { success: false, error };
   }
+};
 
-  async sendAppointmentReminder(
-    customerEmail: string,
-    customerName: string,
-    petName: string,
-    appointmentDate: Date,
-    notificationType: string
-  ): Promise<boolean> {
-    const templateParams = {
-      to_email: customerEmail,
-      customer_name: customerName,
-      pet_name: petName,
-      appointment_date: appointmentDate.toLocaleDateString(),
-      appointment_time: appointmentDate.toLocaleTimeString(),
-      notification_type: notificationType,
-      subject: this.getEmailSubject(notificationType),
-      clinic_name: 'VET Tracker',
-      template_id: this.config.templateId,
-    };
+export const sendWelcomeCredentialsEmail = async (
+  to: string,
+  name: string,
+  email: string,
+  password: string
+) => {
+  try {
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        service_id: EMAILJS_SERVICE_ID,
+        template_id: EMAILJS_WELCOME_TEMPLATE_ID,
+        user_id: EMAILJS_USER_ID,
+        template_params: {
+          to_email: to,
+          to_name: name,
+          login_email: email,
+          login_password: password
+        }
+      })
+    });
 
-    return await this.sendEmail(templateParams);
-  }
-
-  private getEmailSubject(notificationType: string): string {
-    switch (notificationType) {
-      case 'today': return '🏥 Appointment Today - VET Tracker';
-      case 'tomorrow': return '📅 Appointment Tomorrow - VET Tracker';
-      case '2days': return '⏰ Upcoming Appointment in 2 Days - VET Tracker';
-      case 'upcoming': return '📋 Upcoming Appointment This Week - VET Tracker';
-      default: return '🔔 Appointment Reminder - VET Tracker';
+    if (response.ok) {
+      return { success: true, message: `Welcome credentials sent to ${email}` };
+    } else {
+      throw new Error('EmailJS failed');
     }
+  } catch (error) {
+    console.error('EmailJS welcome service error:', error);
+    return { success: false, error };
   }
-}
+};
 
-export const emailjsService = new EmailJSService();
+export const sendAppointmentReminder = async (
+  to: string,
+  petName: string,
+  appointmentDate: string,
+  appointmentTime: string
+) => {
+  try {
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        service_id: EMAILJS_SERVICE_ID,
+        template_id: 'template_appointment_reminder',
+        user_id: EMAILJS_USER_ID,
+        template_params: {
+          to_email: to,
+          pet_name: petName,
+          appointment_date: appointmentDate,
+          appointment_time: appointmentTime
+        }
+      })
+    });
+
+    if (response.ok) {
+      return { success: true, message: `Reminder sent to ${to}` };
+    } else {
+      throw new Error('EmailJS failed');
+    }
+  } catch (error) {
+    console.error('Appointment reminder error:', error);
+    return { success: false, error };
+  }
+};
+
+export const testEmailConnection = async () => {
+  try {
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        service_id: EMAILJS_SERVICE_ID,
+        template_id: EMAILJS_STAFF_TEMPLATE_ID,
+        user_id: EMAILJS_USER_ID,
+        template_params: {
+          to_email: 'test@example.com',
+          to_name: 'Test User',
+          staff_email: 'test@example.com',
+          staff_password: 'test123'
+        }
+      })
+    });
+
+    if (response.ok) {
+      console.log('EmailJS test successful');
+      return { success: true, status: 'WORKING' };
+    } else {
+      throw new Error('EmailJS test failed');
+    }
+  } catch (error) {
+    console.error('EmailJS connection error:', error);
+    return { success: false, error, status: 'ERROR' };
+  }
+};

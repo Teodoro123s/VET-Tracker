@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, Modal, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import SuperAdminSidebar from '@/components/SuperAdminSidebar';
 import { subscribeToTenants, Subscriber } from '../../lib/services/superAdminService';
 import { addSubscriptionPeriod } from '../../lib/services/subscriptionService';
@@ -180,7 +181,7 @@ export default function SubscriptionsScreen() {
         <View style={styles.header}>
           <Text style={styles.headerText}>Subscription Management</Text>
           <View style={styles.searchContainer}>
-            <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+            <Ionicons name="search" size={14} color="#999" />
             <TextInput 
               style={styles.searchInput}
               placeholder="Search tenants..."

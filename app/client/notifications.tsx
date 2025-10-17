@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput } from 'react-native';
 import { useState, useEffect } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { getAppointments, getCustomers, getPets, getMedicalHistory } from '../../lib/services/firebaseService';
 import { useTenant } from '../../contexts/TenantContext';
@@ -92,7 +93,7 @@ export default function NotificationsScreen() {
         <Text style={styles.headerText}>Notifications</Text>
         <View style={styles.headerActions}>
           <View style={styles.searchContainer}>
-            <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+            <Ionicons name="search" size={14} color="#999" />
             <TextInput 
               style={styles.searchInput}
               placeholder="Search notifications..."

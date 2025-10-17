@@ -4,12 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTenant } from '@/contexts/TenantContext';
 import { getVeterinarianByEmail, generateOwnPassword } from '@/lib/services/firebaseService';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/Colors';
 
 export default function VetProfile() {
   const { userEmail } = useTenant();
   const router = useRouter();
+  const { logout } = useAuth();
   const [vetData, setVetData] = useState(null);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
 
   useEffect(() => {
@@ -83,11 +86,50 @@ export default function VetProfile() {
 
       <TouchableOpacity 
         style={styles.logoutButton}
-        onPress={() => router.push('/shared/logout')}
+        onPress={() => setShowLogoutModal(true)}
       >
         <Ionicons name="log-out" size={20} color="white" />
         <Text style={styles.logoutText}>Logout</Text>
       </TouchableOpacity>
+
+      {/* Logout Confirmation Modal */}
+      <Modal
+        visible={showLogoutModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowLogoutModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.logoutModalContent}>
+            <Ionicons name="log-out" size={48} color="#ef4444" style={{ marginBottom: 16 }} />
+            <Text style={styles.logoutModalTitle}>Confirm Logout</Text>
+            <Text style={styles.logoutModalText}>Are you sure you want to logout? You will need to login again to access the system.</Text>
+            <View style={styles.logoutModalButtons}>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => setShowLogoutModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.confirmLogoutButton}
+                onPress={async () => {
+                  setShowLogoutModal(false);
+                  try {
+                    await logout();
+                    router.replace('/auth/admin-login');
+                  } catch (error) {
+                    console.error('Error during logout:', error);
+                    router.replace('/auth/admin-login');
+                  }
+                }}
+              >
+                <Text style={styles.confirmLogoutButtonText}>Logout</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       
 
       
@@ -296,5 +338,44 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  logoutModalContent: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+  },
+  logoutModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.text.primary,
+    marginBottom: 12,
+  },
+  logoutModalText: {
+    fontSize: 14,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  logoutModalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  confirmLogoutButton: {
+    flex: 1,
+    backgroundColor: '#ef4444',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmLogoutButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

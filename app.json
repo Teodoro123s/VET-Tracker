@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/mobile-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -15,24 +15,16 @@
       "**/*"
     ],
     "ios": {
-<<<<<<< HEAD
       "supportsTablet": true,
       "bundleIdentifier": "com.vetclinic.staff",
       "requireFullScreen": false
-=======
-      "supportsTablet": true
->>>>>>> 1655e85bc42227e2567f3d4f4d666ee9988d860d
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-<<<<<<< HEAD
       },
       "package": "com.vetclinic.staff"
-=======
-      }
->>>>>>> 1655e85bc42227e2567f3d4f4d666ee9988d860d
     },
     "web": {
       "bundler": "metro",
@@ -44,6 +36,9 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "updates": {
+      "enabled": false
     },
     "extra": {
       "router": {},

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert, Modal, Animated, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { getCustomers, addCustomer, deleteCustomer, updateCustomer } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
 import { router } from 'expo-router';
@@ -253,7 +254,7 @@ export default function CustomersScreen() {
           </TouchableOpacity>
 
           <View style={styles.searchContainer}>
-            <Image source={require('@/assets/material-symbols_search-rounded.png')} style={styles.searchIcon} />
+            <Ionicons name="search" size={14} color="#999" />
             <TextInput 
               style={styles.searchInput}
               placeholder="Search customers..."
