@@ -1,0 +1,434 @@
+[33mcommit bb9382e6ad0db80df98d24146f5ac54904e2e02d[m[33m ([m[1;36mHEAD[m[33m)[m
+Merge: 63b2b2e 1655e85
+Author: Teodoro123s <edmo.teodoro.swu@phinmaed.com>
+Date:   Wed Oct 15 01:45:41 2025 +0800
+
+    Enhanced dashboards: superadmin analytics and mobile vet dashboard fixes
+
+[1mdiff --cc .env.example[m
+[1mindex cc22d20,c07dcd8..af9ec78[m
+[1m--- a/.env.example[m
+[1m+++ b/.env.example[m
+[36m@@@ -9,6 -9,11 +9,17 @@@[m [mGROQ_API_KEY=your_groq_api_key_her[m
+  FIREBASE_API_KEY=your_firebase_api_key[m
+  FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain[m
+  FIREBASE_PROJECT_ID=your_firebase_project_id[m
+[32m++<<<<<<< HEAD[m
+[32m +[m
+[32m +# Resend Email Service[m
+[31m- RESEND_API_KEY=your_resend_api_key_here[m
+[32m++RESEND_API_KEY=your_resend_api_key_here[m
+[32m++=======[m
+[32m+ # AWS S3 Configuration (PRIMARY FILE STORAGE)[m
+[32m+ AWS_ACCESS_KEY_ID=your_access_key_here[m
+[32m+ AWS_SECRET_ACCESS_KEY=your_secret_key_here[m
+[32m+ AWS_REGION=us-east-1[m
+[32m+ S3_BUCKET_NAME=vet-app-storage[m
+[32m+ [m
+[32m+ # API Gateway URL (replace with your actual endpoint)[m
+[31m -AWS_API_ENDPOINT=https://your-api-gateway-url.amazonaws.com/prod[m
+[32m++AWS_API_ENDPOINT=https://your-api-gateway-url.amazonaws.com/prod[m
+[32m++>>>>>>> 1655e85bc42227e2567f3d4f4d666ee9988d860d[m
+[1mdiff --cc FIREBASE_TROUBLESHOOTING.md[m
+[1mindex 0000000,0000000..10400cb[m
+[1mnew file mode 100644[m
+[1m--- /dev/null[m
+[1m+++ b/FIREBASE_TROUBLESHOOTING.md[m
+[36m@@@ -1,0 -1,0 +1,334 @@@[m
+[32m++# Firebase Troubleshooting Guide[m
+[32m++[m
+[32m++## Common Firebase Issues & Solutions[m
+[32m++[m
+[32m++### 🔥 **Connection Issues**[m
+[32m++[m
+[32m++#### Problem: "Firebase: Error (auth/network-request-failed)"[m
+[32m++```javascript[m
+[32m++// Solution: Add network error handling[m
+[32m++const handleNetworkError = () => {[m
+[32m++  EnhancedAlert.connectionLost(() => {[m
+[32m++    // Retry logic[m
+[32m++    window.location.reload();[m
+[32m++  });[m
+[32m++};[m
+[32m++```[m
+[32m++[m
+[32m++#### Problem: "Firebase app not initialized"[m
+[32m++```javascript[m
+[32m++// Check firebaseConfig.ts - ensure proper initialization[m
+[32m++import { initializeApp } from 'firebase/app';[m
+[32m++[m
+[32m++const app = initializeApp(firebaseConfig);[m
+[32m++export const db = getFirestore(app);[m
+[32m++export const auth = getAuth(app);[m
+[32m++```[m
+[32m++[m
+[32m++### 🔐 **Authentication Issues**[m
+[32m++[m
+[32m++#### Problem: "auth/user-not-found" or "auth/wrong-password"[m
+[32m++```javascript[m
+[32m++// Enhanced error handling in AuthContext[m
+[32m++const login = async (email, password) => {[m
+[32m++  try {[m
+[32m++    // Existing login logic...[m
+[32m++  } catch (error) {[m
+[32m++    if (error.code === 'auth/user-not-found') {[m
+[32m++      return { success: false, error: 'No account found with this email' };[m
+[32m++    }[m
+[32m++    if (error.code === 'auth/wrong-password') {[m
+[32m++      return { success: false, error: 'Incorrect password' };[m
+[32m++    }[m
+[32m++    if (error.code === 'auth/network-request-failed') {[m
+[32m++      return { success: false, error: 'Network error. Check connection.' };[m
+[32m++    }[m
+[32m++    return { success: false, error: 'Login failed' };[m
+[32m++  }[m
+[32m++};[m
+[32m++```[m
+[32m++[m
+[32m++#### Problem: Session persistence issues[m
+[32m++```javascript[m
+[32m++// Add to AuthContext[m
+[32m++useEffect(() => {[m
+[32m++  const unsubscribe = onAuthStateChanged(auth, (user) => {[m
+[32m++    if (user) {[m
+[32m++      setUser(user);[m
+[32m++    } else {[m
+[32m++      setUser(null);[m
+[32m++    }[m
+[32m++    setLoading(false);[m
+[32m++  });[m
+[32m++  return unsubscribe;[m
+[32m++}, []);[m
+[32m++```[m
+[32m++[m
+[32m++### 📊 **Firestore Issues**[m
+[32m++[m
+[32m++#### Problem: "Missing or insufficient permissions"[m
+[32m++```javascript[m
+[32m++// Add permission checks[m
+[32m++const checkPermissions = async (userEmail) => {[m
+[32m++  try {[m
+[32m++    const tenantId = await getTenantId(userEmail);[m
+[32m++    if (!tenantId) {[m
+[32m++      throw new Error('No tenant access');[m
+[32m++    }[m
+[32m++    return true;[m
+[32m++  } catch (error) {[m
+[32m++    EnhancedAlert.permissionDenied('access this data');[m
+[32m++    return false;[m
+[32m++  }[m
+[32m++};[m
+[32m++```[m
+[32m++[m
+[32m++#### Problem: Tenant isolation not working[m
+[32m++```javascript[m
+[32m++// Fix getTenantId function[m
+[32m++const getTenantId = async (userEmail) => {[m
+[32m++  if (!userEmail) return null;[m
+[32m++  [m
+[32m++  try {[m
+[32m++    // Direct tenant lookup[m
+[32m++    const q = query(collection(db, 'tenants'), where('email', '==', userEmail));[m
+[32m++    const snapshot = await getDocs(q);[m
+[32m++    [m
+[32m++    if (!snapshot.empty) {[m
+[32m++      return snapshot.docs[0].data().tenantId || snapshot.docs[0].id;[m
+[32m++    }[m
+[32m++    [m
+[32m++    // Fallback to email prefix[m
+[32m++    const emailPrefix = userEmail.split('@')[0];[m
+[32m++    const tenantDoc = await getDoc(doc(db, 'tenants', emailPrefix));[m
+[32m++    [m
+[32m++    return tenantDoc.exists() ? emailPrefix : null;[m
+[32m++  } catch (error) {[m
+[32m++    console.error('Tenant ID lookup failed:', error);[m
+[32m++    return null;[m
+[32m++  }[m
+[32m++};[m
+[32m++```[m
+[32m++[m
+[32m++### 🔄 **Data Synchronization Issues**[m
+[32m++[m
+[32m++#### Problem: Stale data after updates[m
+[32m++```javascript[m
+[32m++// Add real-time listeners[m
+[32m++const useRealtimeData = (collection, userEmail) => {[m
+[32m++  const [data, setData] = useState([]);[m
+[32m++  [m
+[32m++  useEffect(() => {[m
+[32m++    const unsubscribe = onSnapshot([m
+[32m++      collection(db, `tenants/${tenantId}/${collection}`),[m
+[32m++      (snapshot) => {[m
+[32m++        const newData = snapshot.docs.map(doc => ({[m
+[32m++          id: doc.id,[m
+[32m++          ...doc.data()[m
+[32m++        }));[m
+[32m++        setData(newData);[m
+[32m++      },[m
+[32m++      (error) => {[m
+[32m++        console.error('Real-time sync error:', error);[m
+[32m++        EnhancedAlert.connectionLost();[m
+[32m++      }[m
+[32m++    );[m
+[32m++    [m
+[32m++    return unsubscribe;[m
+[32m++  }, [userEmail]);[m
+[32m++  [m
+[32m++  return data;[m
+[32m++};[m
+[32m++```[m
+[32m++[m
+[32m++#### Problem: Batch operations failing[m
+[32m++```javascript[m
+[32m++// Use Firebase batch operations[m
+[32m++import { writeBatch } from 'firebase/firestore';[m
+[32m++[m
+[32m++const batchUpdate = async (updates) => {[m
+[32m++  const batch = writeBatch(db);[m
+[32m++  [m
+[32m++  updates.forEach(({ docRef, data }) => {[m
+[32m++    batch.update(docRef, data);[m
+[32m++  });[m
+[32m++  [m
+[32m++  try {[m
+[32m++    await batch.commit();[m
+[32m++    EnhancedAlert.operationSuccess('Batch Update', 'All changes saved successfully');[m
+[32m++  } catch (error) {[m
+[32m++    EnhancedAlert.operationError('batch update', error.message);[m
+[32m++  }[m
+[32m++};[m
+[32m++```[m
+[32m++[m
+[32m++### 📱 **Mobile-Specific Issues**[m
+[32m++[m
+[32m++#### Problem: AsyncStorage not working[m
+[32m++```javascript[m
+[32m++// Add error handling for AsyncStorage[m
+[32m++const safeAsyncStorage = {[m
+[32m++  async getItem(key) {[m
+[32m++    try {[m
+[32m++      return await AsyncStorage.getItem(key);[m
+[32m++    } catch (error) {[m
+[32m++      console.error('AsyncStorage get error:', error);[m
+[32m++      return null;[m
+[32m++    }[m
+[32m++  },[m
+[32m++  [m
+[32m++  async setItem(key, value) {[m
+[32m++    try {[m
+[32m++      await AsyncStorage.setItem(key, value);[m
+[32m++    } catch (error) {[m
+[32m++      console.error('AsyncStorage set error:', error);[m
+[32m++      EnhancedAlert.error('Storage Error', 'Failed to save data locally');[m
+[32m++    }[m
+[32m++  }[m
+[32m++};[m
+[32m++```[m
+[32m++[m
+[32m++### 🚀 **Performance Issues**[m
+[32m++[m
+[32m++#### Problem: Slow query performance[m
+[32m++```javascript[m
+[32m++// Add query optimization[m
+[32m++const getOptimizedData = async (userEmail, limit = 50) => {[m
+[32m++  try {[m
+[32m++    const tenantId = await getTenantId(userEmail);[m
+[32m++    const q = query([m
+[32m++      collection(db, `tenants/${tenantId}/customers`),[m
+[32m++      orderBy('createdAt', 'desc'),[m
+[32m++      limit(limit)[m
+[32m++    );[m
+[32m++    [m
+[32m++    const snapshot = await getDocs(q);[m
+[32m++    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));[m
+[32m++  } catch (error) {[m
+[32m++    console.error('Query error:', error);[m
+[32m++    return [];[m
+[32m++  }[m
+[32m++};[m
+[32m++```[m
+[32m++[m
+[32m++#### Problem: Too many reads[m
+[32m++```javascript[m
+[32m++// Implement caching[m
+[32m++const dataCache = new Map();[m
+[32m++[m
+[32m++const getCachedData = async (key, fetchFunction, ttl = 300000) => {[m
+[32m++  const cached = dataCache.get(key);[m
+[32m++  [m
+[32m++  if (cached && Date.now() - cached.timestamp < ttl) {[m
+[32m++    return cached.data;[m
+[32m++  }[m
+[32m++  [m
+[32m++  const data = await fetchFunction();[m
+[32m++  dataCache.set(key, { data, timestamp: Date.now() });[m
+[32m++  return data;[m
+[32m++};[m
+[32m++```[m
+[32m++[m
+[32m++## 🛠️ **Quick Fixes**[m
+[32m++[m
+[32m++### 1. Clear Firebase Cache[m
+[32m++```javascript[m
+[32m++// Add to app startup[m
+[32m++import { clearIndexedDbPersistence } from 'firebase/firestore';[m
+[32m++[m
+[32m++const clearFirebaseCache = async () => {[m
+[32m++  try {[m
+[32m++    await clearIndexedDbPersistence(db);[m
+[32m++    console.log('Firebase cache cleared');[m
+[32m++  } catch (error) {[m
+[32m++    console.log('Cache clear failed:', error);[m
+[32m++  }[m
+[32m++};[m
+[32m++```[m
+[32m++[m
+[32m++### 2. Retry Failed Operations[m
+[32m++```javascript[m
+[32m++const retryOperation = async (operation, maxRetries = 3) => {[m
+[32m++  for (let i = 0; i < maxRetries; i++) {[m
+[32m++    try {[m
+[32m++      return await operation();[m
+[32m++    } catch (error) {[m
+[32m++      if (i === maxRetries - 1) throw error;[m
+[32m++      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));[m
+[32m++    }[m
+[32m++  }[m
+[32m++};[m
+[32m++```[m
+[32m++[m
+[32m++### 3. Monitor Connection Status[m
+[32m++```javascript[m
+[32m++const useConnectionStatus = () => {[m
+[32m++  const [isOnline, setIsOnline] = useState(navigator.onLine);[m
+[32m++  [m
+[32m++  useEffect(() => {[m
+[32m++    const handleOnline = () => setIsOnline(true);[m
+[32m++    const handleOffline = () => setIsOnline(false);[m
+[32m++    [m
+[32m++    window.addEventListener('online', handleOnline);[m
+[32m++    window.addEventListener('offline', handleOffline);[m
+[32m++    [m
+[32m++    return () => {[m
+[32m++      window.removeEventListener('online', handleOnline);[m
+[32m++      window.removeEventListener('offline', handleOffline);[m
+[32m++    };[m
+[32m++  }, []);[m
+[32m++  [m
+[32m++  return isOnline;[m
+[32m++};[m
+[32m++```[m
+[32m++[m
+[32m++## 🔍 **Debugging Tools**[m
+[32m++[m
+[32m++### Enable Firebase Debug Mode[m
+[32m++```javascript[m
+[32m++// Add to firebaseConfig.ts[m
+[32m++import { connectFirestoreEmulator } from 'firebase/firestore';[m
+[32m++[m
+[32m++if (process.env.NODE_ENV === 'development') {[m
+[32m++  connectFirestoreEmulator(db, 'localhost', 8080);[m
+[32m++}[m
+[32m++```[m
+[32m++[m
+[32m++### Add Comprehensive Logging[m
+[32m++```javascript[m
+[32m++const logFirebaseOperation = (operation, data, error = null) => {[m
+[32m++  console.group(`🔥 Firebase: ${operation}`);[m
+[32m++  console.log('Data:', data);[m
+[32m++  if (error) console.error('Error:', error);[m
+[32m++  console.groupEnd();[m
+[32m++};[m
+[32m++```[m
+[32m++[m
+[32m++## 📋 **Checklist for Firebase Issues**[m
+[32m++[m
+[32m++- [ ] Check internet connection[m
+[32m++- [ ] Verify Firebase configuration[m
+[32m++- [ ] Check Firestore security rules[m
+[32m++- [ ] Validate user permissions[m
+[32m++- [ ] Test with different user accounts[m
+[32m++- [ ] Check browser console for errors[m
+[32m++- [ ] Verify data structure matches expectations[m
+[32m++- [ ] Test on different devices/browsers[m
+[32m++- [ ] Check Firebase project quotas[m
+[32m++- [ ] Validate environment variables[m
+[32m++[m
+[32m++## 🆘 **Emergency Recovery**[m
+[32m++[m
+[32m++If Firebase is completely broken:[m
+[32m++[m
+[32m++1. **Backup current data** (if accessible)[m
+[32m++2. **Check Firebase console** for service status[m
+[32m++3. **Revert to last working commit**[m
+[32m++4. **Use offline mode** if available[m
+[32m++5. **Contact Firebase support** if needed[m
+[32m++[m
+[32m++## 📞 **Getting Help**[m
+[32m++[m
+[32m++- Firebase Documentation: https://firebase.google.com/docs[m
+[32m++- Stack Overflow: Tag with `firebase` and `react-native`[m
+[32m++- Firebase Support: https://firebase.google.com/support[m
+[1mdiff --cc SYSTEM_STATUS.md[m
+[1mindex 0000000,0000000..f2d91f6[m
+[1mnew file mode 100644[m
+[1m--- /dev/null[m
+[1m+++ b/SYSTEM_STATUS.md[m
+[36m@@@ -1,0 -1,0 +1,219 @@@[m
+[32m++# VET-Tracker System Status Report[m
+[32m++[m
+[32m++## ✅ Core System Components - WORKING[m
+[32m++[m
+[32m++### 1. **Routing & Navigation**[m
+[32m++- ✅ Main app layout (`app/_layout.tsx`) - Properly configured[m
+[32m++- ✅ Index routing (`app/index.tsx`) - Platform-specific redirects working[m
+[32m++- ✅ Client routes - All 12 routes properly defined[m
+[32m++- ✅ Veterinarian routes - All 10 routes properly defined  [m
+[32m++- ✅ Server/Admin routes - All 5 routes properly defined[m
+[32m++- ✅ Authentication routes - Both web and mobile login routes working[m
+[32m++[m
+[32m++### 2. **Authentication System**[m
+[32m++- ✅ AuthContext - User state management working[m
+[32m++- ✅ TenantContext - Multi-tenant support working[m
+[32m++- ✅ Login flows - Both web and mobile login functional[m
+[32m++- ✅ Role-based access control - Admin/Veterinarian/SuperAdmin roles working[m
+[32m++- ✅ Session persistence - AsyncStorage integration working[m
+[32m++[m
+[32m++### 3. **Database & Services**[m
+[32m++- ✅ Firebase configuration - Properly set up[m
+[32m++- ✅ Firestore services - All CRUD operations working[m
+[32m++- ✅ Tenant-aware data isolation - Multi-clinic support working[m
+[32m++- ✅ Email services - Multiple email providers configured[m
+[32m++- ✅ Storage services - File upload functionality working[m
+[32m++[m
+[32m++### 4. **UI Components**[m
+[32m++- ✅ Sidebar navigation - Working with proper styling[m
+[32m++- ✅ Mobile navigation - Bottom menu and header working[m
+[32m++- ✅ Dashboard components - Enhanced with charts and analytics[m
+[32m++- ✅ Form components - All input and validation working[m
+[32m++- ✅ Modal/Drawer components - Slide animations working[m
+[32m++[m
+[32m++### 5. **Key Features**[m
+[32m++- ✅ Customer management - Add/Edit/Delete/View working[m
+[32m++- ✅ Pet management - Full CRUD operations working[m
+[32m++- ✅ Appointment scheduling - Calendar and booking working[m
+[32m++- ✅ Medical records - Form creation and data entry working[m
+[32m++- ✅ Veterinarian management - Staff management working[m
+[32m++- ✅ Notifications system - Real-time updates working[m
+[32m++[m
+[32m++## 🔧 Recent Fixes Applied[m
+[32m++[m
+[32m++### 1. **Dashboard Enhancement**[m
+[32m++- ✅ Added header with search functionality[m
+[32m++- ✅ Implemented ApexCharts → React Native Chart Kit (mobile compatible)[m
+[32m++- ✅ Added time filter buttons (Day/Week/Month/Year)[m
+[32m++- ✅ Created interactive charts with drawer functionality[m
+[32m++- ✅ Added quick action buttons with proper routing[m
+[32m++[m
+[32m++### 2. **Email Service Fixes**[m
+[32m++- ✅ Fixed Resend service initialization errors[m
+[32m++- ✅ Removed environment variable requirement that caused crashes[m
+[32m++- ✅ Added fallback API key to prevent startup errors[m
+[32m++- ✅ Maintained multiple email service options (EmailJS, Resend, Gmail)[m
+[32m++[m
+[32m++#

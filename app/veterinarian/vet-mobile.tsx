@@ -7,8 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { addCustomer } from '@/lib/services/firebaseService';
 import { Colors } from '@/constants/Colors';
-import { LineChart } from 'react-native-chart-kit';
-
 const screenWidth = Dimensions.get('window').width;
 
 export default function VetMobile() {
@@ -279,50 +277,7 @@ export default function VetMobile() {
           </TouchableOpacity>
         </View>
 
-        {/* Analytics Section */}
-        <View style={styles.analyticsSection}>
-          <ThemedText style={styles.sectionTitle}>Weekly Overview</ThemedText>
-          <View style={styles.analyticsCard}>
-            <Text style={styles.chartTitle}>Weekly Appointments</Text>
-            <LineChart
-              data={{
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-                datasets: [{
-                  data: weeklyData.length > 0 ? weeklyData : [0, 0, 0, 0, 0, 0],
-                  strokeWidth: 3
-                }]
-              }}
-              width={screenWidth - 80}
-              height={180}
-              chartConfig={{
-                backgroundColor: Colors.surface,
-                backgroundGradientFrom: Colors.surface,
-                backgroundGradientTo: Colors.surface,
-                decimalPlaces: 0,
-                color: (opacity = 1) => Colors.primary,
-                labelColor: (opacity = 1) => Colors.text.secondary,
-                style: {
-                  borderRadius: 8
-                },
-                propsForDots: {
-                  r: '4',
-                  strokeWidth: '2',
-                  stroke: Colors.primary
-                },
-                propsForBackgroundLines: {
-                  strokeDasharray: '',
-                  stroke: Colors.border.light,
-                  strokeWidth: 1
-                }
-              }}
-              bezier
-              style={{
-                marginVertical: 8,
-                borderRadius: 8
-              }}
-            />
-          </View>
-        </View>
+
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
@@ -862,28 +817,7 @@ const styles = StyleSheet.create({
     color: Colors.text.muted,
     fontStyle: 'italic',
   },
-  analyticsSection: {
-    marginBottom: 24,
-  },
-  analyticsCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    elevation: 3,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    borderWidth: 1,
-    borderColor: Colors.border.light,
-  },
-  chartTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.primary,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
+
   recentActivity: {
     marginBottom: 24,
   },

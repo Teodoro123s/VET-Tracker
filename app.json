@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "sdkVersion": "54.0.0",
     "splash": {
       "image": "./assets/mobile-logo.png",
       "resizeMode": "contain",
@@ -37,14 +38,8 @@
     "experiments": {
       "typedRoutes": true
     },
-    "updates": {
-      "enabled": false
-    },
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "0f576b05-5e61-482a-993c-3148425593f3"
-      }
-    }
+    "scheme": "vet-app",
+
+
   }
 }
