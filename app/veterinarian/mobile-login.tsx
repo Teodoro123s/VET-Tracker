@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function MobileLogin() {
   const router = useRouter();
@@ -29,15 +30,11 @@ export default function MobileLogin() {
       if (result.success) {
         const userRole = result.user?.role;
         
-        // Restrict client/admin accounts from mobile login
-        if (userRole === 'admin' || userRole === 'superadmin') {
-          setErrorMessage('Client accounts cannot access mobile interface. Please use web login.');
-          return;
-        }
-        
         // Only veterinarian and staff can access mobile
         if (userRole === 'veterinarian' || userRole === 'staff') {
           router.replace('/veterinarian/vet-mobile');
+        } else if (userRole === 'admin' || userRole === 'superadmin') {
+          setErrorMessage('Admin accounts cannot access mobile interface. Please use web login.');
         } else {
           setErrorMessage('Invalid account type for mobile access.');
         }
@@ -56,7 +53,7 @@ export default function MobileLogin() {
       <View style={styles.loginCard}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Ionicons name="medical" size={48} color="#800000" />
+            <Image source={require('@/assets/mobile-logo.png')} style={styles.logo} />
           </View>
           <Text style={styles.subtitle}>Veterinary Management System</Text>
         </View>

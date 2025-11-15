@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAppointments } from '../lib/services/firebaseService';
+import { useAuth } from './AuthContext';
 
 type Notification = {
   id: string;
@@ -19,11 +20,15 @@ type NotificationContextType = {
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   checkAppointments: () => void;
+  notifySuccess: (title: string, message: string, type?: string) => void;
+  notifyError: (title: string, message: string) => void;
+  notifyInfo: (title: string, message: string) => void;
 };
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [lastChecked, setLastChecked] = useState<Date>(new Date());
   const [isLoaded, setIsLoaded] = useState(false);
@@ -112,7 +117,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const checkAppointments = async () => {
     try {
-      const appointments = await getAppointments();
+      if (!user?.email) {
+        return; // Skip if user is not authenticated
+      }
+      
+      const appointments = await getAppointments(user.email);
       const now = new Date();
       const today = now.toISOString().split('T')[0];
       const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -213,14 +222,26 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   };
 
-  // Auto-check appointments every 5 minutes (only after loading)
+  // Auto-check appointments every 5 minutes (only after loading and when user is authenticated)
   useEffect(() => {
-    if (isLoaded) {
+    if (isLoaded && user?.email) {
       checkAppointments(); // Initial check
       const interval = setInterval(checkAppointments, 5 * 60 * 1000); // 5 minutes
       return () => clearInterval(interval);
     }
-  }, [isLoaded]);
+  }, [isLoaded, user?.email]);
+
+  const notifySuccess = (title, message, type = 'success') => {
+    addNotification({ title, message, type });
+  };
+
+  const notifyError = (title, message) => {
+    addNotification({ title, message, type: 'error' });
+  };
+
+  const notifyInfo = (title, message) => {
+    addNotification({ title, message, type: 'info' });
+  };
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -232,6 +253,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       markAsRead,
       markAllAsRead,
       checkAppointments,
+      notifySuccess,
+      notifyError,
+      notifyInfo,
     }}>
       {children}
     </NotificationContext.Provider>

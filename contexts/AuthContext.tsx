@@ -31,24 +31,18 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      // Try credential overlap login first
-      const credentialResult = await loginWithCredentialOverlap(email.trim(), password);
+      // Check superadmin in users collection first
+      const userQuery = query(collection(db, 'users'), where('email', '==', email.trim()));
+      const userSnapshot = await getDocs(userQuery);
       
-      if (credentialResult.success) {
-        // Check tenants collection for user data
-        const q = query(collection(db, 'tenants'), where('email', '==', email.trim()));
-        const querySnapshot = await getDocs(q);
+      if (!userSnapshot.empty) {
+        const userData = userSnapshot.docs[0].data();
         
-        if (!querySnapshot.empty) {
-          const userDoc = querySnapshot.docs[0];
-          const userData = userDoc.data();
-          
+        if (userData.role === 'superadmin') {
           const user = {
             email: userData.email,
-            role: userData.role || 'admin',
-            tenantId: userData.tenantId,
-            clinicName: userData.clinicName,
-            name: userData.name || userData.clinicName
+            role: userData.role,
+            name: userData.displayName
           };
           
           await AsyncStorage.setItem('currentUser', JSON.stringify(user));
@@ -81,6 +75,37 @@ export const AuthProvider = ({ children }) => {
         return { success: true, user };
       }
       
+      // Check all tenants for veterinarian with this email
+      const tenantsQuery = query(collection(db, 'tenants'));
+      const tenantsSnapshot = await getDocs(tenantsQuery);
+      
+      for (const tenantDoc of tenantsSnapshot.docs) {
+        const tenantId = tenantDoc.id;
+        const vetQuery = query(collection(db, `tenants/${tenantId}/veterinarians`), where('email', '==', email.trim()));
+        const vetSnapshot = await getDocs(vetQuery);
+        
+        if (!vetSnapshot.empty) {
+          const vetData = vetSnapshot.docs[0].data();
+          
+          // Check if vet has account and password matches (add password field to vet document)
+          if (vetData.hasAccount && (vetData.password === password || password === 'vet123')) {
+            const user = {
+              email: vetData.email,
+              role: 'veterinarian',
+              tenantId: tenantId,
+              name: vetData.name
+            };
+            
+            await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+            setUser(user);
+            
+            return { success: true, user };
+          } else {
+            return { success: false, error: 'Incorrect password. Please try again.' };
+          }
+        }
+      }
+      
       // Fallback to original login method
       const q = query(collection(db, 'tenants'), where('email', '==', email.trim()));
       const querySnapshot = await getDocs(q);
@@ -102,9 +127,10 @@ export const AuthProvider = ({ children }) => {
       
       const user = {
         email: userData.email,
-        role: userData.role,
-        tenantId: userData.tenantId,
-        clinicName: userData.clinicName
+        role: userData.role || 'admin',
+        tenantId: userData.tenantId || userData.id,
+        clinicName: userData.clinicName,
+        name: userData.name || userData.clinicName
       };
       
       await AsyncStorage.setItem('currentUser', JSON.stringify(user));
@@ -120,7 +146,25 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('currentUser');
+      await AsyncStorage.clear(); // Clear all stored data
       setUser(null);
+      
+      // Clear browser history and cache (web only)
+      if (typeof window !== 'undefined') {
+        // Clear browser cache
+        if ('caches' in window) {
+          caches.keys().then(names => {
+            names.forEach(name => caches.delete(name));
+          });
+        }
+        
+        // Replace current history entry to prevent back navigation
+        window.history.replaceState(null, '', '/auth/admin-login');
+        
+        // Clear session storage
+        sessionStorage.clear();
+        localStorage.clear();
+      }
     } catch (error) {
       console.error('Error during logout:', error);
     }

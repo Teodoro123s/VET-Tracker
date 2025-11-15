@@ -54,8 +54,15 @@ const getTenantId = async (userEmail: string): Promise<string | null> => {
 
 // Get tenant-aware collection
 const getTenantCollection = async (userEmail: string | null, collectionName: string) => {
-  const tenantId = await getTenantId(userEmail || '');
-  if (!tenantId) return collection(db, collectionName);
+  if (!userEmail) {
+    throw new Error('User email is required for tenant operations');
+  }
+  
+  const tenantId = await getTenantId(userEmail);
+  if (!tenantId) {
+    throw new Error('No tenant ID found for user');
+  }
+  
   return collection(db, `tenants/${tenantId}/${collectionName}`);
 };
 
@@ -83,10 +90,7 @@ export const getAllTenants = async () => {
 
 export const getSystemStats = async () => {
   try {
-    const [tenants, transactions] = await Promise.all([
-      getAllTenants(),
-      getTransactions()
-    ]);
+    const tenants = await getAllTenants();
 
     let totalCustomers = 0;
     let totalAppointments = 0;
@@ -113,29 +117,14 @@ export const getSystemStats = async () => {
       }
     }
 
-    const monthlyRevenue = transactions
-      .filter(t => {
-        const date = new Date(t.date || t.createdAt);
-        const now = new Date();
-        return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-      })
-      .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
 
-    const yearlyRevenue = transactions
-      .filter(t => {
-        const date = new Date(t.date || t.createdAt);
-        return date.getFullYear() === new Date().getFullYear();
-      })
-      .reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
 
     return {
       totalClinics: tenants.length,
       activeSubscriptions,
-      monthlyRevenue: `₱${monthlyRevenue.toLocaleString()}`,
-      yearlyRevenue: `₱${yearlyRevenue.toLocaleString()}`,
+
       pendingRenewals: tenants.filter(t => t.subscriptionStatus === 'pending').length,
       systemUptime: '99.8%',
-      totalTransactions: transactions.length,
       averageClinicSize: Math.round((totalCustomers + totalVeterinarians) / Math.max(tenants.length, 1))
     };
   } catch (error) {
@@ -143,64 +132,16 @@ export const getSystemStats = async () => {
     return {
       totalClinics: 0,
       activeSubscriptions: 0,
-      monthlyRevenue: '₱0',
-      yearlyRevenue: '₱0',
+
       pendingRenewals: 0,
       systemUptime: '99.8%',
-      totalTransactions: 0,
+
       averageClinicSize: 0
     };
   }
 };
 
-export const getRevenueData = async (filter = 'month') => {
-  try {
-    const transactions = await getTransactions();
-    const now = new Date();
-    
-    if (filter === 'week') {
-      const weekData = new Array(7).fill(0);
-      const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-      
-      transactions.forEach(t => {
-        const date = new Date(t.date || t.createdAt);
-        if (date >= startOfWeek) {
-          const dayIndex = date.getDay();
-          weekData[dayIndex] += parseFloat(t.amount) || 0;
-        }
-      });
-      return weekData;
-    }
-    
-    if (filter === 'month') {
-      const monthData = new Array(4).fill(0);
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      
-      transactions.forEach(t => {
-        const date = new Date(t.date || t.createdAt);
-        if (date >= startOfMonth) {
-          const weekIndex = Math.floor((date.getDate() - 1) / 7);
-          if (weekIndex < 4) monthData[weekIndex] += parseFloat(t.amount) || 0;
-        }
-      });
-      return monthData;
-    }
-    
-    const yearData = new Array(12).fill(0);
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-    
-    transactions.forEach(t => {
-      const date = new Date(t.date || t.createdAt);
-      if (date >= startOfYear) {
-        yearData[date.getMonth()] += parseFloat(t.amount) || 0;
-      }
-    });
-    return yearData;
-  } catch (error) {
-    console.error('Error fetching revenue data:', error);
-    return filter === 'week' ? [0,0,0,0,0,0,0] : filter === 'month' ? [0,0,0,0] : [0,0,0,0,0,0,0,0,0,0,0,0];
-  }
-};
+
 
 export const getClinicGrowthData = async (filter = 'month') => {
   try {
@@ -331,38 +272,9 @@ export const updateVeterinarian = async (vetId, updateData, userEmail?: string) 
 // Get all customers (tenant-aware)
 export const getCustomers = async (userEmail?: string) => {
   try {
-    let tenantId = await getTenantId(userEmail || '');
-    console.log('Initial tenant ID:', tenantId, 'for user:', userEmail);
-    
-    // If no tenant ID found, try using email prefix directly
-    if (!tenantId && userEmail) {
-      const emailPrefix = userEmail.split('@')[0];
-      console.log('Trying email prefix as tenant ID:', emailPrefix);
-      
-      try {
-        const tenantDoc = await getDoc(doc(db, 'tenants', emailPrefix));
-        if (tenantDoc.exists()) {
-          tenantId = emailPrefix;
-          console.log('Found tenant using email prefix:', tenantId);
-        }
-      } catch (error) {
-        console.log('No tenant found with email prefix');
-      }
-    }
-    
-    if (!tenantId) {
-      console.log('No tenant ID found, checking root customers collection');
-      const querySnapshot = await getDocs(collection(db, 'customers'));
-      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    }
-    
-    console.log('Using tenant ID:', tenantId);
-    const customersRef = collection(db, 'tenants', tenantId, 'customers');
-    const querySnapshot = await getDocs(customersRef);
-    const tenantCustomers = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    console.log('Found customers in tenant:', tenantCustomers.length);
-    
-    return tenantCustomers;
+    const tenantCollection = await getTenantCollection(userEmail || '', 'customers');
+    const querySnapshot = await getDocs(tenantCollection);
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error('Error fetching customers:', error);
     return [];
@@ -394,27 +306,8 @@ export const getCustomerById = async (userEmail?: string, customerId?: string) =
 // Add a new customer (tenant-aware)
 export const addCustomer = async (customerData, userEmail?: string) => {
   try {
-    let tenantId = await getTenantId(userEmail || '');
-    
-    // If no tenant ID found, try using email prefix directly
-    if (!tenantId && userEmail) {
-      const emailPrefix = userEmail.split('@')[0];
-      try {
-        const tenantDoc = await getDoc(doc(db, 'tenants', emailPrefix));
-        if (tenantDoc.exists()) {
-          tenantId = emailPrefix;
-        }
-      } catch (error) {
-        // Continue with error if still no tenant
-      }
-    }
-    
-    if (!tenantId) {
-      throw new Error('No tenant ID found');
-    }
-    
-    const customersRef = collection(db, 'tenants', tenantId, 'customers');
-    const docRef = await addDoc(customersRef, customerData);
+    const tenantCollection = await getTenantCollection(userEmail || '', 'customers');
+    const docRef = await addDoc(tenantCollection, customerData);
     return { id: docRef.id, ...customerData };
   } catch (error) {
     console.error('Error adding customer:', error);
@@ -506,16 +399,7 @@ export const updateAppointment = async (userEmail, appointmentId, updateData) =>
   }
 };
 
-// Get all transactions
-export const getTransactions = async () => {
-  try {
-    const querySnapshot = await getDocs(collection(db, 'transactions'));
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    console.error('Error fetching transactions:', error);
-    return [];
-  }
-};
+
 
 // Get all medical forms (tenant-aware)
 export const getMedicalForms = async (userEmail?: string) => {
@@ -1283,66 +1167,3 @@ export const deleteReasonOption = async (reasonId, userEmail?: string) => {
   }
 };
 
-// Financial Analytics Functions
-
-export const getTransactionSummary = async (timeFilter: string) => {
-  try {
-    const snapshot = await getDocs(collection(db, 'transactions'));
-    const transactions = snapshot.docs.map(doc => ({
-      ...doc.data(),
-      amount: parseFloat(doc.data().amount?.toString().replace(/[^0-9.-]+/g, '') || '0')
-    }));
-    
-    const totalRevenue = transactions.reduce((sum, t) => sum + t.amount, 0);
-    const transactionCount = transactions.length;
-    
-    return {
-      totalRevenue,
-      monthlyRevenue: totalRevenue / 12,
-      averageTransaction: transactionCount > 0 ? totalRevenue / transactionCount : 0,
-      transactionCount,
-      revenueGrowth: 12.5
-    };
-  } catch (error) {
-    console.error('Error getting transaction summary:', error);
-    return {
-      totalRevenue: 0,
-      monthlyRevenue: 0,
-      averageTransaction: 0,
-      transactionCount: 0,
-      revenueGrowth: 0
-    };
-  }
-};
-
-export const getFinancialData = async (timeFilter: string) => {
-  try {
-    const snapshot = await getDocs(collection(db, 'transactions'));
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      amount: parseFloat(doc.data().amount?.toString().replace(/[^0-9.-]+/g, '') || '0'),
-      date: doc.data().createdAt?.toDate() || new Date()
-    }));
-  } catch (error) {
-    console.error('Error getting financial data:', error);
-    return [];
-  }
-};
-
-
-
-export const getRecentActivity = async () => {
-  try {
-    const snapshot = await getDocs(collection(db, 'transactions'));
-    return snapshot.docs.slice(0, 10).map(doc => ({
-      id: doc.id,
-      message: `Payment received from ${doc.data().clinicName || 'Unknown Clinic'}`,
-      type: 'payment_received',
-      timestamp: doc.data().createdAt || new Date()
-    }));
-  } catch (error) {
-    console.error('Error getting recent activity:', error);
-    return [];
-  }
-};

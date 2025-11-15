@@ -80,7 +80,7 @@ export default function Sidebar() {
                   setShowLogoutModal(false);
                   try {
                     await logout();
-                    router.replace('/auth/admin-login');
+                    router.replace('/auth/admin-login'); // Sidebar is web-only
                   } catch (error) {
                     console.error('Error during logout:', error);
                     router.replace('/auth/admin-login');

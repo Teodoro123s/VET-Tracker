@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { useRouter } from 'expo-router';
@@ -11,10 +11,20 @@ export default function LogoutScreen() {
   const handleLogout = async () => {
     try {
       await logout();
-      router.replace('/auth/admin-login');
+      // Redirect to appropriate login based on platform
+      if (Platform.OS === 'web') {
+        router.replace('/auth/admin-login');
+      } else {
+        router.replace('/veterinarian/mobile-login');
+      }
     } catch (error) {
       console.error('Error during logout:', error);
-      router.replace('/auth/admin-login');
+      // Fallback to appropriate login
+      if (Platform.OS === 'web') {
+        router.replace('/auth/admin-login');
+      } else {
+        router.replace('/veterinarian/mobile-login');
+      }
     }
   };
 

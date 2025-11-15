@@ -19,26 +19,44 @@ export default function IndexScreen() {
 
   useEffect(() => {
     if (!loading && isReady) {
+      // Security: Clear browser history on auth state change
+      if (typeof window !== 'undefined') {
+        window.history.pushState(null, '', window.location.href);
+        window.onpopstate = () => {
+          if (!user) {
+            // Prevent back navigation when logged out
+            window.history.pushState(null, '', window.location.href);
+          }
+        };
+      }
+      
       if (user) {
-        // User is logged in, redirect based on role and platform
-        if (user.email?.includes('superadmin')) {
+        // User is logged in, redirect based on role
+        if (user.email?.includes('superadmin') || user.role === 'superadmin') {
           router.replace('/server/superadmin');
-        } else {
-          // Platform-specific routing
+        } else if (user.role === 'admin') {
+          router.replace('/client/dashboard');
+        } else if (user.role === 'veterinarian' || user.role === 'staff') {
+          // Vets can use both interfaces, default to mobile on mobile platform
           if (Platform.OS === 'web') {
-            // Web users go to client interface
             router.replace('/client/dashboard');
           } else {
-            // Mobile users go to veterinarian interface
             router.replace('/veterinarian/vet-mobile');
+          }
+        } else {
+          // Unknown role, redirect to login
+          if (Platform.OS === 'web') {
+            router.replace('/auth/admin-login');
+          } else {
+            router.replace('/veterinarian/mobile-login');
           }
         }
       } else {
-        // User not logged in, platform-specific login
+        // No user logged in - Platform-specific default login
         if (Platform.OS === 'web') {
-          router.replace('/auth/admin-login');
+          router.replace('/auth/admin-login');  // Web -> Admin Login
         } else {
-          router.replace('/veterinarian/mobile-login');
+          router.replace('/veterinarian/mobile-login');  // Mobile -> Vet Login
         }
       }
     }

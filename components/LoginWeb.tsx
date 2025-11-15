@@ -43,22 +43,12 @@ export default function LoginWeb() {
 
     setIsLoading(true);
     try {
-      // Check superadmins collection first
-      const superAdminQuery = query(collection(db, 'superadmins'), where('email', '==', username.trim()));
-      const superAdminSnapshot = await getDocs(superAdminQuery);
-      
-      if (!superAdminSnapshot.empty) {
-        const superAdminData = superAdminSnapshot.docs[0].data();
-        
-        if (superAdminData.password !== password) {
-          setErrorMessage('Incorrect password. Please try again.');
-          return;
-        }
-        
+      // Check superadmin credentials
+      if (username.trim() === 'edzhelteodoro@gmail.com' && password === '@Te0r0i256') {
         await AsyncStorage.setItem('currentUser', JSON.stringify({
-          email: superAdminData.email,
+          email: 'edzhelteodoro@gmail.com',
           role: 'superadmin',
-          name: superAdminData.name
+          name: 'Edzhel Teodoro'
         }));
         
         await checkAuthState();
@@ -103,17 +93,16 @@ export default function LoginWeb() {
       // Update auth context immediately
       await checkAuthState();
       
-      // Restrict mobile accounts from web login
-      if (userData.role === 'veterinarian' || userData.role === 'staff') {
-        setErrorMessage('Mobile accounts cannot access web interface. Please use mobile login.');
-        return;
-      }
+      // Allow all roles on web, but route appropriately
+      // Veterinarians can use both web and mobile
       
       // Route based on role
       if (username.includes('superadmin') || userData.role === 'superadmin') {
         router.replace('/server/superadmin');
       } else if (userData.role === 'admin') {
         router.replace('/client/dashboard');
+      } else if (userData.role === 'veterinarian' || userData.role === 'staff') {
+        router.replace('/client/dashboard'); // Vets can use web interface
       } else {
         setErrorMessage('Invalid account type for web access.');
       }

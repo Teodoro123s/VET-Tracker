@@ -9,6 +9,9 @@
     "skipLibCheck": true,
     "noEmit": true,
     "isolatedModules": true,
+    "strict": false,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
       "@/*": [
@@ -18,16 +21,18 @@
   },
   "include": [
     "expo-env.d.ts",
-    "constants/**/*.ts",
-    "hooks/**/*.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx",
     ".expo/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "android",
     "ios",
-    "lib/**",
-    "ai/**"
+    "dist",
+    "build"
   ],
   "extends": "expo/tsconfig.base"
 }

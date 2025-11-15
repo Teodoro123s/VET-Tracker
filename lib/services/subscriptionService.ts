@@ -15,18 +15,7 @@ export interface SubscriptionPeriod {
   activatedAt?: Date;
 }
 
-export interface TransactionRecord {
-  id: string;
-  tenantId: string;
-  email: string;
-  clinicName: string;
-  type: 'new' | 'renewal' | 'extension';
-  period: string;
-  amount: string;
-  status: 'paid' | 'pending' | 'failed';
-  createdAt: Date;
-  subscriptionPeriodId: string;
-}
+
 
 // Add new subscription period
 export async function addSubscriptionPeriod(
@@ -93,25 +82,7 @@ export async function addSubscriptionPeriod(
       activatedAt: status === 'active' ? Timestamp.fromDate(new Date(now.getTime())) : null
     });
     
-    // Create transaction record
-    const transactionRef = doc(collection(db, 'transactions'));
-    const transaction: TransactionRecord = {
-      id: transactionRef.id,
-      tenantId,
-      email,
-      clinicName,
-      type: hasActivePeriod ? 'extension' : 'new',
-      period,
-      amount,
-      status: 'paid',
-      createdAt: now,
-      subscriptionPeriodId: periodRef.id
-    };
-    
-    await setDoc(transactionRef, {
-      ...transaction,
-      createdAt: Timestamp.fromDate(new Date(now.getTime()))
-    });
+
     
     return {
       success: true,
@@ -156,25 +127,7 @@ export async function getActiveSubscriptionPeriods(): Promise<SubscriptionPeriod
   }
 }
 
-// Get all transaction history (latest to oldest)
-export async function getAllTransactions(): Promise<TransactionRecord[]> {
-  try {
-    const transactionsCollection = collection(db, 'transactions');
-    const snapshot = await getDocs(transactionsCollection);
-    
-    const transactions = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() || new Date()
-    })) as TransactionRecord[];
-    
-    // Sort by createdAt in memory (latest first)
-    return transactions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  } catch (error) {
-    console.error('Error fetching transactions:', error);
-    return [];
-  }
-}
+
 
 // Check and activate queued periods (run periodically)
 export async function activateQueuedPeriods(): Promise<void> {

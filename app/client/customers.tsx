@@ -3,10 +3,20 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert,
 import { Ionicons } from '@expo/vector-icons';
 import { getCustomers, addCustomer, deleteCustomer, updateCustomer } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
+import { useNotificationTriggers } from '@/hooks/useNotificationTriggers';
 
 export default function CustomersScreen() {
-  const { userEmail } = useTenant();
+  const { user } = useAuth();
+  const { userEmail, tenantId, isSuperAdmin } = useTenant();
+  const { triggerCustomerCreated } = useNotificationTriggers();
+  
+  console.log('=== CUSTOMERS SCREEN DEBUG ===');
+  console.log('Auth user:', user);
+  console.log('userEmail from tenant:', userEmail);
+  console.log('tenantId:', tenantId);
+  console.log('isSuperAdmin:', isSuperAdmin);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -75,14 +85,40 @@ export default function CustomersScreen() {
 
   const handleAddCustomer = async () => {
     try {
+      if (!userEmail) {
+        alert('Please log in to add customers');
+        return;
+      }
+      
       if (!newCustomer.firstname || !newCustomer.surname) {
         alert('Please fill in first name and surname');
         return;
       }
       
-      await addCustomer(newCustomer, userEmail);
+      console.log('=== ADDING CUSTOMER ===');
+      console.log('Customer data:', newCustomer);
+      console.log('User email:', userEmail);
+      
+      const customerData = {
+        ...newCustomer,
+        createdAt: new Date().toISOString(),
+        name: `${newCustomer.surname}, ${newCustomer.firstname}`
+      };
+      
+      // If superadmin, require explicit tenant selection
+      if (isSuperAdmin && !tenantId) {
+        alert('Please select a tenant before adding a customer (you are a superadmin).');
+        return;
+      }
+
+      const result = await addCustomer(customerData, userEmail);
+      console.log('Customer added successfully:', result);
+      
+      // Trigger notification
+      triggerCustomerCreated(`${newCustomer.firstname} ${newCustomer.surname}`);
+      
       setNewCustomer({ firstname: '', surname: '', email: '', contact: '', address: '' });
-      loadCustomers();
+      await loadCustomers();
       alert('Customer added successfully');
       
       Animated.timing(addSlideAnim, {
@@ -91,7 +127,8 @@ export default function CustomersScreen() {
         useNativeDriver: false,
       }).start(() => setShowAddModal(false));
     } catch (error) {
-      alert('Failed to add customer');
+      console.error('Error adding customer:', error);
+      alert(`Failed to add customer: ${error.message}`);
     }
   };
 
