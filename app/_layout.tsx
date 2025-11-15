@@ -1,7 +1,9 @@
 import { DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
 import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
 import { useEffect, useState } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import 'react-native-reanimated';
@@ -12,7 +14,6 @@ SplashScreen.preventAutoHideAsync();
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { TenantProvider } from '@/contexts/TenantContext';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
 import React, { createContext, useContext } from 'react';
 
 const CustomerContext = createContext();
@@ -43,14 +44,13 @@ function CustomerProvider({ children }) {
     </CustomerContext.Provider>
   );
 }
-// Lazy load components for better performance
-const Sidebar = Platform.OS === 'web' ? require('@/components/Sidebar').default : null;
-const VetBottomMenu = Platform.OS !== 'web' ? require('@/components/VetBottomMenu').default : null;
-const VetMobileHeader = Platform.OS !== 'web' ? require('@/components/VetMobileHeader').default : null;
+import Sidebar from '@/components/Sidebar';
+import VetBottomMenu from '@/components/VetBottomMenu';
+import VetMobileHeader from '@/components/VetMobileHeader';
+// import ChatBot from '../components/ChatBot'; // Commented out - component not available
 
 
-// Conditionally import subscription scheduler for web only
-const subscriptionScheduler = Platform.OS === 'web' ? require('@/lib/utils/subscriptionScheduler').subscriptionScheduler : null;
+import { subscriptionScheduler } from '@/lib/utils/subscriptionScheduler';
 import { useAuth } from '@/contexts/AuthContext';
 
 function AppContent() {
@@ -108,9 +108,9 @@ function AppContent() {
   return (
     <NavigationThemeProvider value={DefaultTheme}>
       <View style={styles.container}>
-        {showMainSidebar && Sidebar && <Sidebar />}
+        {showMainSidebar && <Sidebar />}
         <View style={!showMainSidebar ? styles.fullContent : styles.content}>
-          {showMobileHeader && VetMobileHeader && <VetMobileHeader {...getHeaderProps()} onBackPress={() => {
+          {showMobileHeader && <VetMobileHeader {...getHeaderProps()} onBackPress={() => {
             if (pathname === '/veterinarian/vet-customers') {
               if (selectedMedicalRecord) {
                 setSelectedMedicalRecord(null);
@@ -147,14 +147,10 @@ function AppContent() {
             <Stack.Screen name="server/subscription-periods" />
             <Stack.Screen name="server/transaction-history" />
             <Stack.Screen name="server/superadmin-dashboard" />
-            <Stack.Screen name="veterinarian/vet-mobile" />
             <Stack.Screen name="veterinarian/vet-calendar" />
             <Stack.Screen name="veterinarian/vet-appointments" />
-            <Stack.Screen name="veterinarian/vet-customers" />
-            <Stack.Screen name="veterinarian/vet-notifications" />
             <Stack.Screen name="veterinarian/vet-medical-record" />
             <Stack.Screen name="veterinarian/vet-medical-record-detail" />
-            <Stack.Screen name="veterinarian/appointment-details" />
             <Stack.Screen name="veterinarian/vet-profile" />
             <Stack.Screen name="veterinarian/mobile-login" />
             <Stack.Screen name="auth/admin-login" />
@@ -162,7 +158,7 @@ function AppContent() {
             <Stack.Screen name="+not-found" />
           </Stack>
           </View>
-          {showBottomMenu && VetBottomMenu && <VetBottomMenu />}
+          {showBottomMenu && <VetBottomMenu />}
         </View>
         
         {/* AI Chatbot - Show on client routes */}
@@ -176,32 +172,17 @@ function AppContent() {
 }
 
 export default function RootLayout() {
-  const [loaded, setLoaded] = useState(false);
-
-
-
-  useEffect(() => {
-    // Initialize subscription scheduler only on web
-    if (Platform.OS === 'web' && subscriptionScheduler) {
-      subscriptionScheduler.start();
-      
-      return () => {
-        subscriptionScheduler.stop();
-      };
-    }
-  }, []);
+  const [loaded] = useFonts({
+    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+  });
 
   useEffect(() => {
-    // Skip font loading on mobile for faster startup
-    if (Platform.OS === 'web') {
-      import('expo-font').then(({ useFonts }) => {
-        // Load fonts only on web
-        setLoaded(true);
-      });
-    } else {
-      // Mobile - skip fonts, load immediately
-      setLoaded(true);
-    }
+    // Initialize subscription scheduler
+    subscriptionScheduler.start();
+    
+    return () => {
+      subscriptionScheduler.stop();
+    };
   }, []);
 
   useEffect(() => {
@@ -215,17 +196,15 @@ export default function RootLayout() {
   }
 
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <TenantProvider>
-          <NotificationProvider>
-            <CustomerProvider>
-              <AppContent />
-            </CustomerProvider>
-          </NotificationProvider>
-        </TenantProvider>
-      </AuthProvider>
-    </ErrorBoundary>
+    <AuthProvider>
+      <TenantProvider>
+        <NotificationProvider>
+          <CustomerProvider>
+            <AppContent />
+          </CustomerProvider>
+        </NotificationProvider>
+      </TenantProvider>
+    </AuthProvider>
   );
 }
 

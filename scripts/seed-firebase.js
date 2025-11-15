@@ -58,7 +58,7 @@ const customers = [
     email: 'john@email.com',
     address: '123 Main St',
     city: 'Springfield',
-    pets: 2
+    pets
   },
   {
     name: 'Johnson, Sarah',
@@ -66,7 +66,7 @@ const customers = [
     email: 'sarah@email.com',
     address: '456 Oak Ave',
     city: 'Springfield',
-    pets: 1
+    pets
   },
   {
     name: 'Williams, Robert',
@@ -74,7 +74,7 @@ const customers = [
     email: 'robert@email.com',
     address: '789 Pine St',
     city: 'Springfield',
-    pets: 3
+    pets
   },
   {
     name: 'Davis, Maria',
@@ -82,7 +82,7 @@ const customers = [
     email: 'maria@email.com',
     address: '321 Elm St',
     city: 'Springfield',
-    pets: 1
+    pets
   },
   {
     name: 'Miller, David',
@@ -90,7 +90,7 @@ const customers = [
     email: 'david@email.com',
     address: '654 Maple Ave',
     city: 'Springfield',
-    pets: 2
+    pets
   }
 ];
 
@@ -185,7 +185,7 @@ const appointments = [
     petName: 'Max',
     service: 'Checkup',
     veterinarian: 'Dr. Michael Smith',
-    dateTime: 'Jan 25, 2024\n10:00 AM',
+    dateTime: 'Jan 25, 2024\n10 AM',
     status: 'Pending',
     notes: 'Annual checkup'
   },
@@ -195,7 +195,7 @@ const appointments = [
     petName: 'Luna',
     service: 'Vaccination',
     veterinarian: 'Dr. Sarah Johnson',
-    dateTime: 'Jan 24, 2024\n2:00 PM',
+    dateTime: 'Jan 24, 2024\n2 PM',
     status: 'Completed',
     notes: 'Rabies vaccination'
   },
@@ -205,7 +205,7 @@ const appointments = [
     petName: 'Charlie',
     service: 'Dental Cleaning',
     veterinarian: 'Dr. Emily Brown',
-    dateTime: 'Jan 26, 2024\n9:00 AM',
+    dateTime: 'Jan 26, 2024\n9 AM',
     status: 'Approved',
     notes: 'Routine dental cleaning'
   },
@@ -215,7 +215,7 @@ const appointments = [
     petName: 'Mittens',
     service: 'Surgery',
     veterinarian: 'Dr. Sarah Johnson',
-    dateTime: 'Jan 27, 2024\n11:00 AM',
+    dateTime: 'Jan 27, 2024\n11 AM',
     status: 'Due',
     notes: 'Spay surgery'
   },
@@ -225,7 +225,7 @@ const appointments = [
     petName: 'Buddy',
     service: 'Emergency Care',
     veterinarian: 'Dr. Emily Brown',
-    dateTime: 'Jan 23, 2024\n3:30 PM',
+    dateTime: 'Jan 23, 2024\n3 PM',
     status: 'Completed',
     notes: 'Emergency visit for injury'
   }

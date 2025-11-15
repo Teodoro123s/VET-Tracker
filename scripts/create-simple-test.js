@@ -28,20 +28,20 @@ async function createSimpleTest() {
     
     // Create fresh user
     const userRecord = await auth.createUser({
-      email: email,
-      password: password,
-      emailVerified: true,
+      email,
+      password,
+      emailVerified,
     });
 
     // Set custom claims
     await auth.setCustomUserClaims(userRecord.uid, {
-      tenantId: tenantId,
+      tenantId,
       role: 'clinic_admin'
     });
 
     // Create tenant document
     await firestore.collection('tenants').doc(tenantId).set({
-      email: email,
+      email,
       clinicName: 'Test Clinic',
       subscriptionPlan: '1 month',
       status: 'active',

@@ -9,6 +9,7 @@ import { sendCredentialsEmail } from '@/lib/services/emailjsService';
 import { registerUser } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
 // import { uploadImage } from '@/lib/services/storageService';
+
 import { addDoc, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/config/firebaseConfig';
 

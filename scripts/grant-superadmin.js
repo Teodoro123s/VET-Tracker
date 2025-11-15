@@ -21,13 +21,13 @@ async function grantSuperAdminAccess() {
     // Set superadmin custom claims
     await auth.setCustomUserClaims(userRecord.uid, {
       role: 'superadmin',
-      isSuperAdmin: true,
-      tenantId: null // Remove tenant restriction
+      isSuperAdmin,
+      tenantId // Remove tenant restriction
     });
 
     // Create superadmin document
     await firestore.collection('superadmins').doc(userRecord.uid).set({
-      email: email,
+      email,
       role: 'superadmin',
       grantedAt: admin.firestore.FieldValue.serverTimestamp(),
       status: 'active'

@@ -241,6 +241,8 @@ export default function SuperAdminDashboardScreen() {
                 </View>
               </View>
 
+
+
               {/* System Metrics */}
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>System Metrics</Text>
@@ -279,6 +281,8 @@ export default function SuperAdminDashboardScreen() {
                   <Ionicons name="chevron-forward" size={24} color="#800000" />
                 </TouchableOpacity>
               </View>
+
+
             </>
           )}
       </ScrollView>

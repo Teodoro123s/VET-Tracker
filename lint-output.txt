@@ -1,0 +1,8 @@
+npm warn "(Get-Content lint-output.txt | Measure-Object -Line).Lines" is being parsed as a normal command line argument.
+npm warn Unknown cli config "--Command". This will stop working in the next major version of npm.
+
+> myapp@1.0.0 lint
+> expo lint ; powershell (Get-Content lint-output.txt | Measure-Object -Line).Lines
+
+'expo' is not recognized as an internal or external command,
+operable program or batch file.

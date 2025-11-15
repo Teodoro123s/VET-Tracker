@@ -21,7 +21,7 @@ async function revertToClinicAdmin() {
     
     // Set clinic admin custom claims (remove superadmin)
     await auth.setCustomUserClaims(userRecord.uid, {
-      tenantId: tenantId,
+      tenantId,
       role: 'clinic_admin'
     });
 
@@ -34,19 +34,19 @@ async function revertToClinicAdmin() {
 
     // Ensure tenant document exists
     await firestore.collection('tenants').doc(tenantId).set({
-      email: email,
+      email,
       clinicName: 'Edmo Veterinary Clinic',
       subscriptionPlan: '1 month',
       status: 'active',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       adminUid: userRecord.uid
-    }, { merge: true });
+    }, { merge });
 
     console.log('✅ Account reverted to Clinic Admin successfully!');
     console.log('📧 Email:', email);
     console.log('🆔 UID:', userRecord.uid);
     console.log('🏥 Tenant ID:', tenantId);
-    console.log('🔑 Role: Clinic Admin (Client-side access)');
+    console.log('🔑 Role Admin (Client-side access)');
     
   } catch (error) {
     console.error('❌ Error reverting account:', error);

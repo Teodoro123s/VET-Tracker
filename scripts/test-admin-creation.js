@@ -19,20 +19,20 @@ async function createClinicAdmin() {
   try {
     // Create clinic admin user
     const userRecord = await auth.createUser({
-      email: clinicEmail,
-      password: clinicPassword,
-      emailVerified: true,
+      email,
+      password,
+      emailVerified,
     });
 
     // Set custom claims for tenant isolation
     await auth.setCustomUserClaims(userRecord.uid, {
-      tenantId: tenantId,
+      tenantId,
       role: 'clinic_admin'
     });
 
     // Create tenant document
     await firestore.collection('tenants').doc(tenantId).set({
-      email: clinicEmail,
+      email,
       clinicName: 'Sample Veterinary Clinic',
       subscriptionPlan: '1 month',
       status: 'active',

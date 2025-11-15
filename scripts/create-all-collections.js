@@ -14,7 +14,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const allData = {
-  subscribers: [
+  subscribers
     {
       email: 'admin@vetclinic.com',
       clinicName: 'Veterinary Clinic',
@@ -46,7 +46,7 @@ const allData = {
       password: 'PetCare2024!'
     }
   ],
-  veterinarians: [
+  veterinarians
     {
       name: 'Dr. Michael Smith',
       specialization: 'General Practice',
@@ -68,7 +68,7 @@ const allData = {
       createdAt: '2024-01-01T08:00:00Z'
     }
   ],
-  customers: [
+  customers
     {
       name: 'Smith, John',
       contact: '555-0123',
@@ -88,7 +88,7 @@ const allData = {
       createdAt: '2024-01-12T14:30:00Z'
     }
   ],
-  pets: [
+  pets
     {
       name: 'Max',
       type: 'Dog',
@@ -114,7 +114,7 @@ const allData = {
       createdAt: '2024-01-12T15:00:00Z'
     }
   ],
-  appointments: [
+  appointments
     {
       order: 'A001',
       customerName: 'Smith, John',
@@ -142,7 +142,7 @@ const allData = {
       createdAt: '2024-01-21T11:30:00Z'
     }
   ],
-  transactions: [
+  transactions
     {
       customerId: 'cust_1',
       customerName: 'Smith, John',
@@ -168,11 +168,11 @@ const allData = {
       createdAt: '2024-01-24T14:30:00Z'
     }
   ],
-  medicalForms: [
+  medicalForms
     {
       type: 'Dog Vaccination',
       category: 'Vaccination Records',
-      count: 23,
+      count,
       lastUpdated: 'Today',
       template: 'Standard vaccination form for dogs',
       clinicId: 'clinic_1',
@@ -181,14 +181,14 @@ const allData = {
     {
       type: 'Cat Health Check',
       category: 'Health Checkups',
-      count: 18,
+      count,
       lastUpdated: 'Yesterday',
       template: 'Routine health examination for cats',
       clinicId: 'clinic_1',
       createdAt: '2024-01-01T08:00:00Z'
     }
   ],
-  medicalCategories: [
+  medicalCategories
     {
       name: 'Vaccination Records',
       description: 'Pet vaccination history and schedules',

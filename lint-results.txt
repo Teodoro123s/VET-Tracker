@@ -1,0 +1,375 @@
+
+> myapp@1.0.0 lint
+> expo lint
+
+env: load .env
+env: export EMAILJS_PUBLIC_KEY EMAILJS_PRIVATE_KEY GROQ_API_KEY FIREBASE_API_KEY FIREBASE_AUTH_DOMAIN FIREBASE_PROJECT_ID RESEND_API_KEY PASSWORD_SALT
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\(tabs)\_layout.js
+   5:28  error    Parse errors in imported module '@/components/ui/IconSymbol': Unexpected token : (29:2)  import/namespace
+   6:8   warning  'TabBarBackground' is defined but never used                                             no-unused-vars
+  19:9   error    'tabBarBackground' is not defined                                                        no-undef
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\(tabs)\explore.js
+  2:28  error  Parse errors in imported module '@/components/ThemedText': Unexpected token TextProps (1:33)  import/namespace
+  3:28  error  Parse errors in imported module '@/components/ThemedView': Unexpected token ViewProps (1:21)  import/namespace
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\(tabs)\index.js
+  2:28  error  Parse errors in imported module '@/components/ThemedText': Unexpected token TextProps (1:33)  import/namespace
+  3:28  error  Parse errors in imported module '@/components/ThemedView': Unexpected token ViewProps (1:21)  import/namespace
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\+not-found.js
+  4:28  error  Parse errors in imported module '@/components/ThemedText': Unexpected token TextProps (1:33)  import/namespace
+  5:28  error  Parse errors in imported module '@/components/ThemedView': Unexpected token ViewProps (1:21)  import/namespace
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\_layout.js
+  6:10  error  Parsing error: Unexpected token from
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\client\admin-details.js
+   4:27  error    Parse errors in imported module '../../contexts/TenantContext': The keyword 'interface' is reserved (4:1)  import/namespace
+  10:11  warning  'user' is assigned a value but never used                                                                  no-unused-vars
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\client\appointments.js
+  11:50  error  Parsing error: Unexpected token ]
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\client\customer-detail.js
+  42:15  error  Parsing error: Unexpected token as
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\client\customers.js
+    2:99  warning  'Image' is defined but never used                                                                                 no-unused-vars
+    4:75  error    Parse errors in imported module '@/lib/services/firebaseService': Unexpected token : (6:38)                       import/namespace
+    5:27  error    Parse errors in imported module '@/contexts/TenantContext': Unexpected token : (11:44)                            import/namespace
+   15:10  warning  'showAddRecordModal' is assigned a value but never used                                                           no-unused-vars
+   40:10  warning  'categories' is assigned a value but never used                                                                   no-unused-vars
+   40:22  warning  'setCategories' is assigned a value but never used                                                                no-unused-vars
+   41:10  warning  'formTemplates' is assigned a value but never used                                                                no-unused-vars
+   41:25  warning  'setFormTemplates' is assigned a value but never used                                                             no-unused-vars
+   42:10  warning  'showCategoryDropdown' is assigned a value but never used                                                         no-unused-vars
+   42:32  warning  'setShowCategoryDropdown' is assigned a value but never used                                                      no-unused-vars
+   43:10  warning  'showFormTemplateDropdown' is assigned a value but never used                                                     no-unused-vars
+   43:36  warning  'setShowFormTemplateDropdown' is assigned a value but never used                                                  no-unused-vars
+   56:6   warning  React Hook useEffect has a missing dependency: 'loadCustomers'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   90:14  warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u                                  no-unused-vars
+  104:6   warning  React Hook useEffect has a missing dependency: 'addSlideAnim'. Either include it or remove the dependency array   react-hooks/exhaustive-deps
+  115:6   warning  React Hook useEffect has a missing dependency: 'editSlideAnim'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  132:9   warning  'handlePrevious' is assigned a value but never used                                                               no-unused-vars
+  138:9   warning  'handleNext' is assigned a value but never used                                                                   no-unused-vars
+  144:9   warning  'handlePageChange' is assigned a value but never used                                                             no-unused-vars
+  151:9   warning  'handleItemsPerPageChange' is assigned a value but never used                                                     no-unused-vars
+  187:14  warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u                                  no-unused-vars
+  207:9   warning  'handleAddRecord' is assigned a value but never used                                                              no-unused-vars
+  220:13  error    'addMedicalRecord' is not defined                                                                                 no-undef
+  229:14  warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u                                  no-unused-vars
+  234:9   warning  'renderFormModal' is assigned a value but never used                                                              no-unused-vars
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\client\dashboard.js
+    2:64  warning  'Platform' is defined but never used                                                                                                                 no-unused-vars
+    2:96  warning  'Alert' is defined but never used                                                                                                                    no-unused-vars
+    4:91  error    Parse errors in imported module '@/lib/services/firebaseService': Unexpected token : (6:38)                                                          import/namespace
+    5:27  error    Parse errors in imported module '@/contexts/TenantContext': The keyword 'interface' is reserved (4:1)                                                import/namespace
+    8:7   warning  'screenWidth' is assigned a value but never used                                                                                                     no-unused-vars
+   21:10  warning  'trends' is assigned a value but never used                                                                                                          no-unused-vars
+   28:10  warning  'refreshing' is assigned a value but never used                                                                                                      no-unused-vars
+   32:10  warning  'selectedMetric' is assigned a value but never used                                                                                                  no-unused-vars
+   32:26  warning  'setSelectedMetric' is assigned a value but never used                                                                                               no-unused-vars
+   55:6   warning  React Hook useEffect has missing dependencies: 'fadeAnim', 'loadDashboardData', and 'scaleAnim'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  129:6   warning  React Hook useEffect has a missing dependency: 'refreshDashboardData'. Either include it or remove the dependency array                              react-hooks/exhaustive-deps
+  134:11  warning  'lastMonth' is assigned a value but never used                                                                                                       no-unused-vars
+  399:56  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                      react/no-unescaped-entities
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\client\medical-record-detail.js
+  23:67  error  Parsing error: Unexpected token as
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\client\notifications.js
+   1:64  warning  'Image' is defined but never used                                                                no-unused-vars
+   2:20  warning  'useEffect' is defined but never used                                                            no-unused-vars
+   4:34  error    Parse errors in imported module '../../contexts/NotificationContext': Unexpected token ; (7:17)  import/namespace
+   5:10  warning  'getAppointments' is defined but never used                                                      no-unused-vars
+   5:27  warning  'getCustomers' is defined but never used                                                         no-unused-vars
+   5:41  warning  'getPets' is defined but never used                                                              no-unused-vars
+   5:50  warning  'getMedicalHistory' is defined but never used                                                    no-unused-vars
+   5:75  error    Parse errors in imported module '../../lib/services/firebaseService': Unexpected token : (6:38)  import/namespace
+   6:27  error    Parse errors in imported module '../../contexts/TenantContext': Unexpected token : (11:44)       import/namespace
+   9:26  warning  'markAsRead' is assigned a value but never used                                                  no-unused-vars
+  10:11  warning  'userEmail' is assigned a value but never used                                                   no-unused-vars
+  18:9   warning  'getTypeColor' is assigned a value but never used                                                no-unused-vars
+  60:9   warning  'handlePrevious' is assigned a value but never used                                              no-unused-vars
+  66:9   warning  'handleNext' is assigned a value but never used                                                  no-unused-vars
+  72:9   warning  'handlePageChange' is assigned a value but never used                                            no-unused-vars
+  79:9   warning  'handleItemsPerPageChange' is assigned a value but never used                                    no-unused-vars
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\client\pet-detail.js
+  40:15  error  Parsing error: Unexpected token as
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\client\records.js
+     2:63   warning  'Image' is defined but never used                                                                                        no-unused-vars
+     4:10   warning  'ThemedView' is defined but never used                                                                                   no-unused-vars
+     4:28   error    Parse errors in imported module '@/components/ThemedView': Unexpected token ; (4:13)                                     import/namespace
+     5:10   warning  'ThemedText' is defined but never used                                                                                   no-unused-vars
+     5:28   error    Parse errors in imported module '@/components/ThemedText': Unexpected token ; (4:13)                                     import/namespace
+     6:156  warning  'updateMedicalForm' is defined but never used                                                                            no-unused-vars
+     6:251  error    Parse errors in imported module '../../lib/services/firebaseService': Unexpected token : (6:38)                          import/namespace
+     7:27   error    Parse errors in imported module '@/contexts/TenantContext': Unexpected token : (11:44)                                   import/namespace
+    12:9    warning  'records' is assigned a value but never used                                                                             no-unused-vars
+    16:9    warning  'medicalForms' is assigned a value but never used                                                                        no-unused-vars
+   109:10   warning  'selectedCategory' is assigned a value but never used                                                                    no-unused-vars
+   109:28   warning  'setSelectedCategory' is assigned a value but never used                                                                 no-unused-vars
+   115:10   warning  'detailSearchTerm' is assigned a value but never used                                                                    no-unused-vars
+   115:28   warning  'setDetailSearchTerm' is assigned a value but never used                                                                 no-unused-vars
+   133:9    warning  'dateFormatOptions' is assigned a value but never used                                                                   no-unused-vars
+   156:6    warning  React Hook useEffect has a missing dependency: 'slideAnim'. Either include it or remove the dependency array             react-hooks/exhaustive-deps
+   167:6    warning  React Hook useEffect has a missing dependency: 'editSlideAnim'. Either include it or remove the dependency array         react-hooks/exhaustive-deps
+   178:6    warning  React Hook useEffect has a missing dependency: 'addCategorySlideAnim'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+   189:6    warning  React Hook useEffect has a missing dependency: 'addFormSlideAnim'. Either include it or remove the dependency array      react-hooks/exhaustive-deps
+   200:6    warning  React Hook useEffect has a missing dependency: 'addRecordSlideAnim'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+   202:9    warning  'categoryForms' is assigned a value but never used                                                                       no-unused-vars
+   220:9    warning  'handlePrevious' is assigned a value but never used                                                                      no-unused-vars
+   226:9    warning  'handleNext' is assigned a value but never used                                                                          no-unused-vars
+   232:9    warning  'handlePageChange' is assigned a value but never used                                                                    no-unused-vars
+   239:9    warning  'handleItemsPerPageChange' is assigned a value but never used                                                            no-unused-vars
+   287:9    warning  'handleFormsPrevious' is assigned a value but never used                                                                 no-unused-vars
+   293:9    warning  'handleFormsNext' is assigned a value but never used                                                                     no-unused-vars
+   299:9    warning  'handleFormsPageChange' is assigned a value but never used                                                               no-unused-vars
+   306:9    warning  'handleFormsItemsPerPageChange' is assigned a value but never used                                                       no-unused-vars
+  2280:3    error    Duplicate key 'modalInput'                                                                                               no-dupe-keys
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\client\settings.js
+  1:16  warning  'Text' is defined but never used                                                              no-unused-vars
+  2:28  error    Parse errors in imported module '@/components/ThemedView': Unexpected token ViewProps (1:21)  import/namespace
+  3:28  error    Parse errors in imported module '@/components/ThemedText': Unexpected token TextProps (1:33)  import/namespace
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\client\species-breeds.js
+    3:99  error    Parse errors in imported module '@/lib/services/firebaseService': Unexpected token : (6:38)                  import/namespace
+    4:27  error    Parse errors in imported module '@/contexts/TenantContext': The keyword 'interface' is reserved (4:1)        import/namespace
+   28:6   warning  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  106:14  warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u                             no-unused-vars
+  144:22  warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u                             no-unused-vars
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\client\veterinarians.js
+     5:8   warning  'SearchableDropdown' is defined but never used                                                                        no-unused-vars
+     5:32  error    Parse errors in imported module '@/components/SearchableDropdown': Unexpected token : (11:2)                          import/namespace
+     5:32  warning  Parse errors in imported module '@/components/SearchableDropdown': Unexpected token : (11:2)                          import/no-named-as-default
+     5:32  warning  Parse errors in imported module '@/components/SearchableDropdown': Unexpected token : (11:2)                          import/no-named-as-default-member
+     6:91  error    Parse errors in imported module '@/lib/services/firebaseService': Unexpected token : (6:38)                           import/namespace
+     6:91  warning  'c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\lib\services\firebaseService.js' imported multiple times           import/no-duplicates
+     9:30  error    Parse errors in imported module '@/lib/services/firebaseService': Unexpected token : (6:38)                           import/namespace
+     9:30  warning  'c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\lib\services\firebaseService.js' imported multiple times           import/no-duplicates
+    10:27  error    Parse errors in imported module '@/contexts/TenantContext': Unexpected token : (11:44)                                import/namespace
+    19:10  warning  'loading' is assigned a value but never used                                                                          no-unused-vars
+    23:6   warning  React Hook useEffect has a missing dependency: 'loadVeterinarians'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+    68:10  warning  'showSpecialtyDropdown' is assigned a value but never used                                                            no-unused-vars
+    68:33  warning  'setShowSpecialtyDropdown' is assigned a value but never used                                                         no-unused-vars
+    70:25  warning  'setSelectedAdmin' is assigned a value but never used                                                                 no-unused-vars
+    76:9   warning  'specializations' is assigned a value but never used                                                                  no-unused-vars
+    82:9   warning  'adminDetails' is assigned a value but never used                                                                     no-unused-vars
+   102:9   warning  'handlePrevious' is assigned a value but never used                                                                   no-unused-vars
+   108:9   warning  'handleNext' is assigned a value but never used                                                                       no-unused-vars
+   114:9   warning  'handlePageChange' is assigned a value but never used                                                                 no-unused-vars
+   121:9   warning  'handleItemsPerPageChange' is assigned a value but never used                                                         no-unused-vars
+   138:6   warning  React Hook useEffect has a missing dependency: 'editSlideAnim'. Either include it or remove the dependency array      react-hooks/exhaustive-deps
+   149:6   warning  React Hook useEffect has a missing dependency: 'addSlideAnim'. Either include it or remove the dependency array       react-hooks/exhaustive-deps
+   658:38  warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u                                      no-unused-vars
+  1652:3   error    Duplicate key 'passwordRow'                                                                                           no-dupe-keys
+  1657:3   error    Duplicate key 'passwordInputContainer'                                                                                no-dupe-keys
+  1660:3   error    Duplicate key 'generatePasswordButton'                                                                                no-dupe-keys
+  1667:3   error    Duplicate key 'generatePasswordText'                                                                                  no-dupe-keys
+  1684:3   error    Duplicate key 'generatePasswordButton'                                                                                no-dupe-keys
+  1693:3   error    Duplicate key 'generatePasswordText'                                                                                  no-dupe-keys
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\index.js
+  45:6  warning  React Hook useEffect has a missing dependency: 'router'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\server\dashboard.js
+  8:566  error  Parsing error: Missing catch or finally clause
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\server\financial-analytics.js
+  7:2230  error  Parsing error: Unexpected token :
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\server\subscription-periods.js
+  1:75  warning  'Image' is defined but never used    no-unused-vars
+  5:35  warning  'getDocs' is defined but never used  no-unused-vars
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\server\subscriptions.js
+  96:37  error  Parsing error: Unexpected token :
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\server\superadmin-dashboard.js
+    7:74  error    Parse errors in imported module '@/lib/services/firebaseService': Unexpected token : (6:38)                       import/namespace
+   26:24  warning  'setChartFilters' is assigned a value but never used                                                              no-unused-vars
+   44:6   warning  React Hook useEffect has a missing dependency: 'loadChartData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  114:9   warning  'getChartOptions' is assigned a value but never used                                                              no-unused-vars
+  181:9   warning  'getChartData' is assigned a value but never used                                                                 no-unused-vars
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\server\superadmin.js
+  696:23  error  Parsing error: Unexpected token :
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\server\transaction-history.js
+  28:11  error  Parsing error: Unexpected token ]
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\shared\logout.js
+  1:10  warning  'View' is defined but never used                                                              no-unused-vars
+  2:28  error    Parse errors in imported module '@/components/ThemedView': Unexpected token ViewProps (1:21)  import/namespace
+  3:28  error    Parse errors in imported module '@/components/ThemedText': Unexpected token TextProps (1:33)  import/namespace
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\veterinarian\appointment-details.js
+  33:67  error  Parsing error: Unexpected token as
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\veterinarian\mobile-login.js
+   1:63  warning  'Alert' is defined but never used                                                 no-unused-vars
+   1:70  warning  'Image' is defined but never used                                                 no-unused-vars
+  47:14  warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u  no-unused-vars
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\veterinarian\vet-appointments.js
+    1:64  warning  'TextInput' is defined but never used                                                                                  no-unused-vars
+    1:75  warning  'Image' is defined but never used                                                                                      no-unused-vars
+    5:71  error    Parse errors in imported module '../../lib/services/firebaseService': Unexpected token : (6:38)                        import/namespace
+   16:22  warning  'setSearchTerm' is assigned a value but never used                                                                     no-unused-vars
+   21:6   warning  React Hook useEffect has a missing dependency: 'loadAppointments'. Either include it or remove the dependency array    react-hooks/exhaustive-deps
+   25:6   warning  React Hook useEffect has a missing dependency: 'filterAppointments'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  183:9   warning  'updateAppointmentStatus' is assigned a value but never used                                                           no-unused-vars
+  188:14  warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u                                       no-unused-vars
+  193:9   warning  'handleDeleteAppointment' is assigned a value but never used                                                           no-unused-vars
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\veterinarian\vet-calendar.js
+    1:64  warning  'Modal' is defined but never used                                                                                     no-unused-vars
+    5:71  error    Parse errors in imported module '@/lib/services/firebaseService': Unexpected token : (6:38)                           import/namespace
+   18:10  warning  'translateX' is assigned a value but never used                                                                       no-unused-vars
+   22:6   warning  React Hook useEffect has a missing dependency: 'fetchAppointments'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  247:23  warning  'selectedMonthName' is assigned a value but never used                                                                no-unused-vars
+  272:25  warning  'currentDay' is assigned a value but never used                                                                       no-unused-vars
+  273:25  warning  'currentMonth' is assigned a value but never used                                                                     no-unused-vars
+  274:25  warning  'currentYear' is assigned a value but never used                                                                      no-unused-vars
+  294:30  warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u                                      no-unused-vars
+  394:23  warning  'selectedMonthName' is assigned a value but never used                                                                no-unused-vars
+  414:28  warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u                                      no-unused-vars
+  427:23  warning  'handleMarkDone' is assigned a value but never used                                                                   no-unused-vars
+  431:28  warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u                                      no-unused-vars
+  436:23  warning  'handleDeleteAppointment' is assigned a value but never used                                                          no-unused-vars
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\veterinarian\vet-customers.js
+    11:28   error    Parse errors in imported module '@/components/ThemedView': Unexpected token ; (4:13)                                                                                                                                                     import/namespace
+    12:28   error    Parse errors in imported module '@/components/ThemedText': Unexpected token ; (4:13)                                                                                                                                                     import/namespace
+    13:234  error    Parse errors in imported module '@/lib/services/firebaseService': Unexpected token : (6:38)                                                                                                                                              import/namespace
+    16:29   error    Parse errors in imported module '../_layout': Unexpected token from (6:10)                                                                                                                                                               import/namespace
+    17:10   warning  'collection' is defined but never used                                                                                                                                                                                                   no-unused-vars
+    17:22   warning  'query' is defined but never used                                                                                                                                                                                                        no-unused-vars
+    17:29   warning  'where' is defined but never used                                                                                                                                                                                                        no-unused-vars
+    17:36   warning  'getDocs' is defined but never used                                                                                                                                                                                                      no-unused-vars
+    18:10   warning  'db' is defined but never used                                                                                                                                                                                                           no-unused-vars
+    43:10   warning  'detailSearchTerm' is assigned a value but never used                                                                                                                                                                                    no-unused-vars
+    43:28   warning  'setDetailSearchTerm' is assigned a value but never used                                                                                                                                                                                 no-unused-vars
+    88:6    warning  React Hook useEffect has missing dependencies: 'fetchTenantEmail', 'setSelectedCustomer', 'setSelectedMedicalRecord', 'setSelectedPet', 'setShowMedicalView', and 'setShowPetsView'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+    94:6    warning  React Hook useEffect has a missing dependency: 'loadCustomers'. Either include it or remove the dependency array                                                                                                                         react-hooks/exhaustive-deps
+   105:6    warning  React Hook useEffect has a missing dependency: 'loadCustomerPets'. Either include it or remove the dependency array                                                                                                                      react-hooks/exhaustive-deps
+   133:6    warning  React Hook useEffect has a missing dependency: 'loadMedicalRecords'. Either include it or remove the dependency array                                                                                                                    react-hooks/exhaustive-deps
+   139:6    warning  React Hook useEffect has a missing dependency: 'loadFormFields'. Either include it or remove the dependency array                                                                                                                        react-hooks/exhaustive-deps
+   342:9    warning  'handleAddRecord' is assigned a value but never used                                                                                                                                                                                     no-unused-vars
+   367:14   warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u                                                                                                                                                         no-unused-vars
+  1807:3    error    Duplicate key 'dropdownScroll'                                                                                                                                                                                                           no-dupe-keys
+  1827:3    error    Duplicate key 'disabledText'                                                                                                                                                                                                             no-dupe-keys
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\veterinarian\vet-medical-record-detail.js
+  23:67  error  Parsing error: Unexpected token as
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\veterinarian\vet-medical-record.js
+   4:74  error    Parse errors in imported module '../../lib/services/firebaseService': Unexpected token : (6:38)                         import/namespace
+   5:27  error    Parse errors in imported module '../../contexts/TenantContext': The keyword 'interface' is reserved (4:1)               import/namespace
+  33:6   warning  React Hook useEffect has a missing dependency: 'loadAppointmentData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\veterinarian\vet-mobile.js
+    2:71  warning  'Platform' is defined but never used                                                                         no-unused-vars
+    3:28  error    Parse errors in imported module '@/components/ThemedView': Unexpected token ; (4:13)                         import/namespace
+    4:28  error    Parse errors in imported module '@/components/ThemedText': Unexpected token ; (4:13)                         import/namespace
+    8:29  error    Parse errors in imported module '@/lib/services/firebaseService': Unexpected token : (6:38)                  import/namespace
+   55:6   warning  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  351:56  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                              react/no-unescaped-entities
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\veterinarian\vet-notifications.js
+   4:33  error    Parse errors in imported module '../../lib/services/firebaseService': Unexpected token : (6:38)                       import/namespace
+  14:6   warning  React Hook useEffect has a missing dependency: 'loadNotifications'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\app\veterinarian\vet-profile.js
+   2:71  warning  'Alert' is defined but never used                                                                               no-unused-vars
+   4:27  error    Parse errors in imported module '@/contexts/TenantContext': Unexpected token : (11:44)                          import/namespace
+   5:34  warning  'generateOwnPassword' is defined but never used                                                                 no-unused-vars
+   5:61  error    Parse errors in imported module '@/lib/services/firebaseService': Unexpected token : (6:38)                     import/namespace
+  19:6   warning  React Hook useEffect has a missing dependency: 'loadVetData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\ClientHeader.js
+  6:47  error  Parsing error: Unexpected token :
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\Collapsible.js
+  10:48  error  Parsing error: Unexpected token :
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\DashboardChart.js
+  14:2  error  Parsing error: Unexpected token :
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\DrawerLayout.js
+  3:82  error  Parsing error: Unexpected token :
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\EnhancedAlert.js
+  4:11  error  Parsing error: Unexpected token static
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\ErrorBoundary.js
+  3:51  error  Parsing error: Unexpected token <
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\ExternalLink.js
+  3:14  error  Parsing error: Unexpected token 'react'
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\ForgotPasswordModal.js
+  5:75  error  Parsing error: Unexpected token :
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\LoadingScreen.js
+  3:28  error  Parse errors in imported module './ThemedText': Unexpected token TextProps (1:33)  import/namespace
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\LoginMobile.js
+   4:27  error    Parse errors in imported module '../lib/services/firebaseService': Unexpected token : (6:38)  import/namespace
+  32:14  warning  'error' is defined but never used. Allowed unused caught errors must match /^_/u              no-unused-vars
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\LoginWeb.js
+   2:63  warning  'Alert' is defined but never used                                                                   no-unused-vars
+   3:10  warning  'LinearGradient' is defined but never used                                                          no-unused-vars
+   3:32  error    Unable to resolve path to module 'expo-linear-gradient'                                             import/no-unresolved
+  10:33  error    Parse errors in imported module './ForgotPasswordModal': The keyword 'interface' is reserved (6:1)  import/namespace
+  10:33  warning  Parse errors in imported module './ForgotPasswordModal': The keyword 'interface' is reserved (6:1)  import/no-named-as-default
+  10:33  warning  Parse errors in imported module './ForgotPasswordModal': The keyword 'interface' is reserved (6:1)  import/no-named-as-default-member
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\NotificationBell.js
+  5:65  error  Parsing error: Unexpected token :
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\SearchableDropdown.js
+  11:2  error  Parsing error: Unexpected token :
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\Sidebar.js
+  2:59  warning  'Dimensions' is defined but never used                                                                 no-unused-vars
+  7:34  error    Parse errors in imported module '@/contexts/NotificationContext': Unexpected token Notification (5:6)  import/namespace
+  8:27  error    Parse errors in imported module '@/contexts/TenantContext': The keyword 'interface' is reserved (4:1)  import/namespace
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\SuperAdminSidebar.js
+  4:31  warning  'MaroonThemeProtocol' is defined but never used  no-unused-vars
+  8:10  warning  'ownerEmail' is assigned a value but never used  no-unused-vars
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\ThemedText.js
+  4:13  error  Parsing error: Unexpected token ;
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\ThemedView.js
+  4:13  error  Parsing error: Unexpected token ;
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\VetBottomMenu.js
+  24:49  error  Parsing error: Unexpected token as
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\VetMobileHeader.js
+  9:108  error  Parsing error: Unexpected token :
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\ui\IconSymbol.ios.js
+  1:22  error  Parsing error: Unexpected token SymbolWeight
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\ui\IconSymbol.js
+  29:2  error  Parsing error: Unexpected token :
+
+c:\Users\11th gen i5\OneDrive\Desktop\VET-Tracker\components\ui\TabBarBackground.ios.js
+  1:39  error  Unable to resolve path to module '@react-navigation/bottom-tabs'  import/no-unresolved
+  2:26  error  Unable to resolve path to module 'expo-blur'                      import/no-unresolved
+
+✖ 249 problems (93 errors, 156 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+

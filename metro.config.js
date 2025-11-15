@@ -30,7 +30,7 @@ config.transformer = {
 // Asset extensions
 config.resolver.assetExts = [...config.resolver.assetExts, 'svg'];
 
-// Source extensions
-config.resolver.sourceExts = [...config.resolver.sourceExts, 'ts', 'tsx', 'js', 'jsx'];
+// Source extensions - removed .ts and .tsx since we're pure JavaScript now
+config.resolver.sourceExts = [...config.resolver.sourceExts, 'js', 'jsx'];
 
 module.exports = config;

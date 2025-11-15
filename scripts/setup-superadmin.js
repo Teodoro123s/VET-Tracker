@@ -16,20 +16,20 @@ async function createSuperAdmin() {
   try {
     // Create superadmin user
     const userRecord = await auth.createUser({
-      email: superAdminEmail,
-      password: superAdminPassword,
-      emailVerified: true,
+      email,
+      password,
+      emailVerified,
     });
 
     // Set custom claims
     await auth.setCustomUserClaims(userRecord.uid, {
       role: 'superadmin',
-      isSuperAdmin: true
+      isSuperAdmin
     });
 
     // Create superadmin document
     await firestore.collection('superadmins').doc(userRecord.uid).set({
-      email: superAdminEmail,
+      email,
       role: 'superadmin',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       status: 'active'

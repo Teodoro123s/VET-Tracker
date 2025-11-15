@@ -12,7 +12,7 @@ if (!fs.existsSync(serviceAccountPath)) {
   console.log('2. Click "Generate new private key"');
   console.log('3. Save the file as "serviceAccountKey.json" in the api/ folder');
   console.log('4. Run this script again');
-  console.log('\n💡 Alternative: Use Firebase Console to reset password manually:');
+  console.log('\n💡 Alternative Firebase Console to reset password manually:');
   console.log('1. Go to Firebase Console > Authentication > Users');
   console.log('2. Find user: edzhelteodoro@gmail.com');
   console.log('3. Click the user and select "Reset Password"');
@@ -38,8 +38,8 @@ async function resetPassword() {
     
     // Update the password
     await admin.auth().updateUser(userId, {
-      password: newPassword,
-      emailVerified: true // Ensure email is verified
+      password,
+      emailVerified // Ensure email is verified
     });
     
     console.log('✅ Password reset successfully!');
