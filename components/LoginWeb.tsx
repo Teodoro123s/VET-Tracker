@@ -68,15 +68,29 @@ export default function LoginWeb() {
       const userDoc = querySnapshot.docs[0];
       const userData = userDoc.data();
       
-      // Check password
-      if (userData.password !== password) {
-        setErrorMessage('Incorrect password. Please try again.');
+      // Check password using stored hash and salt
+      try {
+        const { verifyPassword } = await import('../lib/utils/passwordUtils');
+        
+        if (!verifyPassword(password, userData.passwordHash, userData.salt)) {
+          setErrorMessage('Incorrect password. Please try again.');
+          return;
+        }
+      } catch (importError) {
+        console.error('Password verification error:', importError);
+        setErrorMessage('Login system error. Please try again.');
         return;
       }
       
       // Check account status
       if (userData.status === 'inactive' || userData.status === 'suspended') {
         setErrorMessage('This account has been disabled. Contact support.');
+        return;
+      }
+      
+      // Role validation: Only allow admin and superadmin roles for admin login
+      if (userData.role !== 'admin' && userData.role !== 'superadmin') {
+        setErrorMessage('Access denied. This login is for administrators only. Please use the mobile app.');
         return;
       }
       
@@ -93,18 +107,11 @@ export default function LoginWeb() {
       // Update auth context immediately
       await checkAuthState();
       
-      // Allow all roles on web, but route appropriately
-      // Veterinarians can use both web and mobile
-      
       // Route based on role
-      if (username.includes('superadmin') || userData.role === 'superadmin') {
+      if (userData.role === 'superadmin') {
         router.replace('/server/superadmin');
       } else if (userData.role === 'admin') {
         router.replace('/client/dashboard');
-      } else if (userData.role === 'veterinarian' || userData.role === 'staff') {
-        router.replace('/client/dashboard'); // Vets can use web interface
-      } else {
-        setErrorMessage('Invalid account type for web access.');
       }
       
     } catch (error) {

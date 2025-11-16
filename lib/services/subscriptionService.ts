@@ -58,38 +58,24 @@ export async function addSubscriptionPeriod(
     const endDate = new Date(startDate);
     endDate.setDate(startDate.getDate() + periodDays);
     
-    // Create subscription period
-    const periodRef = doc(collection(db, 'subscriptionPeriods'));
-    const subscriptionPeriod: SubscriptionPeriod = {
-      id: periodRef.id,
+    // Create transaction record
+    const transactionRef = doc(collection(db, 'transactions'));
+    
+    await setDoc(transactionRef, {
       tenantId,
       email,
       clinicName,
       period,
-      amount,
-      startDate,
-      endDate,
-      status,
-      createdAt: now,
-      activatedAt: status === 'active' ? now : undefined
-    };
-    
-    await setDoc(periodRef, {
-      ...subscriptionPeriod,
-      startDate: Timestamp.fromDate(new Date(startDate.getTime())),
-      endDate: Timestamp.fromDate(new Date(endDate.getTime())),
-      createdAt: Timestamp.fromDate(new Date(now.getTime())),
-      activatedAt: status === 'active' ? Timestamp.fromDate(new Date(now.getTime())) : null
+      price: amount,
+      createdAt: Timestamp.fromDate(now)
     });
     
 
     
     return {
       success: true,
-      message: status === 'active' 
-        ? `Subscription activated immediately for ${period}`
-        : `Subscription queued. Will start after current period expires on ${startDate.toLocaleDateString()}`,
-      periodId: periodRef.id
+      message: `Subscription period ${period} added successfully`,
+      periodId: transactionRef.id
     };
     
   } catch (error) {

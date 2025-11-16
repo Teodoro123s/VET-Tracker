@@ -19,17 +19,6 @@ export default function IndexScreen() {
 
   useEffect(() => {
     if (!loading && isReady) {
-      // Security: Clear browser history on auth state change (web only)
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history) {
-        window.history.pushState(null, '', window.location.href);
-        window.onpopstate = () => {
-          if (!user) {
-            // Prevent back navigation when logged out
-            window.history.pushState(null, '', window.location.href);
-          }
-        };
-      }
-      
       if (user) {
         // User is logged in, redirect based on role
         if (user.email?.includes('superadmin') || user.role === 'superadmin') {
@@ -37,26 +26,21 @@ export default function IndexScreen() {
         } else if (user.role === 'admin') {
           router.replace('/client/dashboard');
         } else if (user.role === 'veterinarian' || user.role === 'staff') {
-          // Vets can use both interfaces, default to mobile on mobile platform
-          if (Platform.OS === 'web') {
-            router.replace('/client/dashboard');
-          } else {
-            router.replace('/veterinarian/vet-mobile');
-          }
+          router.replace('/veterinarian/vet-mobile');
         } else {
-          // Unknown role, redirect to login
+          // Unknown role, redirect to appropriate login
           if (Platform.OS === 'web') {
             router.replace('/auth/admin-login');
           } else {
-            router.replace('/veterinarian/mobile-login');
+            router.replace('/auth/mobile-login');
           }
         }
       } else {
-        // No user logged in - Platform-specific default login
+        // No user logged in - route to login screen
         if (Platform.OS === 'web') {
-          router.replace('/auth/admin-login');  // Web -> Admin Login
+          router.replace('/auth/admin-login');
         } else {
-          router.replace('/veterinarian/mobile-login');  // Mobile -> Vet Login
+          router.replace('/auth/mobile-login');
         }
       }
     }

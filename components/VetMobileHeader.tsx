@@ -122,9 +122,6 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
               </View>
             )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.settingsButton}>
-            <Ionicons name="ellipsis-vertical" size={24} color={Colors.primary} />
-          </TouchableOpacity>
         </View>
       )}
 

@@ -15,8 +15,7 @@ export default function VetBottomMenu() {
     { name: 'Home', icon: 'home-outline', route: '/veterinarian/vet-mobile' },
     { name: 'Appointments', icon: 'calendar-outline', route: '/veterinarian/vet-appointments' },
     { name: 'Calendar', icon: 'calendar-outline', route: '/veterinarian/vet-calendar' },
-    { name: 'Customers', icon: 'people-outline', route: '/veterinarian/vet-customers' },
-    { name: 'Logout', icon: 'log-out-outline', route: null }
+    { name: 'Customers', icon: 'people-outline', route: '/veterinarian/vet-customers' }
   ];
 
   return (
@@ -25,7 +24,7 @@ export default function VetBottomMenu() {
         <TouchableOpacity
           key={item.name}
           style={styles.menuItem}
-          onPress={() => item.name === 'Logout' ? setShowLogoutModal(true) : router.push(item.route as any)}
+          onPress={() => router.push(item.route as any)}
         >
           <Ionicons 
             name={item.icon as any} 
@@ -37,34 +36,7 @@ export default function VetBottomMenu() {
           </Text>
         </TouchableOpacity>
       ))}
-      
-      {/* Logout Modal */}
-      <Modal visible={showLogoutModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Logout</Text>
-            <Text style={styles.modalText}>Are you sure you want to logout?</Text>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => setShowLogoutModal(false)}
-              >
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.logoutButton}
-                onPress={async () => {
-                  setShowLogoutModal(false);
-                  await logout();
-                  router.replace('/veterinarian/mobile-login');
-                }}
-              >
-                <Text style={styles.logoutText}>Logout</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+
     </View>
   );
 }
@@ -75,9 +47,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderTopWidth: 1,
     borderTopColor: Colors.border.light,
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingHorizontal: 4,
-    paddingBottom: 8,
+    paddingBottom: 20,
   },
   menuItem: {
     flex: 1,
@@ -92,53 +64,5 @@ const styles = StyleSheet.create({
   activeText: {
     color: Colors.primary,
     fontWeight: '600',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
-    width: '80%',
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  modalText: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  cancelButton: {
-    backgroundColor: '#f0f0f0',
-    padding: 10,
-    borderRadius: 8,
-    flex: 1,
-    alignItems: 'center',
-  },
-  cancelText: {
-    color: '#333',
-  },
-  logoutButton: {
-    backgroundColor: '#dc3545',
-    padding: 10,
-    borderRadius: 8,
-    flex: 1,
-    alignItems: 'center',
-  },
-  logoutText: {
-    color: 'white',
-    fontWeight: 'bold',
   },
 });

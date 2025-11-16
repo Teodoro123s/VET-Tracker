@@ -30,11 +30,18 @@ export default function LogoutScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ThemedText type="title">Logout</ThemedText>
-      <ThemedText>Are you sure you want to logout?</ThemedText>
-      <TouchableOpacity style={styles.button} onPress={handleLogout}>
-        <Text style={styles.buttonText}>Confirm Logout</Text>
-      </TouchableOpacity>
+      <View style={styles.card}>
+        <ThemedText type="title" style={styles.title}>Logout</ThemedText>
+        <ThemedText style={styles.message}>Are you sure you want to logout?</ThemedText>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => router.back()}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </ThemedView>
   );
 }
@@ -42,17 +49,57 @@ export default function LogoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
-  button: {
-    backgroundColor: '#ff4444',
-    padding: 15,
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 24,
+    width: '100%',
+    maxWidth: 320,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  title: {
+    textAlign: 'center',
+    marginBottom: 16,
+    color: '#333',
+  },
+  message: {
+    textAlign: 'center',
+    marginBottom: 24,
+    color: '#666',
+    fontSize: 16,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    padding: 12,
     borderRadius: 8,
-    marginTop: 20,
     alignItems: 'center',
   },
-  buttonText: {
+  logoutButton: {
+    flex: 1,
+    backgroundColor: '#ff4444',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#333',
+    fontWeight: '600',
+  },
+  logoutButtonText: {
     color: 'white',
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
 });

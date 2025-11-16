@@ -81,9 +81,6 @@ export default function SubscriptionPeriodsScreen() {
           <View style={styles.tableContainer}>
             <View style={styles.tableTopRow}>
               <View style={styles.headerRow}>
-                <TouchableOpacity style={styles.returnButton} onPress={() => router.back()}>
-                  <Ionicons name="arrow-back" size={16} color="#ffffff" />
-                </TouchableOpacity>
                 <Text style={styles.detailTitle}>Subscription Period Management</Text>
               </View>
               <TouchableOpacity style={styles.addPeriodButton} onPress={() => {

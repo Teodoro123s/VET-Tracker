@@ -18,6 +18,7 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuthState = async () => {
     try {
+      // Check for stored user data
       const userData = await AsyncStorage.getItem('currentUser');
       if (userData) {
         setUser(JSON.parse(userData));
@@ -150,20 +151,24 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       
       // Clear browser history and cache (web only)
-      if (typeof window !== 'undefined') {
-        // Clear browser cache
-        if ('caches' in window) {
-          caches.keys().then(names => {
-            names.forEach(name => caches.delete(name));
-          });
+      if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
+        try {
+          // Clear browser cache
+          if ('caches' in window) {
+            caches.keys().then(names => {
+              names.forEach(name => caches.delete(name));
+            });
+          }
+          
+          // Replace current history entry to prevent back navigation
+          window.history.replaceState(null, '', '/auth/admin-login');
+          
+          // Clear session storage
+          sessionStorage.clear();
+          localStorage.clear();
+        } catch (e) {
+          // Ignore storage errors
         }
-        
-        // Replace current history entry to prevent back navigation
-        window.history.replaceState(null, '', '/auth/admin-login');
-        
-        // Clear session storage
-        sessionStorage.clear();
-        localStorage.clear();
       }
     } catch (error) {
       console.error('Error during logout:', error);

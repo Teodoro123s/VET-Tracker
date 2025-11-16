@@ -246,6 +246,10 @@ export default function RecordsScreen() {
   
   const handleAddRecord = async () => {
     if (newCategory.category.trim()) {
+      if (!userEmail) {
+        alert('User email is required. Please log in again.');
+        return;
+      }
       try {
         const categoryData = {
           name: newCategory.category,
@@ -716,19 +720,19 @@ export default function RecordsScreen() {
       {/* Add Field Drawer */}
       {showAddFieldDrawer && (
         <Modal visible={true} transparent animationType="none">
-          <TouchableOpacity 
-            style={styles.drawerOverlay}
-            activeOpacity={1}
-            onPress={() => {
-              Animated.timing(slideAnim, {
-                toValue: -350,
-                duration: 200,
-                useNativeDriver: false,
-              }).start(() => setShowAddFieldDrawer(false));
-            }}
-          >
+          <View style={styles.drawerOverlay}>
+            <TouchableOpacity 
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => {
+                Animated.timing(slideAnim, {
+                  toValue: -350,
+                  duration: 200,
+                  useNativeDriver: false,
+                }).start(() => setShowAddFieldDrawer(false));
+              }}
+            />
             <Animated.View style={[styles.drawer, { left: slideAnim }]}>
-              <TouchableOpacity activeOpacity={1} style={{ flex: 1 }}>
               <View style={styles.drawerHeader}>
                 <Text style={styles.drawerTitle}>{editingFieldId ? 'Edit Field' : 'Add New Field'}</Text>
                 <TouchableOpacity style={styles.drawerCloseButton} onPress={() => {
@@ -969,9 +973,8 @@ export default function RecordsScreen() {
                   <Text style={styles.drawerSaveText}>{editingFieldId ? 'Update Field' : 'Add Field'}</Text>
                 </TouchableOpacity>
               </View>
-              </TouchableOpacity>
             </Animated.View>
-          </TouchableOpacity>
+          </View>
         </Modal>
       )}
       
@@ -1110,6 +1113,10 @@ export default function RecordsScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.drawerSaveButton} onPress={async () => {
                   if (newFormTemplate.formName.trim()) {
+                    if (!userEmail) {
+                      alert('User email is required. Please log in again.');
+                      return;
+                    }
                     try {
                       const formData = {
                         formName: newFormTemplate.formName,

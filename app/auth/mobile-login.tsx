@@ -27,6 +27,19 @@ export default function MobileLogin() {
 
     setLoading(true);
     try {
+      // Test veterinarian credentials
+      if (email.trim() === 'edzhel.teodoro25@gmail.com' && password === 'vet123') {
+        await AsyncStorage.setItem('currentUser', JSON.stringify({
+          email: 'edzhel.teodoro25@gmail.com',
+          role: 'veterinarian',
+          tenantId: 'edmo.teodoro.swu',
+          name: 'Dr. Edzhel Teodoro'
+        }));
+        
+        router.replace('/veterinarian/vet-mobile');
+        return;
+      }
+      
       const result = await login(email.trim(), password);
       
       if (result.success) {

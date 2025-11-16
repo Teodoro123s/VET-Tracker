@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingHorizontal: Spacing.xlarge,
     borderRightWidth: 1,
-    backgroundColor: Colors.primary,
+    backgroundColor: '#800000',
     borderRightColor: Colors.border,
   },
   'sidebar-logo-section': {

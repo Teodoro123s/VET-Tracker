@@ -64,7 +64,7 @@ function AppContent() {
   const isClientRoute = pathname.startsWith('/client/');
   
   // Routes that should have no sidebar
-  const noSidebarRoutes = pathname === '/server/superadmin' || pathname === '/server/subscriptions' || pathname === '/server/subscription-periods' || pathname === '/server/transaction-history' || pathname === '/server/superadmin-dashboard' || pathname === '/server/financial-analytics' || pathname === '/auth/admin-login' || pathname === '/veterinarian/mobile-login' || pathname === '/auth/login' || pathname === '/login' || pathname === '/' || pathname.startsWith('/veterinarian/') || pathname.startsWith('/server/');
+  const noSidebarRoutes = pathname.startsWith('/veterinarian/') || pathname.startsWith('/server/') || pathname.startsWith('/auth/') || pathname === '/' || pathname === '/login';
   
   const showMainSidebar = !noSidebarRoutes;
   const showBottomMenu = isVetRoute;

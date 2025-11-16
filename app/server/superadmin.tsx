@@ -306,13 +306,36 @@ export default function SuperAdminScreen() {
 
   // Fetch subscription periods from database
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'subscriptionPeriods'), (snapshot) => {
+    const unsubscribe = onSnapshot(collection(db, 'subscriptionPeriods'), async (snapshot) => {
       const periodsData = snapshot.docs.map(doc => ({
         id: doc.id,
         period: doc.data().period,
         price: doc.data().price || '₱7,499'
       }));
-      console.log('Fetched subscription periods from database:', periodsData);
+      
+      // If no periods exist, create default ones
+      if (periodsData.length === 0) {
+        const defaultPeriods = [
+          { period: '1 month', price: '₱7,499' },
+          { period: '6 months', price: '₱44,994' },
+          { period: '1 year', price: '₱89,988' }
+        ];
+        
+        try {
+          const { doc, setDoc, collection } = await import('firebase/firestore');
+          for (const period of defaultPeriods) {
+            await setDoc(doc(collection(db, 'subscriptionPeriods')), {
+              ...period,
+              description: 'Default subscription period',
+              status: 'Active',
+              createdAt: new Date()
+            });
+          }
+        } catch (error) {
+          console.error('Error creating default periods:', error);
+        }
+      }
+      
       setSubscriptionPeriods(periodsData);
     });
     
@@ -613,20 +636,25 @@ export default function SuperAdminScreen() {
                       // Send new credentials via email
                       const emailResult = await sendCredentialsEmail(selectedTenant?.email, newTempPassword);
                       
-                      // Update database with new password
+                      // Hash new password before storing
+                      const { hashPassword } = await import('../../lib/utils/passwordUtils');
+                      const { passwordHash, salt } = hashPassword(newTempPassword);
+                      
+                      // Update database with new hashed password
                       await updateSubscriber(selectedTenant.id, {
-                        password: newTempPassword,
+                        passwordHash,
+                        salt,
                         lastPasswordReset: new Date().toISOString()
                       });
                       
                       // Update local state
                       const updatedSubscribers = subscribers.map(sub => 
                         sub.id === selectedTenant.id 
-                          ? { ...sub, password: newTempPassword, lastPasswordReset: new Date().toISOString() }
+                          ? { ...sub, passwordHash, salt, lastPasswordReset: new Date().toISOString() }
                           : sub
                       );
                       setSubscribers(updatedSubscribers);
-                      setSelectedTenant({ ...selectedTenant, password: newTempPassword, lastPasswordReset: new Date().toISOString() });
+                      setSelectedTenant({ ...selectedTenant, passwordHash, salt, lastPasswordReset: new Date().toISOString() });
                       
                       // Show notification
                       const message = passwordUpdated 
@@ -698,18 +726,7 @@ export default function SuperAdminScreen() {
                   autoCapitalize="none"
                 />
                 
-                <Text style={styles.fieldLabel}>Subscription Period *</Text>
-                <SearchableDropdown
-                  options={subscriptionPeriods.map((item, index) => ({
-                    id: index,
-                    label: `${item.period} - ${item.price}`,
-                    value: item.period
-                  }))}
-                  placeholder={subscriptionPeriods.length === 0 ? "No subscription periods available" : "Select subscription period"}
-                  selectedValue={newSubscriber.period}
-                  onSelect={(option) => setNewSubscriber({...newSubscriber, period: option.value})}
-                  zIndex={1500}
-                />
+
               </ScrollView>
               
               <View style={styles.drawerButtons}>
@@ -723,15 +740,23 @@ export default function SuperAdminScreen() {
                   <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.saveButton} onPress={async () => {
-                  if (newSubscriber.email && newSubscriber.period) {
+                  if (newSubscriber.email) {
                     const tempPassword = generateSecurePassword();
                     const tenantId = newSubscriber.email.split('@')[0];
                     
                     try {
-                      // Store user credentials in database
+                      // Send credentials via email FIRST
+                      const emailResult = await sendCredentialsEmail(newSubscriber.email, tempPassword);
+                      
+                      // Hash password before storing
+                      const { hashPassword } = await import('../../lib/utils/passwordUtils');
+                      const { passwordHash, salt } = hashPassword(tempPassword);
+                      
+                      // Only create database records if email was sent successfully
                       const subscriberId = await createSubscriber({
                         email: newSubscriber.email,
-                        password: tempPassword,
+                        passwordHash,
+                        salt,
                         tenantId: tenantId,
                         clinicName: tenantId.replace(/[^a-zA-Z0-9]/g, ' '),
                         role: 'admin',
@@ -742,32 +767,12 @@ export default function SuperAdminScreen() {
                         throw new Error('Failed to create subscriber in database');
                       }
                       
-                      // Add initial subscription period
-                      const selectedPeriod = subscriptionPeriods.find(p => p.period === newSubscriber.period);
-                      const periodPrice = selectedPeriod?.price || '₱7,499';
+
                       
-                      const subscriptionResult = await addSubscriptionPeriod(
-                        tenantId,
-                        newSubscriber.email,
-                        tenantId.replace(/[^a-zA-Z0-9]/g, ' '),
-                        newSubscriber.period,
-                        periodPrice
+                      Alert.alert(
+                        'Success',
+                        `✅ Subscriber created successfully!\n\n📧 Email: ${newSubscriber.email}\n🔑 Password: ${tempPassword}\n\n${emailResult.message}\n\n💡 Credentials sent to user's email.`
                       );
-                      
-                      // Send credentials via email
-                      try {
-                        const emailResult = await sendCredentialsEmail(newSubscriber.email, tempPassword);
-                        
-                        Alert.alert(
-                          'Success',
-                          `✅ Subscriber created successfully!\n\n📧 Email: ${newSubscriber.email}\n🔑 Password: ${tempPassword}\n📅 Subscription: ${newSubscriber.period}\n\n${emailResult.message}\n\n💡 Credentials sent to user's email.`
-                        );
-                      } catch (emailError) {
-                        Alert.alert(
-                          'Partial Success',
-                          `✅ Subscriber created successfully!\n\n📧 Email: ${newSubscriber.email}\n🔑 Password: ${tempPassword}\n📅 Subscription: ${newSubscriber.period}\n\n⚠️ Email sending failed: ${emailError.message}\n\n💡 Please send credentials manually.`
-                        );
-                      }
                       
                       setNewSubscriber({ email: '', period: '1 month' });
                       Animated.timing(addDrawerAnimation, {
@@ -843,6 +848,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
+    paddingTop: 0,
   },
   tableContainer: {
     borderWidth: 2,

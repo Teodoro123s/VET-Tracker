@@ -1016,7 +1016,12 @@ const verifyPassword = async (password: string, hashedPassword: string) => {
 
 const sendPasswordEmail = async (email: string, newPassword: string) => {
   try {
-    console.log(`Password for ${email}: ${newPassword}`);
+    // For now, just log the credentials - replace with actual email service
+    console.log(`\n=== PASSWORD RESET CREDENTIALS ===`);
+    console.log(`Email: ${email}`);
+    console.log(`New Password: ${newPassword}`);
+    console.log(`Please use these credentials to log in.`);
+    console.log(`=====================================\n`);
     return true;
   } catch (error) {
     console.error('Email sending failed:', error);
@@ -1057,20 +1062,28 @@ export const generateOwnPassword = async (vetEmail: string) => {
 
 export const requestPasswordReset = async (email: string, userType: string) => {
   const newPassword = generateSecurePassword();
-  const hashedPassword = await hashPassword(newPassword);
-  const resetToken = generateResetToken();
   
-  const tenantId = await getTenantId(email || '');
-  const collectionPath = tenantId ? `tenants/${tenantId}/userCredentials` : 'userCredentials';
+  // Find the tenant document
+  const q = query(collection(db, 'tenants'), where('email', '==', email));
+  const querySnapshot = await getDocs(q);
   
-  await addDoc(collection(db, collectionPath), {
-    email: email,
-    pendingPassword: hashedPassword,
-    pendingPasswordCreatedAt: new Date().toISOString(),
-    pendingPasswordExpiresAt: new Date(Date.now() + 24*60*60*1000).toISOString(),
-    passwordResetToken: resetToken,
-    initiatedBy: email,
-    initiatorType: 'self_reset'
+  if (querySnapshot.empty) {
+    throw new Error('User not found');
+  }
+  
+  const userDoc = querySnapshot.docs[0];
+  const userData = userDoc.data();
+  
+  // Generate proper hash with existing salt or new salt
+  const CryptoJS = require('crypto-js');
+  const salt = userData.salt || CryptoJS.lib.WordArray.random(32).toString(CryptoJS.enc.Base64);
+  const passwordHash = CryptoJS.SHA256(newPassword + salt).toString();
+  
+  // Update the tenant document
+  await updateDoc(userDoc.ref, {
+    passwordHash: passwordHash,
+    salt: salt,
+    lastPasswordReset: new Date().toISOString()
   });
   
   await sendPasswordEmail(email, newPassword);

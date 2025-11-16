@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, Modal, Animated } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { getCustomerById, getPets, updateCustomer, deleteCustomerWithPets, addPet, getAnimalTypes, getBreeds } from '@/lib/services/firebaseService';
+import { getCustomerById, getPets, updateCustomer, deleteCustomerWithPets, addPet } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
+import { useSpeciesBreeds } from '@/hooks/useSpeciesBreeds';
+import QuickAddSpeciesBreed from '@/components/QuickAddSpeciesBreed';
 
 export default function CustomerDetailScreen() {
   const { id } = useLocalSearchParams();
   const { userEmail } = useTenant();
+  const { species, getBreedsBySpeciesName, refresh } = useSpeciesBreeds(userEmail);
   const [customer, setCustomer] = useState(null);
   const [pets, setPets] = useState([]);
-  const [species, setSpecies] = useState([]);
-  const [breeds, setBreeds] = useState([]);
+  const [availableBreeds, setAvailableBreeds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -48,18 +50,23 @@ export default function CustomerDetailScreen() {
     }
   }, [id, userEmail]);
 
+  useEffect(() => {
+    if (newPet.species) {
+      const breeds = getBreedsBySpeciesName(newPet.species);
+      setAvailableBreeds(breeds);
+    } else {
+      setAvailableBreeds([]);
+    }
+  }, [newPet.species, getBreedsBySpeciesName]);
+
   const loadData = async () => {
     try {
-      const [customerData, allPets, speciesData, breedsData] = await Promise.all([
+      const [customerData, allPets] = await Promise.all([
         getCustomerById(userEmail, id as string),
-        getPets(userEmail),
-        getAnimalTypes(userEmail),
-        getBreeds(userEmail)
+        getPets(userEmail)
       ]);
       setCustomer(customerData);
       setPets(allPets.filter(pet => pet.owner === id || pet.ownerId === id));
-      setSpecies(speciesData);
-      setBreeds(breedsData);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -496,45 +503,29 @@ export default function CustomerDetailScreen() {
                   {showSpeciesDropdown && (
                     <View style={styles.dropdownMenu}>
                       <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-                        {species.sort((a, b) => a.name.localeCompare(b.name)).map((item) => (
+                        {species.map((speciesItem) => (
                           <TouchableOpacity 
-                            key={item.id}
+                            key={speciesItem.id}
                             style={styles.dropdownOption}
                             onPress={() => {
-                              setNewPet({...newPet, species: item.name});
+                              setNewPet({...newPet, species: speciesItem.name, breed: ''});
+                              setAvailableBreeds(getBreedsBySpeciesName(speciesItem.name));
                               setShowSpeciesDropdown(false);
                             }}
                           >
-                            <Text style={styles.dropdownOptionText}>{item.name}</Text>
-                            <View style={styles.optionActions}>
-                              <TouchableOpacity 
-                                style={styles.editIcon}
-                                onPress={() => {
-                                  setEditingItem(item);
-                                  setEditValue(item.name);
-                                  setModalType('species');
-                                  setShowSpeciesDropdown(false);
-                                  setShowEditItemModal(true);
-                                }}
-                              >
-                                <Text style={styles.iconText}>✏</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity style={styles.deleteIcon}>
-                                <Text style={styles.iconText}>🗑</Text>
-                              </TouchableOpacity>
-                            </View>
+                            <Text style={styles.dropdownOptionText}>{speciesItem.name}</Text>
                           </TouchableOpacity>
                         ))}
                         <TouchableOpacity 
                           style={styles.customOption}
                           onPress={() => {
+                            setShowSpeciesDropdown(false);
                             setModalType('species');
                             setCustomValue('');
-                            setShowSpeciesDropdown(false);
                             setShowCustomModal(true);
                           }}
                         >
-                          <Text style={styles.customOptionText}>+ Add Custom Species</Text>
+                          <Text style={styles.customOptionText}>+ Add New Species</Text>
                         </TouchableOpacity>
                       </ScrollView>
                     </View>
@@ -556,45 +547,28 @@ export default function CustomerDetailScreen() {
                   {showBreedDropdown && (
                     <View style={styles.dropdownMenu}>
                       <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-                        {breeds.sort((a, b) => a.name.localeCompare(b.name)).map((item) => (
+                        {availableBreeds.map((breed) => (
                           <TouchableOpacity 
-                            key={item.id}
+                            key={breed.id}
                             style={styles.dropdownOption}
                             onPress={() => {
-                              setNewPet({...newPet, breed: item.name});
+                              setNewPet({...newPet, breed: breed.name});
                               setShowBreedDropdown(false);
                             }}
                           >
-                            <Text style={styles.dropdownOptionText}>{item.name}</Text>
-                            <View style={styles.optionActions}>
-                              <TouchableOpacity 
-                                style={styles.editIcon}
-                                onPress={() => {
-                                  setEditingItem(item);
-                                  setEditValue(item.name);
-                                  setModalType('breed');
-                                  setShowBreedDropdown(false);
-                                  setShowEditItemModal(true);
-                                }}
-                              >
-                                <Text style={styles.iconText}>✏</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity style={styles.deleteIcon}>
-                                <Text style={styles.iconText}>🗑</Text>
-                              </TouchableOpacity>
-                            </View>
+                            <Text style={styles.dropdownOptionText}>{breed.name}</Text>
                           </TouchableOpacity>
                         ))}
                         <TouchableOpacity 
                           style={styles.customOption}
                           onPress={() => {
+                            setShowBreedDropdown(false);
                             setModalType('breed');
                             setCustomValue('');
-                            setShowBreedDropdown(false);
                             setShowCustomModal(true);
                           }}
                         >
-                          <Text style={styles.customOptionText}>+ Add Custom Breed</Text>
+                          <Text style={styles.customOptionText}>+ Add New Breed</Text>
                         </TouchableOpacity>
                       </ScrollView>
                     </View>
@@ -644,12 +618,24 @@ export default function CustomerDetailScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={styles.floatingModalSave}
-                  onPress={() => {
+                  onPress={async () => {
                     if (customValue.trim()) {
-                      if (modalType === 'species') {
-                        setNewPet({...newPet, species: customValue.trim()});
-                      } else {
-                        setNewPet({...newPet, breed: customValue.trim()});
+                      try {
+                        if (modalType === 'species') {
+                          const { addSpecies } = await import('@/lib/services/speciesBreedsService');
+                          await addSpecies({ name: customValue.trim() }, userEmail);
+                          setNewPet({...newPet, species: customValue.trim()});
+                        } else {
+                          const { addBreed } = await import('@/lib/services/speciesBreedsService');
+                          const selectedSpecies = species.find(s => s.name === newPet.species);
+                          if (selectedSpecies) {
+                            await addBreed({ name: customValue.trim(), speciesId: selectedSpecies.id }, userEmail);
+                            setNewPet({...newPet, breed: customValue.trim()});
+                          }
+                        }
+                        refresh();
+                      } catch (error) {
+                        console.error('Error adding custom item:', error);
                       }
                     }
                     setShowCustomModal(false);
@@ -1081,7 +1067,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
-    maxHeight: 150,
+    maxHeight: 300,
     zIndex: 3001,
     elevation: 30,
     shadowColor: '#000',
@@ -1091,7 +1077,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   dropdownScroll: {
-    maxHeight: 150,
+    maxHeight: 300,
   },
   dropdownOption: {
     flexDirection: 'row',

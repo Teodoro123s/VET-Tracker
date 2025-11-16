@@ -18,6 +18,8 @@ export default function SuperAdminSidebar() {
     { name: 'Tenants', icon: require('@/assets/customers.png'), route: '/server/superadmin' },
     { name: 'Subscriptions', icon: require('@/assets/notifications.png'), route: '/server/subscriptions' },
     { name: 'Subscription Periods', icon: require('@/assets/appointments.png'), route: '/server/subscription-periods' },
+    { name: 'Transaction History', icon: require('@/assets/medical-forms.png'), route: '/server/transaction-history' },
+    { name: 'Notifications', icon: require('@/assets/settings.png'), route: '/server/notifications' },
     { name: 'Logout', icon: require('@/assets/logout.png'), route: null },
   ];
 
@@ -92,7 +94,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingHorizontal: Spacing.xlarge,
     borderRightWidth: 1,
-    backgroundColor: '#800020',
+    backgroundColor: '#800000',
     borderRightColor: '#A0002A',
   },
   logoSection: {

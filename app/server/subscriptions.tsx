@@ -58,21 +58,17 @@ export default function SubscriptionsScreen() {
           let startDate = transaction.createdAt;
           
           if (index === 0) {
-            // First transaction is always active
-            status = 'active';
+            // First transaction - check if still active
+            if (now <= transaction.endDate) {
+              status = 'active';
+            } else {
+              status = 'expired';
+            }
           } else {
             // Subsequent transactions are queued
             const prevTransaction = emailTransactions[index - 1];
             startDate = prevTransaction.endDate;
-          }
-          
-          // Check if active period has expired
-          if (status === 'active' && now > transaction.endDate) {
-            status = 'expired';
-            // Activate next queued period if exists
-            if (index + 1 < emailTransactions.length) {
-              emailTransactions[index + 1].status = 'active';
-            }
+            status = 'queued';
           }
           
           subscriptions.push({
@@ -197,9 +193,6 @@ export default function SubscriptionsScreen() {
           <View style={styles.tableContainer}>
             <View style={styles.tableTopRow}>
               <View style={styles.headerRow}>
-                <TouchableOpacity style={styles.returnButton} onPress={() => router.back()}>
-                  <Text style={styles.returnButtonText}>←</Text>
-                </TouchableOpacity>
                 <Text style={styles.detailTitle}>Subscription Management</Text>
                 <View style={styles.filterButtons}>
                   <TouchableOpacity 

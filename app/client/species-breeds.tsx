@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert, Modal, Animated } from 'react-native';
-import { getAnimalTypes, getBreeds, addAnimalType, addBreed, deleteAnimalType, deleteBreed } from '@/lib/services/firebaseService';
+import { getSpecies, getBreeds, addSpecies, addBreed, updateSpecies, updateBreed, deleteSpecies, deleteBreed, canManageSpeciesBreeds } from '@/lib/services/speciesBreedsService';
 import { useTenant } from '@/contexts/TenantContext';
 import { router } from 'expo-router';
 
@@ -30,7 +30,7 @@ export default function SpeciesBreedsScreen() {
   const loadData = async () => {
     try {
       const [speciesData, breedsData] = await Promise.all([
-        getAnimalTypes(userEmail),
+        getSpecies(userEmail),
         getBreeds(userEmail)
       ]);
       setSpecies(speciesData);
@@ -73,18 +73,27 @@ export default function SpeciesBreedsScreen() {
       
       if (editMode) {
         // Update existing item
-        const updateData = { ...editItem, name: itemName };
+        const updateData = { name: itemName };
         if (activeTab === 'breeds') {
           updateData.speciesId = selectedSpecies;
+          updateData.speciesName = species.find(s => s.id === selectedSpecies)?.name;
         }
-        // Add update logic here when available
-        Alert.alert('Info', 'Edit functionality will be implemented');
+        
+        if (activeTab === 'species') {
+          await updateSpecies(selectedItem.id, updateData, userEmail);
+        } else {
+          await updateBreed(selectedItem.id, updateData, userEmail);
+        }
       } else {
         // Add new item
         if (activeTab === 'species') {
-          await addAnimalType(newItem, userEmail);
+          await addSpecies({ name: itemName }, userEmail);
         } else {
-          const breedData = { ...newItem, speciesId: selectedSpecies };
+          const breedData = { 
+            name: itemName, 
+            speciesId: selectedSpecies,
+            speciesName: species.find(s => s.id === selectedSpecies)?.name
+          };
           await addBreed(breedData, userEmail);
         }
       }
@@ -135,7 +144,7 @@ export default function SpeciesBreedsScreen() {
           onPress: async () => {
             try {
               if (activeTab === 'species') {
-                await deleteAnimalType(selectedItem.id, userEmail);
+                await deleteSpecies(selectedItem.id, userEmail);
               } else {
                 await deleteBreed(selectedItem.id, userEmail);
               }
@@ -151,6 +160,15 @@ export default function SpeciesBreedsScreen() {
   };
 
   const currentData = activeTab === 'species' ? species : breeds;
+  const canManage = canManageSpeciesBreeds(userEmail);
+
+  // Filter breeds to show species name
+  const displayData = activeTab === 'breeds' 
+    ? breeds.map(breed => ({
+        ...breed,
+        displayName: `${breed.name} (${breed.speciesName || species.find(s => s.id === breed.speciesId)?.name || 'Unknown Species'})`
+      }))
+    : species;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
@@ -177,17 +195,19 @@ export default function SpeciesBreedsScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.actionHeader}>
-          <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-            <Text style={styles.addButtonText}>+ Add {activeTab === 'species' ? 'Species' : 'Breed'}</Text>
-          </TouchableOpacity>
-        </View>
+        {canManage && (
+          <View style={styles.actionHeader}>
+            <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
+              <Text style={styles.addButtonText}>+ Add {activeTab === 'species' ? 'Species' : 'Breed'}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.tableContainer}>
           <View style={styles.table}>
             <View style={styles.tableHeader}>
               <Text style={styles.headerCell}>Name</Text>
-              <Text style={styles.headerCell}>Actions</Text>
+              {canManage && <Text style={styles.headerCell}>Actions</Text>}
             </View>
             
             {loading ? (
@@ -202,17 +222,21 @@ export default function SpeciesBreedsScreen() {
               </View>
             ) : (
               <ScrollView style={styles.tableBody}>
-                {currentData.map((item) => (
+                {displayData.map((item) => (
                   <View key={item.id} style={styles.tableRow}>
-                    <Text style={styles.cell}>{item.name}</Text>
-                    <View style={styles.actionsCell}>
-                      <TouchableOpacity 
-                        style={styles.optionsButton}
-                        onPress={(event) => handleOptionsPress(event, item)}
-                      >
-                        <Text style={styles.optionsButtonText}>⋮</Text>
-                      </TouchableOpacity>
-                    </View>
+                    <Text style={styles.cell}>
+                      {activeTab === 'breeds' ? item.displayName : item.name}
+                    </Text>
+                    {canManage && (
+                      <View style={styles.actionsCell}>
+                        <TouchableOpacity 
+                          style={styles.optionsButton}
+                          onPress={(event) => handleOptionsPress(event, item)}
+                        >
+                          <Text style={styles.optionsButtonText}>⋮</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
                   </View>
                 ))}
               </ScrollView>
