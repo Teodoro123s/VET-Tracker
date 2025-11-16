@@ -19,8 +19,8 @@ export default function IndexScreen() {
 
   useEffect(() => {
     if (!loading && isReady) {
-      // Security: Clear browser history on auth state change
-      if (typeof window !== 'undefined') {
+      // Security: Clear browser history on auth state change (web only)
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history) {
         window.history.pushState(null, '', window.location.href);
         window.onpopstate = () => {
           if (!user) {
