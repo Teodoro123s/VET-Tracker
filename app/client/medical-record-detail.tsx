@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { getMedicalRecordById, deleteMedicalRecord, getFormFields, getVeterinarianByEmail } from '@/lib/services/firebaseService';
-import { useTenant } from '@/contexts/TenantContext';
+import { getMedicalRecordById, deleteMedicalRecord, getFormFields, getVeterinarianByEmail } from '../../lib/services/firebaseService';
+import { useTenant } from '../../contexts/TenantContext';
 
 export default function MedicalRecordDetailScreen() {
   const { id } = useLocalSearchParams();

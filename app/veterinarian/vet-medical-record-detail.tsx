@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { getMedicalRecordById, deleteMedicalRecord, getFormFields, getVeterinarianByEmail } from '@/lib/services/firebaseService';
-import { useTenant } from '@/contexts/TenantContext';
+import { getMedicalRecordById, deleteMedicalRecord, getFormFields, getVeterinarianByEmail } from '../../lib/services/firebaseService';
+import { useTenant } from '../../contexts/TenantContext';
 
 export default function VetMedicalRecordDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -126,7 +126,7 @@ export default function VetMedicalRecordDetailScreen() {
               </View>
               <View style={styles.tableBody}>
                 {formFields.map((field) => {
-                  const fieldValue = record.formData?.[field.label] || 'No data entered';
+                  const fieldValue = record.formData?.[field.id] || record.formData?.[field.label] || 'No data entered';
                   return (
                     <View key={field.id} style={styles.tableRow}>
                       <Text style={styles.cell}>{field.label}</Text>

@@ -139,10 +139,9 @@ export default function AppointmentsScreen() {
         
         // Smart status assignment: due = overdue, pending = future, completed = done
         const timeDiff = appointmentDateTime.getTime() - now.getTime();
-        const hoursDiff = timeDiff / (1000 * 60 * 60);
         
         let newStatus;
-        if (hoursDiff <= 0) {
+        if (timeDiff <= 0) {
           newStatus = 'due'; // Overdue appointments
         } else {
           newStatus = 'pending'; // Future appointments
@@ -240,17 +239,35 @@ export default function AppointmentsScreen() {
         return;
       }
       
-      // Fetch form fields and show form modal
-      const fields = await getFormFields(newRecord.formTemplate, user.email);
-      setFormFields(fields);
-      setFormData({});
-      setShowFormModal(true);
+      // Navigate to medical record form screen
+      router.push({
+        pathname: '/client/medical-record-form',
+        params: {
+          appointmentId: selectedAppointment?.id,
+          petName: selectedAppointment?.petName,
+          customerName: selectedAppointment?.customerName,
+          category: newRecord.category,
+          formTemplate: newRecord.formTemplate
+        }
+      });
+      
+      // Close the drawer
+      Animated.timing(recordSlideAnim, {
+        toValue: -350,
+        duration: 200,
+        useNativeDriver: false,
+      }).start(() => setShowAddRecordModal(false));
     } catch (error) {
-      Alert.alert('Error', 'Failed to load form fields');
+      Alert.alert('Error', 'Failed to navigate to form');
     }
   };
 
+  const [isSubmittingRecord, setIsSubmittingRecord] = useState(false);
+
   const handleSubmitForm = async () => {
+    if (isSubmittingRecord) return;
+    
+    setIsSubmittingRecord(true);
     try {
       // Find the actual pet ID from the pets array
       const pet = pets.find(p => p.name === selectedAppointment?.petName);
@@ -283,6 +300,8 @@ export default function AppointmentsScreen() {
       Alert.alert('Success', 'Medical record saved successfully! You can now mark this appointment as done.');
     } catch (error) {
       Alert.alert('Error', 'Failed to save medical record');
+    } finally {
+      setIsSubmittingRecord(false);
     }
   };
 
@@ -364,7 +383,11 @@ export default function AppointmentsScreen() {
     }
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleAddAppointment = async () => {
+    if (isSubmitting) return;
+    
     if (!user?.email) {
       Alert.alert('Error', 'User not authenticated');
       return;
@@ -381,6 +404,20 @@ export default function AppointmentsScreen() {
       return;
     }
 
+    // Validate appointment date and time is not in the past
+    const appointmentDateTime = new Date(`${newAppointment.appointmentDate}T${newAppointment.appointmentTime}`);
+    const now = new Date();
+    
+    if (appointmentDateTime <= now) {
+      Alert.alert(
+        'Invalid Date/Time', 
+        'Cannot book appointments in the past. Please select a future date and time.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       console.log('Adding appointment:', newAppointment);
       
@@ -426,6 +463,8 @@ export default function AppointmentsScreen() {
     } catch (error) {
       console.error('Failed to add appointment:', error);
       Alert.alert('Error', `Failed to add appointment: ${error.message || error}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -823,33 +862,42 @@ export default function AppointmentsScreen() {
   );
 
   const renderFormModal = () => (
-    <Modal visible={showFormModal} transparent animationType="fade">
-      <View style={styles.formPreviewModalOverlay}>
-        <View style={styles.formPreviewModalContent}>
-          <View style={styles.formPreviewHeader}>
-            <TouchableOpacity style={styles.formPreviewBackButton} onPress={() => setShowFormModal(false)}>
-              <Text style={styles.formPreviewBackText}>←</Text>
-            </TouchableOpacity>
-            <Text style={styles.formPreviewHeaderTitle}>{newRecord.formTemplate}</Text>
-            <TouchableOpacity style={styles.formPreviewSaveHeaderButton} onPress={handleSubmitForm}>
-              <Text style={styles.formPreviewSaveHeaderText}>Save Record</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={styles.formPreviewBody} showsVerticalScrollIndicator={false}>
-            <View style={styles.formPreviewDisplayArea}>
-              <View style={styles.formPreviewFieldsContainer}>
-                {formFields.map((field) => (
-                  <View key={field.id} style={styles.formPreviewField}>
-                    <Text style={styles.formPreviewFieldLabel}>
-                      {field.label}{field.required && ' *'}
-                    </Text>
-                    {renderFormField(field)}
-                  </View>
-                ))}
-              </View>
-            </View>
-          </ScrollView>
+    <Modal visible={showFormModal} animationType="slide">
+      <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        <View style={styles.formPreviewHeader}>
+          <TouchableOpacity style={styles.formPreviewBackButton} onPress={() => setShowFormModal(false)}>
+            <Text style={styles.formPreviewBackText}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.formPreviewHeaderTitle}>{newRecord.formTemplate}</Text>
+          <TouchableOpacity 
+            style={[styles.formPreviewSaveHeaderButton, isSubmittingRecord && styles.disabledButton]} 
+            onPress={handleSubmitForm}
+            disabled={isSubmittingRecord}
+          >
+            <Text style={styles.formPreviewSaveHeaderText}>
+              {isSubmittingRecord ? 'Saving...' : 'Save Record'}
+            </Text>
+          </TouchableOpacity>
         </View>
+        <ScrollView style={{ flex: 1, padding: 20 }}>
+          <Text style={{ fontSize: 14, color: '#666', marginBottom: 10 }}>
+            Form Fields: {formFields.length} loaded
+          </Text>
+          {formFields.length === 0 ? (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={{ fontSize: 16, color: '#999' }}>No form fields available</Text>
+            </View>
+          ) : (
+            formFields.map((field) => (
+              <View key={field.id} style={{ marginBottom: 20 }}>
+                <Text style={styles.formPreviewFieldLabel}>
+                  {field.label}{field.required && ' *'}
+                </Text>
+                {renderFormField(field)}
+              </View>
+            ))
+          )}
+        </ScrollView>
       </View>
     </Modal>
   );
@@ -1257,7 +1305,7 @@ export default function AppointmentsScreen() {
                               let normalizedStatus;
                               if (apt.status === 'completed') {
                                 normalizedStatus = 'Done';
-                              } else if (apt.status === 'due' || apt.status === 'scheduled') {
+                              } else if (apt.status === 'due') {
                                 normalizedStatus = 'Due';
                               } else {
                                 normalizedStatus = 'Pending';
@@ -1643,14 +1691,14 @@ export default function AppointmentsScreen() {
                   <Text style={styles.dropdownArrow}>🕐</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.fieldLabel}>Veterinarian</Text>
+                <Text style={styles.fieldLabel}>Veterinarian (Optional)</Text>
                 <View style={styles.vetSelector}>
                   <TouchableOpacity 
                     style={styles.dropdownButton}
                     onPress={() => setShowVetDropdown(!showVetDropdown)}
                   >
                     <Text style={styles.selectedCustomer}>
-                      {newAppointment.veterinarian || 'Select Veterinarian'}
+                      {newAppointment.veterinarian || 'Select Veterinarian (Optional)'}
                     </Text>
                     <Text style={styles.dropdownArrow}>▼</Text>
                   </TouchableOpacity>
@@ -1756,8 +1804,14 @@ export default function AppointmentsScreen() {
                 }}>
                   <Text style={styles.drawerCancelText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.drawerSaveButton} onPress={handleAddAppointment}>
-                  <Text style={styles.drawerSaveText}>Add Appointment</Text>
+                <TouchableOpacity 
+                  style={[styles.drawerSaveButton, isSubmitting && styles.disabledButton]} 
+                  onPress={handleAddAppointment}
+                  disabled={isSubmitting}
+                >
+                  <Text style={styles.drawerSaveText}>
+                    {isSubmitting ? 'Adding...' : 'Add Appointment'}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>
@@ -1845,12 +1899,27 @@ export default function AppointmentsScreen() {
                   style={styles.confirmButton}
                   onPress={() => {
                     const selectedDate = formatSelectedDate();
+                    
+                    // Validate selected date is not in the past
+                    const selectedDateTime = new Date(selectedDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    if (selectedDateTime < today) {
+                      Alert.alert(
+                        'Invalid Date', 
+                        'Cannot select a past date. Please choose today or a future date.',
+                        [{ text: 'OK' }]
+                      );
+                      return;
+                    }
+                    
                     setNewAppointment({...newAppointment, appointmentDate: selectedDate});
                     setShowDatePicker(false);
                     
                     // Check for conflicts if time and vet are already selected
                     if (newAppointment.appointmentTime && newAppointment.veterinarian) {
-                      checkAppointmentConflict(selectedDate, newAppointment.appointmentTime, newAppointment.veterinarian, newAppointment.duration);
+                      checkAppointmentConflict(selectedDate, newAppointment.appointmentTime, newAppointment.veterinarian);
                     }
                   }}
                 >
@@ -1937,12 +2006,28 @@ export default function AppointmentsScreen() {
                   style={styles.confirmButton}
                   onPress={() => {
                     const selectedTime = formatSelectedTime();
+                    
+                    // Validate time is not in the past if date is today
+                    if (newAppointment.appointmentDate) {
+                      const appointmentDateTime = new Date(`${newAppointment.appointmentDate}T${selectedTime}`);
+                      const now = new Date();
+                      
+                      if (appointmentDateTime <= now) {
+                        Alert.alert(
+                          'Invalid Time', 
+                          'Cannot select a past time. Please choose a future time.',
+                          [{ text: 'OK' }]
+                        );
+                        return;
+                      }
+                    }
+                    
                     setNewAppointment({...newAppointment, appointmentTime: selectedTime});
                     setShowTimePicker(false);
                     
                     // Check for conflicts if date and vet are already selected
                     if (newAppointment.appointmentDate && newAppointment.veterinarian) {
-                      checkAppointmentConflict(newAppointment.appointmentDate, selectedTime, newAppointment.veterinarian, newAppointment.duration);
+                      checkAppointmentConflict(newAppointment.appointmentDate, selectedTime, newAppointment.veterinarian);
                     }
                   }}
                 >
@@ -2056,7 +2141,6 @@ export default function AppointmentsScreen() {
       )}
 
       {renderAddRecordModal()}
-      {renderFormModal()}
     </ScrollView>
   );
 }
@@ -2465,6 +2549,10 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 12,
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
   },
   dateTimeButton: {
     flexDirection: 'row',
@@ -3350,14 +3438,10 @@ const styles = StyleSheet.create({
   },
   formPreviewModalOverlay: {
     flex: 1,
-    paddingLeft: 270,
+    backgroundColor: '#fff',
   },
   formPreviewModalContent: {
     flex: 1,
-    marginTop: 20,
-    marginRight: 20,
-    marginBottom: 20,
-    overflow: 'visible',
   },
   formPreviewHeader: {
     backgroundColor: '#fff',
@@ -3368,8 +3452,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
-    borderWidth: 2,
-    borderColor: '#ddd',
   },
   formPreviewBackButton: {
     backgroundColor: '#800000',
@@ -3404,10 +3486,6 @@ const styles = StyleSheet.create({
   },
   formPreviewBody: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: '#ddd',
-    borderTopWidth: 0,
   },
   formPreviewDisplayArea: {
     padding: 20,
@@ -3417,7 +3495,6 @@ const styles = StyleSheet.create({
   },
   formPreviewField: {
     marginBottom: 15,
-    zIndex: -1,
   },
   formPreviewFieldLabel: {
     fontSize: 14,

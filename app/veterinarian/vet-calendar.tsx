@@ -25,32 +25,19 @@ export default function VetCalendarScreen() {
   
   const fetchAppointments = async () => {
     try {
-      // Get all appointments for the clinic/tenant
-      const appointmentData = await getAppointments();
-      console.log('Fetched appointments:', appointmentData?.length || 0);
-      
-      // If no appointments found, use test data for demonstration
-      if (!appointmentData || appointmentData.length === 0) {
-        const testAppointments = createTestAppointments();
-        console.log('Using test appointments:', testAppointments.length);
-        setAppointments(testAppointments);
-      } else {
-        setAppointments(appointmentData);
-      }
+      // Get veterinarian-specific appointments
+      const appointmentData = await getVeterinarianAppointments(user?.email, user?.email);
+      console.log('Fetched vet appointments:', appointmentData?.length || 0);
+      setAppointments(appointmentData || []);
     } catch (error) {
       console.error('Error fetching appointments:', error);
-      // Fallback to test appointments on error
-      const testAppointments = createTestAppointments();
-      setAppointments(testAppointments);
+      setAppointments([]);
     }
   };
   
   const getVetAppointments = () => {
-    // For testing, show all appointments or filter by vet if specified
-    let filtered = appointments.filter(apt => {
-      // Show all appointments for now, or filter by veterinarian if needed
-      return true; // Show all appointments for calendar view
-    });
+    // All appointments are already filtered for this veterinarian
+    let filtered = appointments;
     
     // Smart status assignment
     const now = new Date();
@@ -161,13 +148,8 @@ export default function VetCalendarScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
           {['All', 'Pending', 'Due', 'Done'].map((status) => {
             const count = (() => {
-              const vetAppts = appointments.filter(apt => {
-                const vetEmail = user?.email;
-                return apt.veterinarian === vetEmail || 
-                       apt.assignedVet === vetEmail || 
-                       apt.veterinarianEmail === vetEmail ||
-                       (apt.veterinarian && apt.veterinarian.includes('Dr.'));
-              });
+              // Appointments are already filtered for this veterinarian
+              const vetAppts = appointments;
               
               if (status === 'All') return vetAppts.length;
               

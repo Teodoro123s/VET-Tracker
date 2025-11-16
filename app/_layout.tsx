@@ -102,6 +102,12 @@ function AppContent() {
     if (pathname === '/veterinarian/vet-medical-record-detail') {
       return { showBackButton: true, title: 'Medical Record', hideActions: true };
     }
+    if (pathname === '/veterinarian/medical-record-selection') {
+      return { showBackButton: true, title: 'Select Medical Record', hideActions: true };
+    }
+    if (pathname === '/veterinarian/medical-record-form') {
+      return { showBackButton: true, title: 'Medical Record Form', hideActions: true };
+    }
     return { showBackButton: true, title: 'Veterinarian' };
   };
   
@@ -149,8 +155,12 @@ function AppContent() {
             <Stack.Screen name="server/superadmin-dashboard" />
             <Stack.Screen name="veterinarian/vet-calendar" />
             <Stack.Screen name="veterinarian/vet-appointments" />
-            <Stack.Screen name="veterinarian/vet-medical-record" />
             <Stack.Screen name="veterinarian/vet-medical-record-detail" />
+            <Stack.Screen name="veterinarian/medical-record-selection" />
+            <Stack.Screen name="veterinarian/medical-record-form" />
+            <Stack.Screen name="veterinarian/appointment-details" />
+            <Stack.Screen name="veterinarian/vet-customers" />
+            <Stack.Screen name="veterinarian/vet-notifications" />
             <Stack.Screen name="veterinarian/vet-profile" />
             <Stack.Screen name="veterinarian/mobile-login" />
             <Stack.Screen name="auth/admin-login" />

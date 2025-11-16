@@ -1,8 +1,8 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, Alert, RefreshControl } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getAppointments, updateAppointment, deleteAppointment } from '../../lib/services/firebaseService';
+import { getAppointments, getVeterinarianAppointments, updateAppointment, deleteAppointment } from '../../lib/services/firebaseService';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function VetAppointments() {
@@ -15,6 +15,7 @@ export default function VetAppointments() {
   const [selectedDateFilter, setSelectedDateFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadAppointments();
@@ -24,15 +25,13 @@ export default function VetAppointments() {
     filterAppointments();
   }, [appointments, selectedFilter, selectedDateFilter, searchTerm]);
 
-  const loadAppointments = async () => {
+  const loadAppointments = async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
     try {
-      const allAppointments = await getAppointments(user?.email);
+      // Use the specific function to get veterinarian appointments
+      const myAppointments = await getVeterinarianAppointments(user?.email, user?.email);
       
-      // Filter appointments for current veterinarian
-      const myAppointments = allAppointments.filter(apt => 
-        apt.veterinarian === user?.email || apt.staff === user?.email ||
-        (apt.veterinarian && apt.veterinarian.includes('Dr.'))
-      );
+      console.log(`Found ${myAppointments.length} appointments for veterinarian: ${user?.email}`);
       
       // Smart status assignment
       const now = new Date();
@@ -58,10 +57,9 @@ export default function VetAppointments() {
         
         // Smart status assignment: Due = overdue, Pending = future
         const timeDiff = appointmentDateTime.getTime() - now.getTime();
-        const hoursDiff = timeDiff / (1000 * 60 * 60);
         
         let newStatus;
-        if (hoursDiff <= 0) {
+        if (timeDiff <= 0) {
           newStatus = 'Due'; // Overdue appointments
         } else {
           newStatus = 'Pending'; // Future appointments
@@ -73,8 +71,10 @@ export default function VetAppointments() {
       setAppointments(smartAppointments);
     } catch (error) {
       console.error('Error loading appointments:', error);
+      setAppointments([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -180,13 +180,20 @@ export default function VetAppointments() {
     setFilteredAppointments(filtered);
   };
 
+  const [updatingId, setUpdatingId] = useState(null);
+
   const updateAppointmentStatus = async (appointmentId, newStatus) => {
+    if (updatingId === appointmentId) return;
+    
+    setUpdatingId(appointmentId);
     try {
       await updateAppointment(user?.email, appointmentId, { status: newStatus });
       loadAppointments();
       Alert.alert('Success', `Appointment ${newStatus.toLowerCase()}`);
     } catch (error) {
       Alert.alert('Error', 'Failed to update appointment');
+    } finally {
+      setUpdatingId(null);
     }
   };
 
@@ -267,7 +274,21 @@ export default function VetAppointments() {
       </View>
 
       {/* Appointments List */}
-      <ScrollView style={styles.appointmentsList} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.appointmentsList} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => {
+              setRefreshing(true);
+              loadAppointments(true);
+            }}
+            colors={['#7B2C2C']}
+            tintColor="#7B2C2C"
+          />
+        }
+      >
         {filteredAppointments.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No appointments found</Text>

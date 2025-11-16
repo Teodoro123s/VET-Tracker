@@ -28,10 +28,8 @@ export default function VeterinariansScreen() {
       console.log('Loading veterinarians for userEmail:', userEmail);
       const allData = await getVeterinarians(userEmail);
       console.log('All veterinarian data:', allData.length);
-      const vetsData = allData.filter(item => item.role === 'veterinarian');
-      console.log('Filtered veterinarians count:', vetsData.length);
-      console.log('First veterinarian sample:', vetsData[0]);
-      setVeterinarians(vetsData);
+      // All data from veterinarians collection should be veterinarians
+      setVeterinarians(allData);
     } catch (error) {
       console.error('Error loading veterinarians:', error);
     } finally {

@@ -626,22 +626,36 @@ export default function VetCustomers() {
           <View style={styles.medicalView}>
             <ScrollView style={styles.scrollableList} showsVerticalScrollIndicator={false}>
               {console.log('VET MOBILE - Rendering medical view with records:', medicalRecords)}
-              {medicalRecords.filter(record => {
-                const searchTerm = medicalSearchTerm.toLowerCase();
-                return !searchTerm || 
-                  record.formType?.toLowerCase().includes(searchTerm) ||
-                  record.diagnosis?.toLowerCase().includes(searchTerm) ||
-                  record.notes?.toLowerCase().includes(searchTerm) ||
-                  record.date?.toLowerCase().includes(searchTerm);
-              }).map((record, index) => (
-                <TouchableOpacity key={record.id || index} style={styles.medicalRow} onPress={() => {
-                  router.push(`/veterinarian/vet-medical-record-detail?id=${record.id}`);
-                }}>
-                  <Text style={styles.medicalType}>{record.formType || record.diagnosis || 'Medical Record'}</Text>
-                  <Text style={styles.medicalDate}>{record.date || 'No Date'}</Text>
-                </TouchableOpacity>
-              ))}
-              {medicalRecords.length === 0 && (
+              {medicalRecords && medicalRecords.length > 0 ? (
+                medicalRecords.filter(record => {
+                  const searchTerm = medicalSearchTerm.toLowerCase();
+                  return !searchTerm || 
+                    record.formType?.toLowerCase().includes(searchTerm) ||
+                    record.formTemplate?.toLowerCase().includes(searchTerm) ||
+                    record.diagnosis?.toLowerCase().includes(searchTerm) ||
+                    record.notes?.toLowerCase().includes(searchTerm) ||
+                    record.date?.toLowerCase().includes(searchTerm) ||
+                    record.category?.toLowerCase().includes(searchTerm);
+                }).map((record, index) => {
+                  const displayDate = record.date || 
+                    (record.createdAt?.seconds ? new Date(record.createdAt.seconds * 1000).toLocaleDateString() : 'No Date');
+                  const displayTitle = record.formType || record.formTemplate || record.diagnosis || record.category || 'Medical Record';
+                  
+                  return (
+                    <TouchableOpacity key={record.id || `record-${index}`} style={styles.medicalRow} onPress={() => {
+                      if (record.id) {
+                        router.push(`/veterinarian/vet-medical-record-detail?id=${record.id}`);
+                      }
+                    }}>
+                      <Text style={styles.medicalType}>{displayTitle}</Text>
+                      <Text style={styles.medicalDate}>{displayDate}</Text>
+                      {record.notes && (
+                        <Text style={styles.medicalNotes} numberOfLines={2}>{record.notes}</Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })
+              ) : (
                 <View style={styles.emptyContainer}>
                   <ThemedText style={styles.emptyText}>No medical records found for this pet</ThemedText>
                 </View>
@@ -1609,6 +1623,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#7B2C2C',
     marginTop: 4,
+  },
+  medicalNotes: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    fontStyle: 'italic',
   },
   medicalSection: {
     marginBottom: 24,
