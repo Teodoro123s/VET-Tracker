@@ -356,7 +356,7 @@ export default function VetCalendarScreen() {
                           const uniqueStatuses = new Set();
                           dayAppointments.forEach(apt => {
                             let normalizedStatus;
-                            if (apt.status === 'Completed' || apt.status === 'completed') {
+                            if (apt.status === 'Completed' || apt.status === 'completed' || apt.status === 'Done') {
                               normalizedStatus = 'Done';
                             } else if (apt.status === 'Due' || apt.status === 'due') {
                               normalizedStatus = 'Due';
