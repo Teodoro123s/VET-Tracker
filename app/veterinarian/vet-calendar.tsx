@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Animated, 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getVeterinarianAppointments, updateAppointment, deleteAppointment } from '@/lib/services/firebaseService';
+import { getAppointments, updateAppointment, deleteAppointment, getVeterinarians } from '@/lib/services/firebaseService';
 import { useAuth } from '@/contexts/AuthContext';
 import { createTestAppointments } from '@/lib/services/testAppointments';
 
@@ -23,6 +23,12 @@ export default function VetCalendarScreen() {
     fetchAppointments();
   }, []);
   
+  const STATUS_COLORS = {
+    Done: '#007bff', // blue for completed/done
+    Pending: '#28a745',
+    Due: '#dc3545',
+  };
+  
   const fetchAppointments = async () => {
     try {
       // Get all appointments (veterinarians can see all appointments)
@@ -33,8 +39,8 @@ export default function VetCalendarScreen() {
       
       // Apply smart status logic
       const processedAppointments = appointmentData.map(appointment => {
-        // Don't change completed/cancelled status
-        if (appointment.status === 'completed' || appointment.status === 'Done') {
+        // Don't change completed/cancelled status - normalize all to 'Done'
+        if (appointment.status === 'completed' || appointment.status === 'Done' || appointment.status === 'Completed') {
           return { ...appointment, status: 'Done' };
         }
         if (appointment.status === 'cancelled') {
@@ -74,8 +80,11 @@ export default function VetCalendarScreen() {
     // Smart status assignment - Re-calculate in real-time
     const now = new Date();
     filtered = filtered.map(apt => {
-      // Keep completed/cancelled status unchanged
-      if (apt.status === 'Done' || apt.status === 'Completed' || apt.status === 'completed' || apt.status === 'cancelled') {
+      // Keep completed/cancelled status unchanged but normalize to 'Done'
+      if (apt.status === 'Done' || apt.status === 'Completed' || apt.status === 'completed') {
+        return { ...apt, status: 'Done' };
+      }
+      if (apt.status === 'cancelled') {
         return apt;
       }
       
@@ -99,13 +108,7 @@ export default function VetCalendarScreen() {
     
     // Filter by status
     if (statusFilter !== 'All') {
-      const filterStatus = statusFilter === 'Done' ? 'Done' : statusFilter;
-      filtered = filtered.filter(apt => {
-        if (filterStatus === 'Done') {
-          return apt.status === 'Done' || apt.status === 'Completed' || apt.status === 'completed';
-        }
-        return apt.status === filterStatus;
-      });
+      filtered = filtered.filter(apt => apt.status === statusFilter);
     }
     
     // Sort appointments
@@ -189,7 +192,10 @@ export default function VetCalendarScreen() {
               return vetAppts.filter(apt => {
                 let currentStatus = apt.status;
                 
-                if (apt.status !== 'Completed' && apt.status !== 'completed' && apt.status !== 'cancelled') {
+                // Normalize completed status
+                if (apt.status === 'Completed' || apt.status === 'completed' || apt.status === 'Done') {
+                  currentStatus = 'Done';
+                } else if (apt.status !== 'cancelled') {
                   let appointmentTime;
                   if (apt.appointmentDate?.seconds) {
                     appointmentTime = new Date(apt.appointmentDate.seconds * 1000);
@@ -198,19 +204,12 @@ export default function VetCalendarScreen() {
                   }
                   
                   if (!isNaN(appointmentTime.getTime())) {
-                    const timeDiff = appointmentTime.getTime() - now.getTime();
-                    const hoursDiff = timeDiff / (1000 * 60 * 60);
-                    
-                    if (hoursDiff <= 0) {
-                      currentStatus = 'Due';
-                    } else {
-                      currentStatus = 'Pending';
-                    }
+                    const isPast = appointmentTime.getTime() <= now.getTime();
+                    currentStatus = isPast ? 'Due' : 'Pending';
                   }
                 }
                 
-                const filterStatus = status === 'Done' ? 'Completed' : status;
-                return currentStatus === filterStatus;
+                return currentStatus === status;
               }).length;
             })();
             
@@ -244,15 +243,15 @@ export default function VetCalendarScreen() {
             
             <View style={styles.legend}>
               <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#dc3545' }]} />
+                <View style={[styles.legendDot, { backgroundColor: STATUS_COLORS.Due }]} />
                 <Text style={styles.legendText}>Due</Text>
               </View>
               <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#28a745' }]} />
+                <View style={[styles.legendDot, { backgroundColor: STATUS_COLORS.Pending }]} />
                 <Text style={styles.legendText}>Pending</Text>
               </View>
               <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: '#007bff' }]} />
+                <View style={[styles.legendDot, { backgroundColor: STATUS_COLORS.Done }]} />
                 <Text style={styles.legendText}>Done</Text>
               </View>
             </View>
@@ -367,14 +366,7 @@ export default function VetCalendarScreen() {
                             uniqueStatuses.add(normalizedStatus);
                           });
                           return Array.from(uniqueStatuses).slice(0, 3).map((status, idx) => {
-                            const getStatusColor = () => {
-                              switch(status) {
-                                case 'Done': return '#007bff';
-                                case 'Pending': return '#28a745';
-                                case 'Due': return '#dc3545';
-                                default: return '#007bff';
-                              }
-                            };
+                            const getStatusColor = () => STATUS_COLORS[status] || STATUS_COLORS.Done;
                             return (
                               <View
                                 key={status}

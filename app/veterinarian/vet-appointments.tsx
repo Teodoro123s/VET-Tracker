@@ -77,11 +77,14 @@ export default function VetAppointments() {
       const now = new Date();
       const smartAppointments = debugAppointments.map(appointment => {
         console.log('Processing appointment:', appointment.id, 'Status:', appointment.status, 'Vet field:', appointment.veterinarian);
-        // Keep completed/cancelled status unchanged - check all possible variations
+        // Keep completed/cancelled status unchanged - normalize all to 'Done'
         if (appointment.status === 'completed' || appointment.status === 'Completed' || 
             appointment.status === 'Done' || appointment.status === 'cancelled') {
-          console.log('Found completed appointment:', appointment.id);
-          return { ...appointment, status: 'Done' };
+          if (appointment.status !== 'cancelled') {
+            console.log('Found completed appointment:', appointment.id);
+            return { ...appointment, status: 'Done' };
+          }
+          return appointment;
         }
         
         let appointmentDateTime;
@@ -96,14 +99,8 @@ export default function VetAppointments() {
         }
         
         // Smart status assignment: Due = overdue, Pending = future
-        const timeDiff = appointmentDateTime.getTime() - now.getTime();
-        
-        let newStatus;
-        if (timeDiff <= 0) {
-          newStatus = 'Due'; // Overdue appointments
-        } else {
-          newStatus = 'Pending'; // Future appointments
-        }
+        const isPast = appointmentDateTime.getTime() <= now.getTime();
+        const newStatus = isPast ? 'Due' : 'Pending';
         
         return { ...appointment, status: newStatus };
       });
@@ -123,8 +120,11 @@ export default function VetAppointments() {
     
     // Re-apply smart status logic in real-time
     let filtered = appointments.map(apt => {
-      // Keep completed/cancelled status unchanged
-      if (apt.status === 'Done' || apt.status === 'completed' || apt.status === 'Completed' || apt.status === 'cancelled') {
+      // Keep completed/cancelled status unchanged but normalize to 'Done'
+      if (apt.status === 'Done' || apt.status === 'completed' || apt.status === 'Completed') {
+        return { ...apt, status: 'Done' };
+      }
+      if (apt.status === 'cancelled') {
         return apt;
       }
       
@@ -149,9 +149,7 @@ export default function VetAppointments() {
     // Filter by status
     if (selectedFilter !== 'All') {
       if (selectedFilter === 'Done') {
-        filtered = filtered.filter(apt => 
-          apt.status === 'Done' || apt.status === 'Completed' || apt.status === 'completed'
-        );
+        filtered = filtered.filter(apt => apt.status === 'Done');
       } else {
         filtered = filtered.filter(apt => apt.status === selectedFilter);
       }
