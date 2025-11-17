@@ -25,10 +25,42 @@ export default function VetCalendarScreen() {
   
   const fetchAppointments = async () => {
     try {
-      // Get veterinarian-specific appointments
-      const appointmentData = await getVeterinarianAppointments(user?.email, user?.email);
-      console.log('Fetched vet appointments:', appointmentData?.length || 0);
-      setAppointments(appointmentData || []);
+      // Get all appointments (veterinarians can see all appointments)
+      const appointmentData = await getAppointments(user?.email);
+      console.log('Fetched all appointments:', appointmentData?.length || 0);
+      
+      const now = new Date();
+      
+      // Apply smart status logic
+      const processedAppointments = appointmentData.map(appointment => {
+        // Don't change completed/cancelled status
+        if (appointment.status === 'completed' || appointment.status === 'Done') {
+          return { ...appointment, status: 'Done' };
+        }
+        if (appointment.status === 'cancelled') {
+          return { ...appointment, status: 'cancelled' };
+        }
+
+        // For pending/scheduled/due appointments, check if they're overdue
+        let appointmentDateTime;
+        if (appointment.appointmentDate?.seconds) {
+          appointmentDateTime = new Date(appointment.appointmentDate.seconds * 1000);
+        } else {
+          appointmentDateTime = new Date(appointment.appointmentDate);
+        }
+
+        if (isNaN(appointmentDateTime.getTime())) {
+          return { ...appointment, status: 'Pending' };
+        }
+
+        // Smart status assignment: overdue = Due, future = Pending
+        const isPast = appointmentDateTime.getTime() <= now.getTime();
+        const newStatus = isPast ? 'Due' : 'Pending';
+        
+        return { ...appointment, status: newStatus };
+      });
+      
+      setAppointments(processedAppointments || []);
     } catch (error) {
       console.error('Error fetching appointments:', error);
       setAppointments([]);
@@ -39,10 +71,11 @@ export default function VetCalendarScreen() {
     // All appointments are already filtered for this veterinarian
     let filtered = appointments;
     
-    // Smart status assignment
+    // Smart status assignment - Re-calculate in real-time
     const now = new Date();
     filtered = filtered.map(apt => {
-      if (apt.status === 'Completed' || apt.status === 'completed' || apt.status === 'cancelled') {
+      // Keep completed/cancelled status unchanged
+      if (apt.status === 'Done' || apt.status === 'Completed' || apt.status === 'completed' || apt.status === 'cancelled') {
         return apt;
       }
       
@@ -57,23 +90,22 @@ export default function VetCalendarScreen() {
         return { ...apt, status: 'Pending' };
       }
       
-      const timeDiff = appointmentTime.getTime() - now.getTime();
-      const hoursDiff = timeDiff / (1000 * 60 * 60);
-      
-      let newStatus;
-      if (hoursDiff <= 0) {
-        newStatus = 'Due'; // Past due
-      } else {
-        newStatus = 'Pending'; // Future appointment
-      }
+      // Smart status: if time has passed, it's Due, otherwise Pending
+      const isPast = appointmentTime.getTime() <= now.getTime();
+      const newStatus = isPast ? 'Due' : 'Pending';
       
       return { ...apt, status: newStatus };
     });
     
     // Filter by status
     if (statusFilter !== 'All') {
-      const filterStatus = statusFilter === 'Done' ? 'Completed' : statusFilter;
-      filtered = filtered.filter(apt => apt.status === filterStatus);
+      const filterStatus = statusFilter === 'Done' ? 'Done' : statusFilter;
+      filtered = filtered.filter(apt => {
+        if (filterStatus === 'Done') {
+          return apt.status === 'Done' || apt.status === 'Completed' || apt.status === 'completed';
+        }
+        return apt.status === filterStatus;
+      });
     }
     
     // Sort appointments

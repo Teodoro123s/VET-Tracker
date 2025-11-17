@@ -100,7 +100,7 @@ export default function Sidebar() {
                         onRequestClose={() => setShowLogoutModal(false)}
                       >
                         <View style={styles.modalOverlay}>
-                          <View style={styles.logoutModalContent}>
+                          <View style={[styles.logoutModalContent, { width: '90%', maxWidth: 400 }]}> 
                             <Text style={styles.logoutModalTitle}>Confirm Logout</Text>
                             <Text style={styles.logoutModalText}>
                               Are you sure you want to logout? You will need to login again to access the system.
@@ -172,7 +172,8 @@ export default function Sidebar() {
     backgroundColor: '#fff',
     borderRadius,
     padding,
-    width: '85%',
+    width: '90%',
+    maxWidth: 400,
     alignItems: 'center',
     borderWidth,
     borderColor: '#f0f0f0',

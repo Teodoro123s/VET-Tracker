@@ -1,23 +1,16 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, Alert, RefreshControl } from 'react-native';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getAppointments, getVeterinarianAppointments, updateAppointment, deleteAppointment, getVeterinarians } from '../../lib/services/firebaseService';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
-
-interface Appointment {
-  id: string;
-  veterinarianEmail?: string;
-  assignedVet?: string;
-  [key: string]: any;
-}
+import { deleteAppointment, getAppointments, getVeterinarianAppointments, getVeterinarians, updateAppointment } from '../../lib/services/firebaseService';
 
 export default function VetAppointments() {
   const router = useRouter();
   const { user } = useAuth();
   
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
+  const [appointments, setAppointments] = useState([]);
+  const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [selectedDateFilter, setSelectedDateFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,66 +52,113 @@ export default function VetAppointments() {
   const loadAppointments = async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
-      console.log('=== DEBUG: FETCHING ALL APPOINTMENTS ===');
-      const allAppointments = await getAppointments(user?.email);
-      console.log('DEBUG: All appointments fetched:', allAppointments);
-
-      // Debugging each appointment
-      allAppointments.forEach(appointment => {
-        console.log('DEBUG: Appointment details:', appointment);
+      console.log('=== MOBILE APPOINTMENTS DEBUG ===');
+      console.log('Mobile user email:', user?.email);
+      console.log('Mobile user object:', user);
+      
+      if (!user?.email) {
+        console.log('ERROR: No user email in mobile app!');
+        return;
+      }
+      
+      // First try to get all appointments to see if there are any
+      const allAppointments = await getAppointments(user.email);
+      console.log('Total appointments in system:', allAppointments.length);
+      
+      // Show ALL appointments (veterinarians can manage all appointments)
+      const debugAppointments = allAppointments;
+      
+      console.log('Setting appointments to:', debugAppointments.length, 'appointments');
+      if (debugAppointments.length > 0) {
+        console.log('First appointment sample:', debugAppointments[0]);
+      }
+      
+      // Smart status assignment
+      const now = new Date();
+      const smartAppointments = debugAppointments.map(appointment => {
+        console.log('Processing appointment:', appointment.id, 'Status:', appointment.status, 'Vet field:', appointment.veterinarian);
+        // Keep completed/cancelled status unchanged - check all possible variations
+        if (appointment.status === 'completed' || appointment.status === 'Completed' || 
+            appointment.status === 'Done' || appointment.status === 'cancelled') {
+          console.log('Found completed appointment:', appointment.id);
+          return { ...appointment, status: 'Done' };
+        }
+        
+        let appointmentDateTime;
+        if (appointment.appointmentDate?.seconds) {
+          appointmentDateTime = new Date(appointment.appointmentDate.seconds * 1000);
+        } else {
+          appointmentDateTime = new Date(appointment.appointmentDate || appointment.dateTime);
+        }
+        
+        if (isNaN(appointmentDateTime.getTime())) {
+          return { ...appointment, status: 'Pending' };
+        }
+        
+        // Smart status assignment: Due = overdue, Pending = future
+        const timeDiff = appointmentDateTime.getTime() - now.getTime();
+        
+        let newStatus;
+        if (timeDiff <= 0) {
+          newStatus = 'Due'; // Overdue appointments
+        } else {
+          newStatus = 'Pending'; // Future appointments
+        }
+        
+        return { ...appointment, status: newStatus };
       });
-
-      // Verify logged-in veterinarian email
-      const vetEmail = user?.email;
-      console.log('DEBUG: Logged-in veterinarian email:', vetEmail);
-
-      // Filter appointments for the logged-in veterinarian
-      const filteredAppointments = allAppointments.filter(appointment => {
-        const isAssignedToLoggedInVet =
-          appointment.veterinarianEmail?.toLowerCase() === vetEmail?.toLowerCase() ||
-          appointment.assignedVet?.toLowerCase() === vetEmail?.toLowerCase();
-        console.log('DEBUG: Appointment:', appointment, 'Is Assigned to Logged-in Vet:', isAssignedToLoggedInVet);
-        return isAssignedToLoggedInVet;
-      });
-
-      console.log('DEBUG: Filtered appointments:', filteredAppointments);
-
-      // Sort appointments by veterinarianEmail or assignedVet
-      const sortedAppointments = filteredAppointments.sort((a, b) => {
-        const vetA = a.veterinarianEmail || a.assignedVet || '';
-        const vetB = b.veterinarianEmail || b.assignedVet || '';
-        console.log('DEBUG: Comparing:', vetA, 'and', vetB);
-        return vetA.localeCompare(vetB);
-      });
-
-      console.log('DEBUG: Sorted appointments:', sortedAppointments);
-      setAppointments(sortedAppointments);
-      console.log('DEBUG: Appointments state updated.');
+      
+      setAppointments(smartAppointments);
     } catch (error) {
-      console.error('DEBUG: Error loading appointments:', error);
+      console.error('Error loading appointments:', error);
+      setAppointments([]);
     } finally {
       setLoading(false);
-      console.log('DEBUG: Loading state set to false.');
+      setRefreshing(false);
     }
   };
 
   const filterAppointments = () => {
-    let filtered = appointments;
+    const now = new Date();
+    
+    // Re-apply smart status logic in real-time
+    let filtered = appointments.map(apt => {
+      // Keep completed/cancelled status unchanged
+      if (apt.status === 'Done' || apt.status === 'completed' || apt.status === 'Completed' || apt.status === 'cancelled') {
+        return apt;
+      }
+      
+      // Check if appointment is overdue
+      let appointmentDateTime;
+      if (apt.appointmentDate?.seconds) {
+        appointmentDateTime = new Date(apt.appointmentDate.seconds * 1000);
+      } else {
+        appointmentDateTime = new Date(apt.appointmentDate);
+      }
+      
+      if (isNaN(appointmentDateTime.getTime())) {
+        return { ...apt, status: 'Pending' };
+      }
+      
+      const isPast = appointmentDateTime.getTime() <= now.getTime();
+      const newStatus = isPast ? 'Due' : 'Pending';
+      
+      return { ...apt, status: newStatus };
+    });
 
     // Filter by status
     if (selectedFilter !== 'All') {
       if (selectedFilter === 'Done') {
-        filtered = appointments.filter(apt => 
+        filtered = filtered.filter(apt => 
           apt.status === 'Done' || apt.status === 'Completed' || apt.status === 'completed'
         );
       } else {
-        filtered = appointments.filter(apt => apt.status === selectedFilter);
+        filtered = filtered.filter(apt => apt.status === selectedFilter);
       }
     }
 
     // Filter by date category
     if (selectedDateFilter !== 'All') {
-      const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const weekStart = new Date(today);
       weekStart.setDate(today.getDate() - today.getDay());
@@ -166,7 +206,6 @@ export default function VetAppointments() {
     }
 
     // Smart sorting based on filter
-    const now = new Date();
     filtered.sort((a, b) => {
       let dateA, dateB;
       
@@ -354,7 +393,7 @@ export default function VetAppointments() {
       {/* Floating Add Button */}
       <TouchableOpacity 
         style={styles.addButton}
-        onPress={() => router.push('/veterinarian/vet-appointments')}
+        onPress={() => router.push('/veterinarian/add-appointment')}
       >
         <Ionicons name="add" size={24} color="#fff" />
       </TouchableOpacity>
@@ -482,6 +521,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   appointmentDate: {
     fontSize: 12,
@@ -508,12 +548,14 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   petInfo: {
     fontSize: 15,
     color: '#666',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   statusIcon: {
     marginRight: 16,
@@ -547,6 +589,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
     fontWeight: 'bold',
+    writingMode: 'vertical-rl',
+    textOrientation: 'mixed',
   },
   actionButton: {
     flex: 1,
