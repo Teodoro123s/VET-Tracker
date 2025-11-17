@@ -5,12 +5,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { getAppointments, getVeterinarianAppointments, updateAppointment, deleteAppointment, getVeterinarians } from '../../lib/services/firebaseService';
 import { useAuth } from '../../contexts/AuthContext';
 
+interface Appointment {
+  id: string;
+  veterinarianEmail?: string;
+  assignedVet?: string;
+  [key: string]: any;
+}
+
 export default function VetAppointments() {
   const router = useRouter();
   const { user } = useAuth();
   
-  const [appointments, setAppointments] = useState([]);
-  const [filteredAppointments, setFilteredAppointments] = useState([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [filteredAppointments, setFilteredAppointments] = useState<Appointment[]>([]);
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [selectedDateFilter, setSelectedDateFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,113 +59,46 @@ export default function VetAppointments() {
   const loadAppointments = async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
-      console.log('=== MOBILE APPOINTMENTS DEBUG ===');
-      console.log('Mobile user email:', user?.email);
-      console.log('Mobile user object:', user);
-      
-      if (!user?.email) {
-        console.log('ERROR: No user email in mobile app!');
-        return;
-      }
-      
-      // First try to get all appointments to see if there are any
-      const allAppointments = await getAppointments(user.email); // Use same call as web
-      console.log('Total appointments in system:', allAppointments.length);
-      console.log('Mobile vs Web comparison - using same getAppointments call');
-      
-      // Log all appointments to see their structure
-      if (allAppointments.length > 0) {
-        console.log('Sample appointment structure:', JSON.stringify(allAppointments[0], null, 2));
-        console.log('All appointment veterinarian fields:');
-        allAppointments.forEach((apt, index) => {
-          console.log(`Appointment ${index + 1}:`, {
-            id: apt.id,
-            veterinarian: apt.veterinarian,
-            veterinarianEmail: apt.veterinarianEmail,
-            assignedVet: apt.assignedVet,
-            vetEmail: apt.vetEmail,
-            staff: apt.staff,
-            assignedTo: apt.assignedTo,
-            doctorEmail: apt.doctorEmail,
-            customerName: apt.customerName,
-            petName: apt.petName
-          });
-        });
-      }
-      
-      // Log what's in the veterinarian field of each appointment
-      console.log('Checking veterinarian fields in all appointments:');
-      allAppointments.forEach((apt, i) => {
-        console.log(`Appointment ${i + 1}: veterinarian="${apt.veterinarian}", customerName="${apt.customerName}"`);
+      console.log('=== DEBUG: FETCHING ALL APPOINTMENTS ===');
+      const allAppointments = await getAppointments(user?.email);
+      console.log('DEBUG: All appointments fetched:', allAppointments);
+
+      // Debugging each appointment
+      allAppointments.forEach(appointment => {
+        console.log('DEBUG: Appointment details:', appointment);
       });
-      
-      // Use the specific function to get veterinarian appointments
-      const myAppointments = await getVeterinarianAppointments(user?.email, user?.email);
-      
-      console.log(`Found ${myAppointments.length} appointments for veterinarian: ${user?.email}`);
-      
-      // Get current veterinarian's name to match against appointment.veterinarian field
-      const veterinarians = await getVeterinarians(user.email);
-      const currentVet = veterinarians.find(vet => vet.email === user.email);
-      const myVetName = currentVet ? `Dr. ${currentVet.firstname || ''} ${currentVet.surname || ''}`.trim() : null;
-      
-      console.log('Current vet name for matching:', myVetName);
-      
-      // Filter appointments assigned to this veterinarian by name
-      const myAssignedAppointments = allAppointments.filter(apt => 
-        apt.veterinarian && apt.veterinarian === myVetName
-      );
-      
-      console.log(`Found ${myAssignedAppointments.length} appointments assigned to ${myVetName}`);
-      const debugAppointments = myAssignedAppointments;
-      
-      console.log('Setting appointments to:', debugAppointments.length, 'appointments');
-      if (debugAppointments.length > 0) {
-        console.log('First appointment sample:', debugAppointments[0]);
-      }
-      
-      // Smart status assignment
-      const now = new Date();
-      const smartAppointments = debugAppointments.map(appointment => {
-        console.log('Processing appointment:', appointment.id, 'Status:', appointment.status, 'Vet field:', appointment.veterinarian);
-        // Keep completed/cancelled status unchanged - check all possible variations
-        if (appointment.status === 'completed' || appointment.status === 'Completed' || 
-            appointment.status === 'Done' || appointment.status === 'cancelled') {
-          console.log('Found completed appointment:', appointment.id);
-          return { ...appointment, status: 'Done' };
-        }
-        
-        let appointmentDateTime;
-        if (appointment.appointmentDate?.seconds) {
-          appointmentDateTime = new Date(appointment.appointmentDate.seconds * 1000);
-        } else {
-          appointmentDateTime = new Date(appointment.appointmentDate || appointment.dateTime);
-        }
-        
-        if (isNaN(appointmentDateTime.getTime())) {
-          return { ...appointment, status: 'Pending' };
-        }
-        
-        // Smart status assignment: Due = overdue, Pending = future
-        const timeDiff = appointmentDateTime.getTime() - now.getTime();
-        
-        let newStatus;
-        if (timeDiff <= 0) {
-          newStatus = 'Due'; // Overdue appointments
-        } else {
-          newStatus = 'Pending'; // Future appointments
-        }
-        
-        return { ...appointment, status: newStatus };
+
+      // Verify logged-in veterinarian email
+      const vetEmail = user?.email;
+      console.log('DEBUG: Logged-in veterinarian email:', vetEmail);
+
+      // Filter appointments for the logged-in veterinarian
+      const filteredAppointments = allAppointments.filter(appointment => {
+        const isAssignedToLoggedInVet =
+          appointment.veterinarianEmail?.toLowerCase() === vetEmail?.toLowerCase() ||
+          appointment.assignedVet?.toLowerCase() === vetEmail?.toLowerCase();
+        console.log('DEBUG: Appointment:', appointment, 'Is Assigned to Logged-in Vet:', isAssignedToLoggedInVet);
+        return isAssignedToLoggedInVet;
       });
-      
-      setAppointments(smartAppointments);
+
+      console.log('DEBUG: Filtered appointments:', filteredAppointments);
+
+      // Sort appointments by veterinarianEmail or assignedVet
+      const sortedAppointments = filteredAppointments.sort((a, b) => {
+        const vetA = a.veterinarianEmail || a.assignedVet || '';
+        const vetB = b.veterinarianEmail || b.assignedVet || '';
+        console.log('DEBUG: Comparing:', vetA, 'and', vetB);
+        return vetA.localeCompare(vetB);
+      });
+
+      console.log('DEBUG: Sorted appointments:', sortedAppointments);
+      setAppointments(sortedAppointments);
+      console.log('DEBUG: Appointments state updated.');
     } catch (error) {
-      console.error('Error loading appointments:', error);
-      setAppointments([]);
+      console.error('DEBUG: Error loading appointments:', error);
     } finally {
       setLoading(false);
-      setRefreshing(false);
+      console.log('DEBUG: Loading state set to false.');
     }
   };
 
@@ -414,7 +354,7 @@ export default function VetAppointments() {
       {/* Floating Add Button */}
       <TouchableOpacity 
         style={styles.addButton}
-        onPress={() => router.push('/veterinarian/add-appointment')}
+        onPress={() => router.push('/veterinarian/vet-appointments')}
       >
         <Ionicons name="add" size={24} color="#fff" />
       </TouchableOpacity>
@@ -542,7 +482,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
   },
   appointmentDate: {
     fontSize: 12,
@@ -569,14 +508,12 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
   },
   petInfo: {
     fontSize: 15,
     color: '#666',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
   },
   statusIcon: {
     marginRight: 16,
@@ -610,8 +547,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
     fontWeight: 'bold',
-    writingMode: 'vertical-rl',
-    textOrientation: 'mixed',
   },
   actionButton: {
     flex: 1,

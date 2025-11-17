@@ -4,12 +4,24 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/config/firebaseConfig';
 import { loginWithCredentialOverlap, getVeterinarianByEmail, getTenantId } from '../lib/services/firebaseService';
 
-const AuthContext = createContext({});
+interface User {
+  email: string;
+  role: string;
+  tenantId?: string;
+  name: string;
+}
+
+const AuthContext = createContext<{ user: User | null; loading: boolean; login: Function; logout: Function }>({
+  user: null,
+  loading: true,
+  login: () => {},
+  logout: () => {},
+});
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

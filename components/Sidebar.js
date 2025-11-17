@@ -71,58 +71,65 @@ export default function Sidebar() {
                   } catch (error) {
                     console.error('Error during logout:', error);
                     router.replace('/auth/admin-login');
-                  }
-                }}
-              >
-                Logout
-              
-            
-          
-        
-      
+                  return (
+                    <View style={styles['sidebar-container']}>
+                      <TouchableOpacity style={styles['sidebar-email-clickable']} onPress={() => router.push('/client/admin-details')}>
+                        <Text style={styles['sidebar-email-text']}>{username}</Text>
+                      </TouchableOpacity>
+                      {menuItems.map((item) => (
+                        <TouchableOpacity
+                          key={item.name}
+                          style={styles['sidebar-menu-item']}
+                          onPress={() => item.name === 'Logout' ? setShowLogoutModal(true) : router.push(item.route)}
+                        >
+                          <Image source={item.icon} style={styles['sidebar-menu-icon']} />
+                          <Text style={styles['sidebar-menu-text']}>{item.name}</Text>
+                          {item.name === 'Notifications' && unreadCount > 0 && (
+                            <View style={styles['sidebar-notification-badge']}>
+                              <Text style={styles['sidebar-badge-text']}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      ))}
 
-    
-  );
-}
-
-const styles = StyleSheet.create({
-  'sidebar-container': {
-    width,
-    height: '100%',
-    paddingTop,
-    paddingHorizontal: Spacing.xlarge,
-    borderRightWidth,
-    backgroundColor: Colors.primary,
-    borderRightColor: Colors.border,
-  },
-  'sidebar-logo-section': {
-    marginTop,
-    marginBottom,
-    alignItems: 'center',
-  },
-  'sidebar-logo': {
-    width,
-    height,
-    resizeMode: 'contain',
-    marginBottom,
-  },
-  'sidebar-title': {
-    fontSize,
-    fontWeight: 'bold',
-    marginBottom,
-    textAlign: 'center',
-    color: Colors.text.inverse,
-  },
-  'sidebar-email-clickable': {
-    minHeight,
-    paddingHorizontal,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop,
-  },
-  'sidebar-email-text': {
-    color: Colors.text.inverse,
-    fontSize: Typography.sidebarEmail,
+                      {/* Logout Confirmation Modal */}
+                      <Modal
+                        visible={showLogoutModal}
+                        transparent
+                        animationType="fade"
+                        onRequestClose={() => setShowLogoutModal(false)}
+                      >
+                        <View style={styles.modalOverlay}>
+                          <View style={styles.logoutModalContent}>
+                            <Text style={styles.logoutModalTitle}>Confirm Logout</Text>
+                            <Text style={styles.logoutModalText}>
+                              Are you sure you want to logout? You will need to login again to access the system.
+                            </Text>
+                            <View style={styles.logoutModalButtons}>
+                              <TouchableOpacity style={styles.cancelButton} onPress={() => setShowLogoutModal(false)}>
+                                <Text style={styles.cancelButtonText}>Cancel</Text>
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.confirmLogoutButton}
+                                onPress={async () => {
+                                  setShowLogoutModal(false);
+                                  try {
+                                    await logout();
+                                    router.replace('/auth/admin-login');
+                                  } catch (error) {
+                                    console.error('Error during logout:', error);
+                                    router.replace('/auth/admin-login');
+                                  }
+                                }}
+                              >
+                                <Text style={styles.confirmLogoutButtonText}>Logout</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        </View>
+                      </Modal>
+                    </View>
+                  );
   },
   'sidebar-menu-item': {
     flexDirection: 'row',

@@ -2,18 +2,59 @@ import { db, auth } from '../config/firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, query, where } from 'firebase/firestore';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
+// Define interfaces for TypeScript
+interface Tenant {
+  id: string;
+  subscriptionStatus?: string;
+  createdAt?: string;
+  [key: string]: any;
+}
+
+interface Appointment {
+  id: string;
+  veterinarianEmail?: string;
+  assignedVet?: string;
+  vetEmail?: string;
+  [key: string]: any;
+}
+
+interface MedicalRecord {
+  id: string;
+  formData?: any;
+  petId?: string;
+  [key: string]: any;
+}
+
+interface Pet {
+  id: string;
+  owner?: string;
+  ownerId?: string;
+  [key: string]: any;
+}
+
+interface FormField {
+  id: string;
+  formName?: string;
+  [key: string]: any;
+}
+
+interface Credential {
+  id: string;
+  email?: string;
+  [key: string]: any;
+}
+
 // Get tenant ID from user email by looking up in tenants collection
-const getTenantId = async (userEmail: string): Promise<string | null> => {
+export const getTenantId = async (userEmail: string): Promise<string | null> => {
   console.log('=== GET TENANT ID ===');
   console.log('Input userEmail:', userEmail);
-  
+
   if (userEmail?.includes('superadmin')) {
     console.log('Superadmin detected, returning null');
     return null;
   }
-  
+
   try {
-    // First check if user is directly a tenant
     const q = query(collection(db, 'tenants'), where('email', '==', userEmail));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
@@ -22,32 +63,28 @@ const getTenantId = async (userEmail: string): Promise<string | null> => {
       console.log('Found tenant ID from direct lookup:', tenantId);
       return tenantId;
     }
-    
-    // Check all tenants to find matching tenant ID
+
     const allTenants = await getDocs(collection(db, 'tenants'));
     console.log('Checking all tenants, count:', allTenants.docs.length);
-    
+
     for (const tenantDoc of allTenants.docs) {
       const tenantData = tenantDoc.data();
-      
-      // Check if user created this tenant (for admin users)
+
       if (tenantData.createdBy === userEmail) {
         return tenantData.tenantId || tenantData.id || null;
       }
-      
-      // Check if this tenant record matches the user email
+
       if (tenantData.email === userEmail) {
         return tenantData.tenantId || tenantData.id || null;
       }
     }
-    
-    // Fallback: use email prefix as tenant ID
+
     const emailPrefix = userEmail.split('@')[0];
     return emailPrefix;
   } catch (error) {
     console.error('Error getting tenant ID:', error);
   }
-  
+
   console.log('No tenant ID found, returning null');
   return null;
 };
@@ -109,7 +146,7 @@ export const getSystemStats = async () => {
         totalAppointments += appointments.size;
         totalVeterinarians += veterinarians.size;
         
-        if (tenant.subscriptionStatus === 'active') {
+        if (tenant["subscriptionStatus"] === 'active') {
           activeSubscriptions++;
         }
       } catch (error) {
@@ -153,7 +190,7 @@ export const getClinicGrowthData = async (filter = 'month') => {
       const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
       
       tenants.forEach(t => {
-        const date = new Date(t.createdAt);
+        const date = new Date(t["createdAt"]);
         if (date >= startOfWeek) {
           const dayIndex = date.getDay();
           weekData[dayIndex]++;
@@ -167,7 +204,7 @@ export const getClinicGrowthData = async (filter = 'month') => {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       
       tenants.forEach(t => {
-        const date = new Date(t.createdAt);
+        const date = new Date(t["createdAt"]);
         if (date >= startOfMonth) {
           const weekIndex = Math.floor((date.getDate() - 1) / 7);
           if (weekIndex < 4) monthData[weekIndex]++;
@@ -180,7 +217,7 @@ export const getClinicGrowthData = async (filter = 'month') => {
     const startOfYear = new Date(now.getFullYear(), 0, 1);
     
     tenants.forEach(t => {
-      const date = new Date(t.createdAt);
+      const date = new Date(t["createdAt"]);
       if (date >= startOfYear) {
         const quarter = Math.floor(date.getMonth() / 3);
         yearData[quarter]++;
@@ -340,11 +377,11 @@ export const addPet = async (petData, userEmail) => {
 };
 
 // Get all appointments (tenant-aware)
-export const getAppointments = async (userEmail?: string) => {
+export const getAppointments = async (userEmail?: string): Promise<Appointment[]> => {
   try {
     const tenantCollection = await getTenantCollection(userEmail || '', 'appointments');
     const querySnapshot = await getDocs(tenantCollection);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
   } catch (error) {
     console.error('Error fetching appointments:', error);
     return [];
@@ -1016,12 +1053,7 @@ const verifyPassword = async (password: string, hashedPassword: string) => {
 
 const sendPasswordEmail = async (email: string, newPassword: string) => {
   try {
-    // For now, just log the credentials - replace with actual email service
-    console.log(`\n=== PASSWORD RESET CREDENTIALS ===`);
-    console.log(`Email: ${email}`);
-    console.log(`New Password: ${newPassword}`);
-    console.log(`Please use these credentials to log in.`);
-    console.log(`=====================================\n`);
+    console.log(`Password for ${email}: ${newPassword}`);
     return true;
   } catch (error) {
     console.error('Email sending failed:', error);
@@ -1062,28 +1094,20 @@ export const generateOwnPassword = async (vetEmail: string) => {
 
 export const requestPasswordReset = async (email: string, userType: string) => {
   const newPassword = generateSecurePassword();
+  const hashedPassword = await hashPassword(newPassword);
+  const resetToken = generateResetToken();
   
-  // Find the tenant document
-  const q = query(collection(db, 'tenants'), where('email', '==', email));
-  const querySnapshot = await getDocs(q);
+  const tenantId = await getTenantId(email || '');
+  const collectionPath = tenantId ? `tenants/${tenantId}/userCredentials` : 'userCredentials';
   
-  if (querySnapshot.empty) {
-    throw new Error('User not found');
-  }
-  
-  const userDoc = querySnapshot.docs[0];
-  const userData = userDoc.data();
-  
-  // Generate proper hash with existing salt or new salt
-  const CryptoJS = require('crypto-js');
-  const salt = userData.salt || CryptoJS.lib.WordArray.random(32).toString(CryptoJS.enc.Base64);
-  const passwordHash = CryptoJS.SHA256(newPassword + salt).toString();
-  
-  // Update the tenant document
-  await updateDoc(userDoc.ref, {
-    passwordHash: passwordHash,
-    salt: salt,
-    lastPasswordReset: new Date().toISOString()
+  await addDoc(collection(db, collectionPath), {
+    email: email,
+    pendingPassword: hashedPassword,
+    pendingPasswordCreatedAt: new Date().toISOString(),
+    pendingPasswordExpiresAt: new Date(Date.now() + 24*60*60*1000).toISOString(),
+    passwordResetToken: resetToken,
+    initiatedBy: email,
+    initiatorType: 'self_reset'
   });
   
   await sendPasswordEmail(email, newPassword);
