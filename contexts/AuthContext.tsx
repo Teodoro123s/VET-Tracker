@@ -21,10 +21,14 @@ export const AuthProvider = ({ children }) => {
       // Check for stored user data
       const userData = await AsyncStorage.getItem('currentUser');
       if (userData) {
-        setUser(JSON.parse(userData));
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+      } else {
+        setUser(null);
       }
     } catch (error) {
       console.error('Error checking auth state:', error);
+      setUser(null);
     } finally {
       setLoading(false);
     }

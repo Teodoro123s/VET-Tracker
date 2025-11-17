@@ -43,17 +43,68 @@ export default function LoginWeb() {
 
     setIsLoading(true);
     try {
-      // Check superadmin credentials
-      if (username.trim() === 'edzhelteodoro@gmail.com' && password === '@Te0r0i256') {
-        await AsyncStorage.setItem('currentUser', JSON.stringify({
-          email: 'edzhelteodoro@gmail.com',
-          role: 'superadmin',
-          name: 'Edzhel Teodoro'
-        }));
-        
-        await checkAuthState();
-        router.replace('/server/superadmin');
-        return;
+      // Check superadmin in users collection first
+      if (username.trim() === 'edzhelteodoro@gmail.com') {
+        try {
+          const userQuery = query(collection(db, 'users'), where('email', '==', username.trim()));
+          const userSnapshot = await getDocs(userQuery);
+          
+          if (!userSnapshot.empty) {
+            const superadminData = userSnapshot.docs[0].data();
+            
+            // Verify password using stored hash and salt
+            const { verifyPassword } = await import('../lib/utils/passwordUtils');
+            
+            if (verifyPassword(password, superadminData.passwordHash, superadminData.salt)) {
+              await AsyncStorage.setItem('currentUser', JSON.stringify({
+                email: superadminData.email,
+                role: 'superadmin',
+                name: superadminData.displayName || 'Edzhel Teodoro'
+              }));
+              
+              await checkAuthState();
+              router.replace('/server/superadmin');
+              return;
+            } else {
+              setErrorMessage('Incorrect password. Please try again.');
+              return;
+            }
+          } else {
+            // Fallback: create superadmin if doesn't exist
+            const { hashPassword } = await import('../lib/utils/passwordUtils');
+            const { passwordHash, salt } = hashPassword('superadmin123');
+            
+            const { doc, setDoc } = await import('firebase/firestore');
+            await setDoc(doc(db, 'users', 'superadmin'), {
+              email: 'edzhelteodoro@gmail.com',
+              passwordHash,
+              salt,
+              displayName: 'Edzhel Teodoro',
+              role: 'superadmin',
+              createdAt: new Date(),
+              updatedAt: new Date()
+            });
+            
+            if (password === 'superadmin123') {
+              await AsyncStorage.setItem('currentUser', JSON.stringify({
+                email: 'edzhelteodoro@gmail.com',
+                role: 'superadmin',
+                name: 'Edzhel Teodoro'
+              }));
+              
+              await checkAuthState();
+              router.replace('/server/superadmin');
+              return;
+            } else {
+              setErrorMessage('Incorrect password. Please try again.');
+              return;
+            }
+          }
+        } catch (superadminError) {
+          console.error('Superadmin login error:', superadminError);
+          setErrorMessage('Login system error. Please try again.');
+          return;
+        }
       }
       
       // Check in tenants collection for user credentials

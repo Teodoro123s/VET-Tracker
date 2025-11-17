@@ -66,7 +66,7 @@ function AppContent() {
   // Routes that should have no sidebar
   const noSidebarRoutes = pathname.startsWith('/veterinarian/') || pathname.startsWith('/server/') || pathname.startsWith('/auth/') || pathname === '/' || pathname === '/login';
   
-  const showMainSidebar = !noSidebarRoutes;
+  const showMainSidebar = !noSidebarRoutes && !isVetRoute;
   const showBottomMenu = isVetRoute;
   const showMobileHeader = isVetRoute;
   
@@ -131,6 +131,11 @@ function AppContent() {
               }
             } else {
               require('expo-router').router.back();
+            }
+          }} onSave={() => {
+            // Trigger save function from medical record form
+            if (pathname === '/veterinarian/medical-record-form') {
+              // This will be handled by the form component
             }
           }} />}
           <View style={showBottomMenu ? styles.contentWithMenu : styles.fullHeight}>

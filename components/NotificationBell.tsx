@@ -15,9 +15,20 @@ export default function NotificationBell({ tenantId, userEmail }: NotificationBe
 
   useEffect(() => {
     loadNotifications();
-    // Set up periodic refresh
-    const interval = setInterval(loadNotifications, 30000); // Check every 30 seconds
-    return () => clearInterval(interval);
+    // Set up real-time listener
+    const { notificationService } = require('../lib/services/notificationService');
+    const unsubscribe = notificationService.subscribeToNotifications(
+      tenantId,
+      userEmail,
+      (notifications: InAppNotification[]) => {
+        const sortedNotifications = notifications.sort((a, b) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+        setNotifications(sortedNotifications);
+        setUnreadCount(sortedNotifications.filter(n => !n.read).length);
+      }
+    );
+    return () => unsubscribe?.();
   }, [tenantId, userEmail]);
 
   const loadNotifications = async () => {
@@ -37,7 +48,11 @@ export default function NotificationBell({ tenantId, userEmail }: NotificationBe
   const markAsRead = async (notificationId: string) => {
     try {
       await notificationService.markNotificationAsRead(tenantId, notificationId);
-      await loadNotifications(); // Refresh notifications
+      // Update local state immediately
+      setNotifications(prev => 
+        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }

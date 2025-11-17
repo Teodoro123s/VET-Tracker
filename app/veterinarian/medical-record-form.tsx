@@ -23,10 +23,27 @@ export default function VetMedicalRecordForm() {
       console.log('Loading form fields for:', params.formTemplate, 'user:', user?.email);
       const fields = await getFormFields(params.formTemplate, user?.email);
       console.log('Loaded fields:', fields);
-      setFormFields(fields || []);
+      
+      if (!fields || fields.length === 0) {
+        // Create basic medical record fields if none found
+        const basicFields = [
+          { id: 'diagnosis', label: 'Diagnosis', type: 'textarea', required: true },
+          { id: 'treatment', label: 'Treatment', type: 'textarea', required: true },
+          { id: 'notes', label: 'Notes', type: 'textarea', required: false }
+        ];
+        setFormFields(basicFields);
+      } else {
+        setFormFields(fields);
+      }
     } catch (error) {
       console.error('Error loading form fields:', error);
-      Alert.alert('Error', 'Failed to load form fields: ' + error.message);
+      // Show basic fields on error
+      const basicFields = [
+        { id: 'diagnosis', label: 'Diagnosis', type: 'textarea', required: true },
+        { id: 'treatment', label: 'Treatment', type: 'textarea', required: true },
+        { id: 'notes', label: 'Notes', type: 'textarea', required: false }
+      ];
+      setFormFields(basicFields);
     } finally {
       setLoading(false);
     }
@@ -61,8 +78,17 @@ export default function VetMedicalRecordForm() {
       await addMedicalRecord(recordData, user.email);
       Alert.alert('Success', 'Medical record saved successfully!', [
         { text: 'OK', onPress: () => {
-          // Go back to appointment details, skipping selection screen
-          router.replace('/veterinarian/vet-appointments');
+          // Navigate to medical history of the specific customer
+          router.replace({
+            pathname: '/veterinarian/vet-customers',
+            params: {
+              customerId: params.customerId || params.appointmentId,
+              customerName: params.customerName,
+              petId: params.appointmentId,
+              petName: params.petName,
+              showMedicalHistory: 'true'
+            }
+          });
         }}
       ]);
     } catch (error) {
@@ -145,28 +171,16 @@ export default function VetMedicalRecordForm() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>{params.formTemplate || 'Medical Record Form'}</Text>
+      </View>
+      
       <ScrollView 
         style={styles.scrollContainer} 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{params.formTemplate || 'Medical Record'}</Text>
-          <TouchableOpacity 
-            style={[styles.saveButton, isSubmitting && styles.disabledButton]} 
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-          >
-            <Text style={styles.saveText}>
-              {isSubmitting ? 'Saving...' : 'Save'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        
         <View style={styles.content}>
           <View style={styles.patientCard}>
             <Text style={styles.cardTitle}>Patient Information</Text>
@@ -180,20 +194,26 @@ export default function VetMedicalRecordForm() {
             </View>
           </View>
           
-          {formFields.length === 0 ? (
-            <View style={styles.noFieldsCard}>
-              <Text style={styles.noFieldsText}>No form fields available</Text>
-            </View>
-          ) : (
-            formFields.map((field) => (
-              <View key={field.id} style={styles.fieldCard}>
+          <View style={styles.fieldsContainer}>
+            {formFields.map((field) => (
+              <View key={field.id} style={styles.fieldItem}>
                 <Text style={styles.fieldLabel}>
                   {field.label}{field.required && ' *'}
                 </Text>
                 {renderFormField(field)}
               </View>
-            ))
-          )}
+            ))}
+          </View>
+          
+          <TouchableOpacity 
+            style={[styles.submitButton, isSubmitting && styles.disabledButton]} 
+            onPress={handleSubmit}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.submitText}>
+              {isSubmitting ? 'Saving...' : 'Save Medical Record'}
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -223,9 +243,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 15,
     backgroundColor: '#fff',
@@ -237,44 +255,17 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#7B2C2C',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
+
   headerTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#7B2C2C',
-    flex: 1,
     textAlign: 'center',
   },
-  saveButton: {
-    backgroundColor: '#28a745',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 5,
-  },
-  saveText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  disabledButton: {
-    backgroundColor: '#ccc',
-    opacity: 0.6,
-  },
+
   content: {
     padding: 20,
-    paddingTop: 0,
+    paddingTop: 20,
     paddingBottom: 40,
   },
   noFieldsCard: {
@@ -298,7 +289,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 24,
+    marginTop: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -326,16 +318,20 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
-  fieldCard: {
+  fieldsContainer: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 20,
+    marginTop: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  fieldItem: {
+    marginBottom: 20,
   },
   fieldLabel: {
     fontSize: 16,
@@ -364,5 +360,22 @@ const styles = StyleSheet.create({
     color: '#f44336',
     fontSize: 14,
     fontStyle: 'italic',
+  },
+  submitButton: {
+    backgroundColor: '#28a745',
+    paddingVertical: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  submitText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
   },
 });

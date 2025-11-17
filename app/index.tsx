@@ -21,12 +21,12 @@ export default function IndexScreen() {
     if (!loading && isReady) {
       if (user) {
         // User is logged in, redirect based on role
-        if (user.email?.includes('superadmin') || user.role === 'superadmin') {
+        if (user.role === 'superadmin' || user.email === 'edzhelteodoro@gmail.com') {
           router.replace('/server/superadmin');
         } else if (user.role === 'admin') {
           router.replace('/client/dashboard');
-        } else if (user.role === 'veterinarian' || user.role === 'staff') {
-          router.replace('/veterinarian/vet-mobile');
+        } else if (user.role === 'veterinarian' || user.role === 'staff' || user.email?.includes('veterinarian') || user.email?.includes('staff')) {
+          router.replace('/veterinarian/vet-appointments');
         } else {
           // Unknown role, redirect to appropriate login
           if (Platform.OS === 'web') {
@@ -44,7 +44,7 @@ export default function IndexScreen() {
         }
       }
     }
-  }, [user, loading, isReady]);
+  }, [user, loading, isReady, router]);
   
 
 

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Animated, Dimensions, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getCustomers, getAppointments, getVeterinarians, getPets, getMedicalForms } from '@/lib/services/firebaseService';
-import { useTenant } from '@/contexts/TenantContext';
+import { getCustomers, getAppointments, getVeterinarians, getPets, getMedicalForms } from '../../lib/services/firebaseService';
+import { useTenant } from '../../contexts/TenantContext';
 import { useRouter } from 'expo-router';
 
 const screenWidth = Dimensions.get('window').width;
@@ -18,18 +18,7 @@ export default function Dashboard() {
     totalVeterinarians: 0,
     totalAppointments: 0
   });
-  const [trends, setTrends] = useState({
-    pets: { change: 0, isPositive: true },
-    customers: { change: 0, isPositive: true },
-    appointments: { change: 0, isPositive: true },
-    records: { change: 0, isPositive: true }
-  });
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const [scaleAnim] = useState(new Animated.Value(0.9));
-  const [selectedMetric, setSelectedMetric] = useState(null);
   const [recentActivity, setRecentActivity] = useState([]);
   const [todayAppointments, setTodayAppointments] = useState([]);
 
@@ -37,21 +26,6 @@ export default function Dashboard() {
     if (userEmail) {
       loadDashboardData();
     }
-    
-    // Animate dashboard entrance
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      })
-    ]).start();
   }, [userEmail]);
 
   const loadDashboardData = async () => {
@@ -65,7 +39,7 @@ export default function Dashboard() {
       ]);
 
       const today = new Date().toDateString();
-      const todayAppointments = appointments.filter(apt => {
+      const todayAppointmentsCount = appointments.filter(apt => {
         try {
           let aptDate;
           if (apt.appointmentDate?.seconds) {
@@ -82,7 +56,7 @@ export default function Dashboard() {
       setStats({
         totalPets: pets.length,
         totalCustomers: customers.length,
-        appointmentsToday: todayAppointments,
+        appointmentsToday: todayAppointmentsCount,
         activeRecords: medicalForms.length,
         totalVeterinarians: veterinarians.length,
         totalAppointments: appointments.length
@@ -101,14 +75,11 @@ export default function Dashboard() {
         } catch {
           return false;
         }
-      }).slice(0, 5); // Limit to 5 appointments
+      }).slice(0, 5);
       setTodayAppointments(todayAppointmentDetails);
 
-      // Calculate trends
-      calculateTrends(customers, appointments, pets);
-
-      // Generate recent activity from real data
-      generateRecentActivity(customers, appointments, pets, veterinarians);
+      // Generate recent activity
+      generateRecentActivity(customers, appointments, pets);
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -117,76 +88,11 @@ export default function Dashboard() {
     }
   };
 
-  // Auto-refresh data every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (userEmail && !loading) {
-        refreshDashboardData();
-      }
-    }, 5 * 60 * 1000); // 5 minutes
-
-    return () => clearInterval(interval);
-  }, [userEmail, loading]);
-
-  const calculateTrends = (customers, appointments, pets) => {
-    const now = new Date();
-    const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const lastMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-    // Calculate last week's appointments
-    const lastWeekAppointments = appointments.filter(apt => {
-      try {
-        let aptDate;
-        if (apt.appointmentDate?.seconds) {
-          aptDate = new Date(apt.appointmentDate.seconds * 1000);
-        } else {
-          aptDate = new Date(apt.appointmentDate);
-        }
-        return aptDate >= lastWeek && aptDate < now;
-      } catch {
-        return false;
-      }
-    }).length;
-
-    // Calculate previous week's appointments
-    const prevWeekStart = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const prevWeekAppointments = appointments.filter(apt => {
-      try {
-        let aptDate;
-        if (apt.appointmentDate?.seconds) {
-          aptDate = new Date(apt.appointmentDate.seconds * 1000);
-        } else {
-          aptDate = new Date(apt.appointmentDate);
-        }
-        return aptDate >= prevWeekStart && aptDate < lastWeek;
-      } catch {
-        return false;
-      }
-    }).length;
-
-    // Calculate trends
-    const appointmentChange = prevWeekAppointments > 0 
-      ? Math.round(((lastWeekAppointments - prevWeekAppointments) / prevWeekAppointments) * 100)
-      : lastWeekAppointments > 0 ? 100 : 0;
-
-    // Simple growth simulation for other metrics
-    const petsChange = Math.floor(Math.random() * 20) + 5;
-    const customersChange = Math.floor(Math.random() * 15) + 3;
-    const recordsChange = Math.floor(Math.random() * 25) + 8;
-
-    setTrends({
-      pets: { change: petsChange, isPositive: true },
-      customers: { change: customersChange, isPositive: true },
-      appointments: { change: Math.abs(appointmentChange), isPositive: appointmentChange >= 0 },
-      records: { change: recordsChange, isPositive: true }
-    });
-  };
-
-  const generateRecentActivity = (customers, appointments, pets, veterinarians) => {
+  const generateRecentActivity = (customers, appointments, pets) => {
     const activities = [];
     const now = new Date();
 
-    // Recent appointments (last 24 hours)
+    // Recent appointments
     const recentAppointments = appointments
       .filter(apt => {
         try {
@@ -196,25 +102,19 @@ export default function Dashboard() {
           return (now - aptDate) < 24 * 60 * 60 * 1000 && aptDate <= now;
         } catch { return false; }
       })
-      .sort((a, b) => {
-        const dateA = a.appointmentDate?.seconds ? new Date(a.appointmentDate.seconds * 1000) : new Date(a.appointmentDate);
-        const dateB = b.appointmentDate?.seconds ? new Date(b.appointmentDate.seconds * 1000) : new Date(b.appointmentDate);
-        return dateB - dateA;
-      })
       .slice(0, 2);
 
     recentAppointments.forEach((apt, index) => {
-      const timeAgo = getTimeAgo(apt.appointmentDate?.seconds ? new Date(apt.appointmentDate.seconds * 1000) : new Date(apt.appointmentDate));
       activities.push({
         id: `apt-${index}`,
         type: 'appointment',
-        message: `Appointment completed: ${apt.petName || 'Pet'} with ${apt.veterinarian || 'Doctor'}`,
-        time: timeAgo,
+        message: `Appointment: ${apt.petName || 'Pet'} with ${apt.veterinarian || 'Doctor'}`,
+        time: getTimeAgo(apt.appointmentDate?.seconds ? new Date(apt.appointmentDate.seconds * 1000) : new Date(apt.appointmentDate)),
         icon: 'calendar'
       });
     });
 
-    // Recent customers (last 7 days)
+    // Recent customers
     const recentCustomers = customers
       .filter(customer => {
         try {
@@ -227,49 +127,18 @@ export default function Dashboard() {
       .slice(0, 2);
 
     recentCustomers.forEach((customer, index) => {
-      const timeAgo = getTimeAgo(customer.createdAt?.seconds ? new Date(customer.createdAt.seconds * 1000) : new Date(customer.createdAt || customer.dateAdded));
+      const firstName = customer.firstname || customer.firstName || customer.name || 'Customer';
+      const lastName = customer.lastname || customer.lastName || '';
+      const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+      
       activities.push({
         id: `cust-${index}`,
         type: 'customer',
-        message: `New customer registered: ${customer.firstname} ${customer.lastname}`,
-        time: timeAgo,
+        message: `New customer: ${fullName}`,
+        time: getTimeAgo(customer.createdAt?.seconds ? new Date(customer.createdAt.seconds * 1000) : new Date(customer.createdAt || customer.dateAdded)),
         icon: 'person-add'
       });
     });
-
-    // Recent pets (last 7 days)
-    const recentPets = pets
-      .filter(pet => {
-        try {
-          const createdDate = pet.createdAt?.seconds 
-            ? new Date(pet.createdAt.seconds * 1000)
-            : new Date(pet.createdAt || pet.dateAdded);
-          return (now - createdDate) < 7 * 24 * 60 * 60 * 1000;
-        } catch { return false; }
-      })
-      .slice(0, 1);
-
-    recentPets.forEach((pet, index) => {
-      const timeAgo = getTimeAgo(pet.createdAt?.seconds ? new Date(pet.createdAt.seconds * 1000) : new Date(pet.createdAt || pet.dateAdded));
-      activities.push({
-        id: `pet-${index}`,
-        type: 'record',
-        message: `New pet registered: ${pet.name} (${pet.species || pet.type})`,
-        time: timeAgo,
-        icon: 'medical'
-      });
-    });
-
-    // If no real activities, show placeholder
-    if (activities.length === 0) {
-      activities.push({
-        id: 'placeholder',
-        type: 'alert',
-        message: 'No recent activity',
-        time: 'Just now',
-        icon: 'information-circle'
-      });
-    }
 
     setRecentActivity(activities.slice(0, 4));
   };
@@ -282,31 +151,27 @@ export default function Dashboard() {
     const diffDays = Math.floor(diffMs / 86400000);
 
     if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     return `${diffDays}d ago`;
   };
 
-  const refreshDashboardData = async () => {
-    setRefreshing(true);
-    try {
-      await loadDashboardData();
-    } catch (error) {
-      console.error('Error refreshing dashboard:', error);
-    } finally {
-      setRefreshing(false);
+  const getActivityColor = (type) => {
+    switch (type) {
+      case 'appointment': return '#F59E0B';
+      case 'customer': return '#3B82F6';
+      case 'pet': return '#8B5CF6';
+      default: return '#6B7280';
     }
   };
 
-  const getActivityColor = (type) => {
-    switch(type) {
-      case 'appointment': return '#F59E0B';
-      case 'customer': return '#3B82F6';
-      case 'record': return '#8B5CF6';
-      case 'alert': return '#EF4444';
-      default: return '#7B2A3B';
-    }
-  };
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading dashboard...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -321,125 +186,128 @@ export default function Dashboard() {
             </View>
           </View>
         </View>
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Loading dashboard...</Text>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActionsSection}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.actionsGrid}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/client/appointments')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="calendar-outline" size={24} color="#F59E0B" />
+              </View>
+              <Text style={styles.actionTitle}>Appointments</Text>
+              <Text style={styles.actionSubtitle}>Manage schedule</Text>
+              <View style={styles.actionBadge}>
+                <Text style={styles.badgeText}>{stats.totalAppointments}</Text>
+              </View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/client/customers')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="people-outline" size={24} color="#3B82F6" />
+              </View>
+              <Text style={styles.actionTitle}>Customers</Text>
+              <Text style={styles.actionSubtitle}>Manage clients</Text>
+              <View style={styles.actionBadge}>
+                <Text style={styles.badgeText}>{stats.totalCustomers}</Text>
+              </View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/client/veterinarians')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#F0FDF4' }]}>
+                <Ionicons name="medical-outline" size={24} color="#22C55E" />
+              </View>
+              <Text style={styles.actionTitle}>Personnel</Text>
+              <Text style={styles.actionSubtitle}>Staff & vets</Text>
+              <View style={styles.actionBadge}>
+                <Text style={styles.badgeText}>{stats.totalVeterinarians}</Text>
+              </View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/client/records')}>
+              <View style={[styles.actionIcon, { backgroundColor: '#F3E8FF' }]}>
+                <Ionicons name="document-text-outline" size={24} color="#8B5CF6" />
+              </View>
+              <Text style={styles.actionTitle}>Records</Text>
+              <Text style={styles.actionSubtitle}>Medical records</Text>
+              <View style={styles.actionBadge}>
+                <Text style={styles.badgeText}>{stats.activeRecords}</Text>
+              </View>
+            </TouchableOpacity>
           </View>
-        ) : (
-          <>
-            {/* Quick Actions */}
-            <View style={styles.quickActionsSection}>
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
-              <View style={styles.actionsGrid}>
-                <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/client/appointments')}>
-                  <View style={[styles.actionIcon, { backgroundColor: '#FEF3C7' }]}>
-                    <Ionicons name="calendar-outline" size={24} color="#F59E0B" />
-                  </View>
-                  <Text style={styles.actionTitle}>Appointments</Text>
-                  <Text style={styles.actionSubtitle}>Manage schedule</Text>
-                  <View style={styles.actionBadge}>
-                    <Text style={styles.badgeText}>{stats.totalAppointments}</Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/client/customers')}>
-                  <View style={[styles.actionIcon, { backgroundColor: '#EFF6FF' }]}>
-                    <Ionicons name="people-outline" size={24} color="#3B82F6" />
-                  </View>
-                  <Text style={styles.actionTitle}>Customers</Text>
-                  <Text style={styles.actionSubtitle}>Manage client database</Text>
-                  <View style={styles.actionBadge}>
-                    <Text style={styles.badgeText}>{stats.totalCustomers}</Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/client/veterinarians')}>
-                  <View style={[styles.actionIcon, { backgroundColor: '#F0FDF4' }]}>
-                    <Ionicons name="medical-outline" size={24} color="#22C55E" />
-                  </View>
-                  <Text style={styles.actionTitle}>Personnel</Text>
-                  <Text style={styles.actionSubtitle}>Staff & veterinarians</Text>
-                  <View style={styles.actionBadge}>
-                    <Text style={styles.badgeText}>{stats.totalVeterinarians}</Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/client/records')}>
-                  <View style={[styles.actionIcon, { backgroundColor: '#F3E8FF' }]}>
-                    <Ionicons name="document-text-outline" size={24} color="#8B5CF6" />
-                  </View>
-                  <Text style={styles.actionTitle}>Medical Records</Text>
-                  <Text style={styles.actionSubtitle}>Patient health records</Text>
-                  <View style={styles.actionBadge}>
-                    <Text style={styles.badgeText}>{stats.activeRecords}</Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </View>
+        </View>
 
-            {/* Side by Side: Recent Activity & Today's Appointments */}
-            <View style={styles.sideBySideSection}>
-              <View style={styles.activitySection}>
-                <Text style={styles.sectionTitle}>Recent Activity</Text>
-                <View style={styles.activityList}>
-                  <ScrollView style={styles.activityScrollView} showsVerticalScrollIndicator={false}>
-                    {recentActivity.map((activity) => (
-                      <View key={activity.id} style={styles.activityItem}>
-                        <View style={[styles.activityIcon, { backgroundColor: getActivityColor(activity.type) }]}>
-                          <Ionicons name={activity.icon} size={16} color="#FFFFFF" />
-                        </View>
-                        <View style={styles.activityContent}>
-                          <Text style={styles.activityMessage}>{activity.message}</Text>
-                          <Text style={styles.activityTime}>{activity.time}</Text>
-                        </View>
+        {/* Side by Side: Recent Activity & Today's Appointments */}
+        <View style={styles.sideBySideSection}>
+          <View style={styles.activitySection}>
+            <Text style={styles.sectionTitle}>Recent Activity</Text>
+            <View style={styles.activityList}>
+              <ScrollView style={styles.activityScrollView} showsVerticalScrollIndicator={false}>
+                {recentActivity.length > 0 ? (
+                  recentActivity.map((activity) => (
+                    <View key={activity.id} style={styles.activityItem}>
+                      <View style={[styles.activityIcon, { backgroundColor: getActivityColor(activity.type) }]}>
+                        <Ionicons name={activity.icon} size={16} color="#FFFFFF" />
                       </View>
-                    ))}
-                  </ScrollView>
-                </View>
-              </View>
+                      <View style={styles.activityContent}>
+                        <Text style={styles.activityMessage}>{activity.message}</Text>
+                        <Text style={styles.activityTime}>{activity.time}</Text>
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.activityItem}>
+                    <View style={styles.activityContent}>
+                      <Text style={styles.activityMessage}>No recent activity</Text>
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </View>
 
-              <View style={styles.appointmentsSection}>
-                <Text style={styles.sectionTitle}>Today's Appointments</Text>
-                <View style={styles.appointmentsList}>
-                  <ScrollView style={styles.appointmentsScrollView} showsVerticalScrollIndicator={false}>
-                    {todayAppointments.length > 0 ? (
-                      todayAppointments.map((appointment, index) => {
-                        const appointmentTime = appointment.appointmentDate?.seconds 
-                          ? new Date(appointment.appointmentDate.seconds * 1000)
-                          : new Date(appointment.appointmentDate);
-                        const timeString = appointmentTime.toLocaleTimeString('en-US', { 
-                          hour: 'numeric', 
-                          minute: '2-digit', 
-                          hour12: true 
-                        });
-                        
-                        return (
-                          <View key={index} style={styles.appointmentItem}>
-                            <View style={styles.appointmentTime}>
-                              <Text style={styles.timeText}>{timeString}</Text>
-                            </View>
-                            <View style={styles.appointmentDetails}>
-                              <Text style={styles.appointmentPatient}>
-                                {appointment.petName || 'Pet'} - {appointment.reason || 'Appointment'}
-                              </Text>
-                              <Text style={styles.appointmentOwner}>
-                                {appointment.customerName || 'Customer'}
-                              </Text>
-                            </View>
-                          </View>
-                        );
-                      })
-                    ) : (
-                      <View style={styles.appointmentItem}>
+          <View style={styles.appointmentsSection}>
+            <Text style={styles.sectionTitle}>Today's Appointments</Text>
+            <View style={styles.appointmentsList}>
+              <ScrollView style={styles.appointmentsScrollView} showsVerticalScrollIndicator={false}>
+                {todayAppointments.length > 0 ? (
+                  todayAppointments.map((appointment, index) => {
+                    const appointmentTime = appointment.appointmentDate?.seconds 
+                      ? new Date(appointment.appointmentDate.seconds * 1000)
+                      : new Date(appointment.appointmentDate);
+                    const timeString = appointmentTime.toLocaleTimeString('en-US', { 
+                      hour: 'numeric', 
+                      minute: '2-digit', 
+                      hour12: true 
+                    });
+                    
+                    return (
+                      <View key={index} style={styles.appointmentItem}>
+                        <View style={styles.appointmentTime}>
+                          <Text style={styles.timeText}>{timeString}</Text>
+                        </View>
                         <View style={styles.appointmentDetails}>
-                          <Text style={styles.appointmentPatient}>No appointments scheduled for today</Text>
+                          <Text style={styles.appointmentPatient}>
+                            {appointment.petName || 'Pet'} - {appointment.reason || 'Appointment'}
+                          </Text>
+                          <Text style={styles.appointmentOwner}>
+                            {appointment.customerName || 'Customer'}
+                          </Text>
                         </View>
                       </View>
-                    )}
-                  </ScrollView>
-                </View>
-              </View>
+                    );
+                  })
+                ) : (
+                  <View style={styles.appointmentItem}>
+                    <View style={styles.appointmentDetails}>
+                      <Text style={styles.appointmentPatient}>No appointments scheduled for today</Text>
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
             </View>
-
-          </>
-        )}
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -482,98 +350,6 @@ const styles = StyleSheet.create({
     color: '#999',
     marginLeft: 6,
   },
-  refreshButton: {
-    backgroundColor: '#23C062',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  refreshingButton: {
-    borderColor: '#999',
-  },
-  refreshIcon: {
-    marginRight: 6,
-  },
-  spinning: {},
-  refreshText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  refreshingText: {
-    color: '#999',
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    gap: 20,
-    marginBottom: 32,
-    paddingHorizontal: 24,
-    marginTop: 24,
-  },
-  metricCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    padding: 24,
-    borderRadius: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 8,
-    position: 'relative',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.8)',
-  },
-  selectedMetricCard: {
-    borderWidth: 3,
-    borderColor: '#7B2A3B',
-    transform: [{ scale: 1.05 }],
-    shadowColor: '#7B2A3B',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 25,
-    elevation: 12,
-    backgroundColor: '#FFF8F9',
-  },
-  metricIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  trendIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
-  },
-  trendText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  metricNumber: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#111827',
-    marginVertical: 10,
-    textShadowColor: 'rgba(17, 24, 39, 0.1)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  metricLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
-
   content: {
     flex: 1,
   },
@@ -587,7 +363,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
   },
-
   sideBySideSection: {
     flexDirection: 'row',
     gap: 16,
@@ -661,7 +436,7 @@ const styles = StyleSheet.create({
   },
   actionCard: {
     flex: 1,
-    backgroundColor: 'linear-gradient(135deg, #FFFFFF 0%, #FAFBFC 100%)',
+    backgroundColor: '#FFFFFF',
     padding: 24,
     borderRadius: 18,
     alignItems: 'center',
@@ -691,7 +466,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: 'linear-gradient(135deg, #7B2A3B 0%, #A0374A 100%)',
+    backgroundColor: '#7B2A3B',
     borderRadius: 12,
     minWidth: 24,
     height: 24,
@@ -704,7 +479,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   badgeText: {
-    color: '#800000',
+    color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '600',
   },

@@ -12,9 +12,12 @@ interface VetMobileHeaderProps {
   title?: string;
   onBackPress?: () => void;
   hideActions?: boolean;
+  showSaveButton?: boolean;
+  onSave?: () => void;
+  isSubmitting?: boolean;
 }
 
-export default function VetMobileHeader({ showBackButton = false, title, onBackPress, hideActions = false }: VetMobileHeaderProps) {
+export default function VetMobileHeader({ showBackButton = false, title, onBackPress, hideActions = false, showSaveButton = false, onSave, isSubmitting = false }: VetMobileHeaderProps) {
   const { userEmail } = useTenant();
   const { user } = useAuth();
   const router = useRouter();
@@ -114,14 +117,26 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
       </View>
       {!hideActions && (
         <View style={styles.rightSection}>
-          <TouchableOpacity style={styles.notificationButton} onPress={() => router.push('/veterinarian/vet-notifications')}>
-            <Ionicons name="notifications-outline" size={24} color={Colors.primary} />
-            {notificationCount > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.badgeText}>{notificationCount > 99 ? '99+' : notificationCount}</Text>
-              </View>
-            )}
-          </TouchableOpacity>
+          {showSaveButton ? (
+            <TouchableOpacity 
+              style={[styles.saveButton, isSubmitting && styles.disabledButton]} 
+              onPress={onSave}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.saveText}>
+                {isSubmitting ? 'Saving...' : 'Save'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.notificationButton} onPress={() => router.push('/veterinarian/vet-notifications')}>
+              <Ionicons name="notifications-outline" size={24} color={Colors.primary} />
+              {notificationCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.badgeText}>{notificationCount > 99 ? '99+' : notificationCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
@@ -225,6 +240,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.text.primary,
     marginLeft: 16,
+  },
+  saveButton: {
+    backgroundColor: '#28a745',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 5,
+  },
+  saveText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
   },
 
 });

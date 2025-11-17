@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Animated, 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getAppointments, updateAppointment, deleteAppointment } from '@/lib/services/firebaseService';
+import { getVeterinarianAppointments, updateAppointment, deleteAppointment } from '@/lib/services/firebaseService';
 import { useAuth } from '@/contexts/AuthContext';
 import { createTestAppointments } from '@/lib/services/testAppointments';
 

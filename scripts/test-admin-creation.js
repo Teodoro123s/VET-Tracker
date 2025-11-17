@@ -1,5 +1,17 @@
 const admin = require('firebase-admin');
 const serviceAccount = require('../serviceAccountKey.json');
+const CryptoJS = require('crypto-js');
+
+// Password hashing functions
+function generateSalt() {
+  return CryptoJS.lib.WordArray.random(32).toString(CryptoJS.enc.Base64);
+}
+
+function hashPassword(password, salt) {
+  const userSalt = salt || generateSalt();
+  const passwordHash = CryptoJS.SHA256(password + userSalt).toString();
+  return { passwordHash, salt: userSalt };
+}
 
 // Initialize Firebase Admin (if not already initialized)
 if (!admin.apps.length) {
@@ -17,11 +29,11 @@ async function createClinicAdmin() {
   const tenantId = 'clinic1';
   
   try {
-    // Create clinic admin user
+    // Create clinic admin user in Firebase Auth
     const userRecord = await auth.createUser({
-      email,
-      password,
-      emailVerified,
+      email: clinicEmail,
+      password: clinicPassword,
+      emailVerified: true,
     });
 
     // Set custom claims for tenant isolation
@@ -30,14 +42,21 @@ async function createClinicAdmin() {
       role: 'clinic_admin'
     });
 
-    // Create tenant document
+    // Hash the password for Firestore authentication
+    const { passwordHash, salt } = hashPassword(clinicPassword);
+    
+    // Create tenant document with hashed password
     await firestore.collection('tenants').doc(tenantId).set({
-      email,
+      email: clinicEmail,
+      passwordHash: passwordHash,
+      salt: salt,
       clinicName: 'Sample Veterinary Clinic',
       subscriptionPlan: '1 month',
       status: 'active',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      adminUid: userRecord.uid
+      adminUid: userRecord.uid,
+      role: 'admin',
+      tenantId: tenantId
     });
 
     // Initialize tenant collections

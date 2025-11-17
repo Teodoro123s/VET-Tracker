@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { addAppointment, getAppointments, deleteAppointment, updateAppointment, getCustomers, getPets, getVeterinarians, getReasonOptions, addReasonOption, updateReasonOption, deleteReasonOption, getMedicalForms, getMedicalCategories, addMedicalRecord, getFormFields } from '../../lib/services/firebaseService';
 import { notificationService } from '../../lib/services/notificationService';
+import { sendAppointmentConfirmationEmail } from '../../lib/utils/emailService';
 
 interface Appointment {
   id?: string;
@@ -117,7 +118,10 @@ export default function AppointmentsScreen() {
   const loadAppointments = async () => {
     if (!user?.email) return;
     try {
+      console.log('=== WEB APPOINTMENTS LOADING ===');
+      console.log('Web user email:', user.email);
       const appointmentsList = await getAppointments(user.email);
+      console.log('Web appointments loaded:', appointmentsList.length);
       const now = new Date();
       
       const smartSortedAppointments = appointmentsList.map(appointment => {
@@ -432,8 +436,26 @@ export default function AppointmentsScreen() {
       await addAppointment(user.email, appointmentData);
       console.log('Appointment saved successfully');
       
-      // Show success alert first
-      Alert.alert('Success', 'Appointment added successfully');
+      // Send email notification to customer
+      try {
+        const emailResult = await sendAppointmentConfirmationEmail({
+          customerEmail: newAppointment.customerEmail,
+          customerName: newAppointment.customerName,
+          petName: newAppointment.petName,
+          appointmentDate: appointmentData.appointmentDate,
+          reason: newAppointment.reason,
+          veterinarian: newAppointment.veterinarian
+        });
+        
+        if (emailResult.success) {
+          Alert.alert('Success', 'Appointment added successfully and confirmation email sent to customer!');
+        } else {
+          Alert.alert('Success', 'Appointment added successfully, but failed to send confirmation email.');
+        }
+      } catch (emailError) {
+        console.error('Email notification error:', emailError);
+        Alert.alert('Success', 'Appointment added successfully, but failed to send confirmation email.');
+      }
       
       // Reset form
       setNewAppointment({
@@ -1280,6 +1302,10 @@ export default function AppointmentsScreen() {
                       }
                     });
                     
+                    if (day === 1) { // Debug first day of month
+                      console.log(`Day ${day} appointments:`, dayAppointments.length);
+                    }
+                    
                     const hasAppointments = dayAppointments.length > 0;
                     
                     days.push(
@@ -1347,6 +1373,11 @@ export default function AppointmentsScreen() {
               <Text style={styles.listTitle}>{selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
               <ScrollView style={styles.appointmentList} showsVerticalScrollIndicator={true}>
                 {(() => {
+                  console.log('=== CALENDAR VIEW DEBUG ===');
+                  console.log('Total appointments for calendar:', appointments.length);
+                  console.log('Selected date:', selectedDate.toDateString());
+                  console.log('Vet filter:', vetFilter);
+                  
                   const filteredAppointments = appointments
                     .filter(apt => {
                       try {
@@ -1357,11 +1388,19 @@ export default function AppointmentsScreen() {
                           aptDate = new Date(apt.appointmentDate);
                         }
                         
-                        if (isNaN(aptDate.getTime())) return false;
-                        if (aptDate.toDateString() !== selectedDate.toDateString()) return false;
-                        if (vetFilter !== 'all' && apt.veterinarian !== vetFilter) return false;
-                        return true;
-                      } catch {
+                        if (isNaN(aptDate.getTime())) {
+                          console.log('Invalid date for appointment:', apt.id);
+                          return false;
+                        }
+                        
+                        const dateMatch = aptDate.toDateString() === selectedDate.toDateString();
+                        const vetMatch = vetFilter === 'all' || apt.veterinarian === vetFilter;
+                        
+                        console.log(`Appointment ${apt.id}: date=${aptDate.toDateString()}, dateMatch=${dateMatch}, vet=${apt.veterinarian}, vetMatch=${vetMatch}`);
+                        
+                        return dateMatch && vetMatch;
+                      } catch (error) {
+                        console.log('Error filtering appointment:', apt.id, error);
                         return false;
                       }
                     })
@@ -1374,6 +1413,8 @@ export default function AppointmentsScreen() {
                         return 0;
                       }
                     });
+                  
+                  console.log('Filtered appointments for selected date:', filteredAppointments.length);
                   
                   if (filteredAppointments.length === 0) {
                     return (

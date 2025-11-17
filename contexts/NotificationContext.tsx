@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getAppointments } from '../lib/services/firebaseService';
 import { useAuth } from './AuthContext';
+import { useTenant } from './TenantContext';
 
 type Notification = {
   id: string;
@@ -23,17 +24,19 @@ type NotificationContextType = {
   notifySuccess: (title: string, message: string, type?: string) => void;
   notifyError: (title: string, message: string) => void;
   notifyInfo: (title: string, message: string) => void;
+
 };
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { userEmail } = useTenant();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [lastChecked, setLastChecked] = useState<Date>(new Date());
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load notifications from storage on app start
+  // Load notifications and request web notification permission
   useEffect(() => {
     const loadNotifications = async () => {
       try {
@@ -51,6 +54,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         if (storedLastChecked) {
           setLastChecked(new Date(storedLastChecked));
         }
+        
+
       } catch (error) {
         console.error('Error loading notifications:', error);
       } finally {
@@ -95,6 +100,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       timestamp: new Date(),
       read: false,
     };
+    
+
+    
     setNotifications(prev => {
       const updated = [newNotification, ...prev];
       return updated.sort((a, b) => {
@@ -117,11 +125,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const checkAppointments = async () => {
     try {
-      if (!user?.email) {
+      if (!userEmail) {
         return; // Skip if user is not authenticated
       }
       
-      const appointments = await getAppointments(user.email);
+      const appointments = await getAppointments(userEmail);
       const now = new Date();
       const today = now.toISOString().split('T')[0];
       const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -224,22 +232,45 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   // Auto-check appointments every 5 minutes (only after loading and when user is authenticated)
   useEffect(() => {
-    if (isLoaded && user?.email) {
+    if (isLoaded && userEmail) {
       checkAppointments(); // Initial check
       const interval = setInterval(checkAppointments, 5 * 60 * 1000); // 5 minutes
       return () => clearInterval(interval);
     }
-  }, [isLoaded, user?.email]);
+  }, [isLoaded, userEmail]);
 
-  const notifySuccess = (title, message, type = 'success') => {
+  // Real-time Firebase listener for notifications
+  useEffect(() => {
+    if (userEmail && typeof window !== 'undefined') {
+      const { notificationService } = require('../lib/services/notificationService');
+      const unsubscribe = notificationService.subscribeToNotifications(
+        'default',
+        userEmail || user?.email || 'default',
+        (firebaseNotifications: any[]) => {
+          firebaseNotifications.forEach(notif => {
+            if (!notifications.find(n => n.id === notif.id)) {
+              addNotification({
+                title: notif.title,
+                message: notif.message,
+                type: notif.type || 'info'
+              });
+            }
+          });
+        }
+      );
+      return () => unsubscribe?.();
+    }
+  }, [userEmail, user?.email]);
+
+  const notifySuccess = (title: string, message: string, type = 'success') => {
     addNotification({ title, message, type });
   };
 
-  const notifyError = (title, message) => {
+  const notifyError = (title: string, message: string) => {
     addNotification({ title, message, type: 'error' });
   };
 
-  const notifyInfo = (title, message) => {
+  const notifyInfo = (title: string, message: string) => {
     addNotification({ title, message, type: 'info' });
   };
 

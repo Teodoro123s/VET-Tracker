@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { getMedicalRecordById, deleteMedicalRecord, getFormFields, getVeterinarianByEmail } from '../../lib/services/firebaseService';
-import { useTenant } from '../../contexts/TenantContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function VetMedicalRecordDetailScreen() {
   const { id } = useLocalSearchParams();
-  const { userEmail } = useTenant();
+  const { user } = useAuth();
+  const userEmail = user?.email;
   const [record, setRecord] = useState(null);
   const [loading, setLoading] = useState(true);
   const [formFields, setFormFields] = useState([]);
@@ -20,7 +21,9 @@ export default function VetMedicalRecordDetailScreen() {
 
   const loadRecord = async () => {
     try {
+      console.log('Loading medical record:', id, 'for user:', userEmail);
       const recordData = await getMedicalRecordById(userEmail, id as string);
+      console.log('Record data:', recordData);
       setRecord(recordData);
       
       // Load veterinarian name if veterinarian email exists
@@ -32,12 +35,14 @@ export default function VetMedicalRecordDetailScreen() {
       
       if (recordData?.formTemplate || recordData?.formType) {
         const formName = recordData.formTemplate || recordData.formType;
+        console.log('Loading form fields for:', formName);
         const fields = await getFormFields(formName, userEmail);
+        console.log('Form fields loaded:', fields.length);
         setFormFields(fields);
       }
     } catch (error) {
       console.error('Error loading medical record:', error);
-      Alert.alert('Error', 'Failed to load medical record');
+      Alert.alert('Error', 'Failed to load medical record: ' + error.message);
     } finally {
       setLoading(false);
     }

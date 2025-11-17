@@ -213,8 +213,14 @@ export default function SuperAdminScreen() {
     setIsLoading(true);
     
     const unsubscribe = subscribeToTenants((tenants) => {
+      // Filter to only show admin accounts (clinic owners), not veterinarians/staff
+      const adminTenants = tenants.filter(tenant => 
+        tenant.role === 'admin' || 
+        (!tenant.role && !tenant.email?.includes('veterinarian') && !tenant.email?.includes('staff'))
+      );
+      
       // Check for inactive tenants (no subscription activity in 6 months)
-      const updatedTenants = tenants.map(tenant => {
+      const updatedTenants = adminTenants.map(tenant => {
         // Get last transaction for this tenant
         onSnapshot(collection(db, 'transactions'), (snapshot) => {
           const transactions = snapshot.docs

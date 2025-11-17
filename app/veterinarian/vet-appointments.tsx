@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image,
 import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getAppointments, getVeterinarianAppointments, updateAppointment, deleteAppointment } from '../../lib/services/firebaseService';
+import { getAppointments, getVeterinarianAppointments, updateAppointment, deleteAppointment, getVeterinarians } from '../../lib/services/firebaseService';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function VetAppointments() {
@@ -19,7 +19,31 @@ export default function VetAppointments() {
 
   useEffect(() => {
     loadAppointments();
+    testFirebaseConnection();
   }, []);
+  
+  const testFirebaseConnection = async () => {
+    try {
+      console.log('=== FIREBASE CONNECTION TEST ===');
+      console.log('Testing Firebase connection with user:', user?.email);
+      
+      // Test basic Firebase connection
+      const testAppointments = await getAppointments(user?.email);
+      console.log('Direct Firebase test - appointments found:', testAppointments.length);
+      
+      if (testAppointments.length === 0) {
+        console.log('NO APPOINTMENTS FOUND IN FIREBASE!');
+        console.log('This means either:');
+        console.log('1. No appointments have been created yet');
+        console.log('2. Tenant ID mismatch');
+        console.log('3. Firebase permissions issue');
+      } else {
+        console.log('Appointments exist! Sample:', testAppointments[0]);
+      }
+    } catch (error) {
+      console.error('Firebase connection test failed:', error);
+    }
+  };
 
   useEffect(() => {
     filterAppointments();
@@ -28,20 +52,80 @@ export default function VetAppointments() {
   const loadAppointments = async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
+      console.log('=== MOBILE APPOINTMENTS DEBUG ===');
+      console.log('Mobile user email:', user?.email);
+      console.log('Mobile user object:', user);
+      
+      if (!user?.email) {
+        console.log('ERROR: No user email in mobile app!');
+        return;
+      }
+      
+      // First try to get all appointments to see if there are any
+      const allAppointments = await getAppointments(user.email); // Use same call as web
+      console.log('Total appointments in system:', allAppointments.length);
+      console.log('Mobile vs Web comparison - using same getAppointments call');
+      
+      // Log all appointments to see their structure
+      if (allAppointments.length > 0) {
+        console.log('Sample appointment structure:', JSON.stringify(allAppointments[0], null, 2));
+        console.log('All appointment veterinarian fields:');
+        allAppointments.forEach((apt, index) => {
+          console.log(`Appointment ${index + 1}:`, {
+            id: apt.id,
+            veterinarian: apt.veterinarian,
+            veterinarianEmail: apt.veterinarianEmail,
+            assignedVet: apt.assignedVet,
+            vetEmail: apt.vetEmail,
+            staff: apt.staff,
+            assignedTo: apt.assignedTo,
+            doctorEmail: apt.doctorEmail,
+            customerName: apt.customerName,
+            petName: apt.petName
+          });
+        });
+      }
+      
+      // Log what's in the veterinarian field of each appointment
+      console.log('Checking veterinarian fields in all appointments:');
+      allAppointments.forEach((apt, i) => {
+        console.log(`Appointment ${i + 1}: veterinarian="${apt.veterinarian}", customerName="${apt.customerName}"`);
+      });
+      
       // Use the specific function to get veterinarian appointments
       const myAppointments = await getVeterinarianAppointments(user?.email, user?.email);
       
       console.log(`Found ${myAppointments.length} appointments for veterinarian: ${user?.email}`);
       
+      // Get current veterinarian's name to match against appointment.veterinarian field
+      const veterinarians = await getVeterinarians(user.email);
+      const currentVet = veterinarians.find(vet => vet.email === user.email);
+      const myVetName = currentVet ? `Dr. ${currentVet.firstname || ''} ${currentVet.surname || ''}`.trim() : null;
+      
+      console.log('Current vet name for matching:', myVetName);
+      
+      // Filter appointments assigned to this veterinarian by name
+      const myAssignedAppointments = allAppointments.filter(apt => 
+        apt.veterinarian && apt.veterinarian === myVetName
+      );
+      
+      console.log(`Found ${myAssignedAppointments.length} appointments assigned to ${myVetName}`);
+      const debugAppointments = myAssignedAppointments;
+      
+      console.log('Setting appointments to:', debugAppointments.length, 'appointments');
+      if (debugAppointments.length > 0) {
+        console.log('First appointment sample:', debugAppointments[0]);
+      }
+      
       // Smart status assignment
       const now = new Date();
-      const smartAppointments = myAppointments.map(appointment => {
-        console.log('Processing appointment:', appointment.id, 'Status:', appointment.status);
+      const smartAppointments = debugAppointments.map(appointment => {
+        console.log('Processing appointment:', appointment.id, 'Status:', appointment.status, 'Vet field:', appointment.veterinarian);
         // Keep completed/cancelled status unchanged - check all possible variations
         if (appointment.status === 'completed' || appointment.status === 'Completed' || 
-            appointment.status === 'cancelled') {
+            appointment.status === 'Done' || appointment.status === 'cancelled') {
           console.log('Found completed appointment:', appointment.id);
-          return { ...appointment, status: 'Completed' };
+          return { ...appointment, status: 'Done' };
         }
         
         let appointmentDateTime;
@@ -83,9 +167,9 @@ export default function VetAppointments() {
 
     // Filter by status
     if (selectedFilter !== 'All') {
-      if (selectedFilter === 'Completed') {
+      if (selectedFilter === 'Done') {
         filtered = appointments.filter(apt => 
-          apt.status === 'Completed' || apt.status === 'completed' || apt.status === 'Done'
+          apt.status === 'Done' || apt.status === 'Completed' || apt.status === 'completed'
         );
       } else {
         filtered = appointments.filter(apt => apt.status === selectedFilter);
@@ -168,11 +252,11 @@ export default function VetAppointments() {
         if (!isAOverdue && isBOverdue) return 1;
         
         return dateA.getTime() - dateB.getTime();
-      } else if (selectedFilter === 'Completed') {
+      } else if (selectedFilter === 'Done') {
         return dateB.getTime() - dateA.getTime();
       } else {
-        // All: Sort by status priority (Due, Pending, Completed)
-        const statusPriority = { 'Due': 0, 'Pending': 1, 'Completed': 2 };
+        // All: Sort by status priority (Due, Pending, Done)
+        const statusPriority = { 'Due': 0, 'Pending': 1, 'Done': 2 };
         return (statusPriority[a.status] || 3) - (statusPriority[b.status] || 3);
       }
     });
@@ -223,6 +307,7 @@ export default function VetAppointments() {
     switch (status) {
       case 'Pending': return '#28a745';
       case 'Due': return '#dc3545';
+      case 'Done': return '#007bff';
       case 'Completed': return '#007bff';
       case 'cancelled': return '#6c757d';
       default: return '#6c757d';
@@ -243,7 +328,7 @@ export default function VetAppointments() {
 
       <View style={styles.filterHeader}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-          {['All', 'Pending', 'Due', 'Completed'].map((filter) => (
+          {['All', 'Pending', 'Due', 'Done'].map((filter) => (
             <TouchableOpacity
               key={filter}
               style={[styles.filterButton, selectedFilter === filter && styles.filterButtonActive]}
@@ -307,7 +392,7 @@ export default function VetAppointments() {
             >
               <View style={styles.statusIcon}>
                 <Ionicons 
-                  name={appointment.status === 'Pending' ? 'time' : appointment.status === 'Due' ? 'alert-circle' : appointment.status === 'Completed' ? 'checkmark-circle' : 'time'} 
+                  name={appointment.status === 'Pending' ? 'time' : appointment.status === 'Due' ? 'alert-circle' : (appointment.status === 'Done' || appointment.status === 'Completed') ? 'checkmark-circle' : 'time'} 
                   size={20} 
                   color={getStatusColor(appointment.status)} 
                 />

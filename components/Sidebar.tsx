@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
@@ -10,12 +10,16 @@ import { Typography, Spacing } from '@/constants/Typography';
 
 export default function Sidebar() {
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { unreadCount } = useNotifications();
   const { userEmail } = useTenant();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [clinicName, setClinicName] = useState('');
   
-  const username = userEmail ? userEmail.split('@')[0] : 'admin';
+  useEffect(() => {
+    const email = user?.email || userEmail || 'admin@clinic.com';
+    setClinicName(email.split('@')[0]);
+  }, [user, userEmail]);
 
   const menuItems = [
     { name: 'Dashboard', icon: require('@/assets/dashboard.png'), route: '/client/dashboard' },
@@ -34,9 +38,9 @@ export default function Sidebar() {
         <Image source={require('@/assets/web-logo.png')} style={styles['sidebar-logo']} />
         <TouchableOpacity 
           style={styles['sidebar-email-clickable']}
-          onPress={() => router.push('/client/admin-details')}
+          onPress={() => router.push('/client/settings')}
         >
-          <Text style={styles['sidebar-email-text']}>{username}</Text>
+          <Text style={styles['sidebar-email-text']}>{clinicName}</Text>
         </TouchableOpacity>
       </View>
       {menuItems.map((item) => (
@@ -113,6 +117,7 @@ const styles = StyleSheet.create({
     marginBottom: 25,
     alignItems: 'center',
   },
+
   'sidebar-logo': {
     width: 140,
     height: 80,

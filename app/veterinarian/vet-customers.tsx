@@ -12,7 +12,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { getCustomers, addCustomer, getPets, getMedicalRecords, addPet, addMedicalRecord, getAnimalTypes, addAnimalType, getBreeds, addBreed, deleteAnimalType, deleteBreed, getMedicalCategories, getMedicalForms, getFormFields } from '@/lib/services/firebaseService';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useCustomer } from '../_layout';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/config/firebaseConfig';
@@ -20,6 +20,7 @@ import { db } from '@/lib/config/firebaseConfig';
 export default function VetCustomers() {
   const { user } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [tenantEmail, setTenantEmail] = useState('');
   const { 
     selectedCustomer, setSelectedCustomer, 
@@ -67,8 +68,7 @@ export default function VetCustomers() {
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
   const [categories, setCategories] = useState([]);
   const [formTemplates, setFormTemplates] = useState([]);
-  const [showFormModal, setShowFormModal] = useState(false);
-  const [formData, setFormData] = useState({});
+
   
   const [animalTypes, setAnimalTypes] = useState([]);
   const [breedsByType, setBreedsByType] = useState({});
@@ -87,11 +87,39 @@ export default function VetCustomers() {
     setSelectedMedicalRecord(null);
   }, [user]);
   
+  // Handle navigation from medical record form
+  useEffect(() => {
+    if (params.showMedicalHistory === 'true' && params.customerName && params.petName && tenantEmail) {
+      // Find and set the customer
+      const customer = customers.find(c => {
+        const customerName = c.name || `${c.firstname || ''} ${c.surname || ''}`.trim();
+        return customerName === params.customerName;
+      });
+      
+      if (customer) {
+        setSelectedCustomer(customer);
+        // Find and set the pet
+        const pet = customerPets.find(p => p.name === params.petName);
+        if (pet) {
+          setSelectedPet(pet);
+          setShowMedicalView(true);
+        }
+      }
+    }
+  }, [params, customers, customerPets, tenantEmail]);
+  
   useEffect(() => {
     if (tenantEmail) {
       loadCustomers();
     }
   }, [tenantEmail]);
+  
+  // Load customer pets when navigating from medical record form
+  useEffect(() => {
+    if (params.showMedicalHistory === 'true' && selectedCustomer && tenantEmail && !customerPets.length) {
+      loadCustomerPets();
+    }
+  }, [params, selectedCustomer, tenantEmail, customerPets.length]);
   
   const fetchTenantEmail = async () => {
     if (!user?.email) return;
@@ -349,61 +377,69 @@ export default function VetCustomers() {
   };
   
   const handleSaveRecord = async () => {
+    console.log('=== DEBUG handleSaveRecord START ===');
+    console.log('selectedCustomer:', selectedCustomer);
+    console.log('selectedPet:', selectedPet);
+    console.log('newRecord:', newRecord);
+    
     try {
       if (!newRecord.category) {
+        console.log('ERROR: No category selected');
         Alert.alert('Error', 'Please select category');
         return;
       }
       if (!newRecord.formTemplate) {
+        console.log('ERROR: No form template selected');
         Alert.alert('Error', 'Please select form template');
         return;
       }
       
-      // Fetch form fields and show form modal
-      const fields = await getFormFields(newRecord.formTemplate, tenantEmail);
-      setFormFields(fields);
-      setFormData({});
-      setShowFormModal(true);
+      if (!selectedCustomer) {
+        console.log('ERROR: selectedCustomer is null/undefined');
+        Alert.alert('Error', 'Missing customer information');
+        return;
+      }
+      
+      if (!selectedPet) {
+        console.log('ERROR: selectedPet is null/undefined');
+        Alert.alert('Error', 'Missing pet information');
+        return;
+      }
+      
+      console.log('All validations passed, constructing customerName...');
+      const customerName = selectedCustomer.name || `${selectedCustomer.firstname || ''} ${selectedCustomer.surname || ''}`.trim() || 'Unknown Customer';
+      console.log('customerName constructed:', customerName);
+      
+      const navigationParams = {
+        appointmentId: selectedPet.id,
+        petName: selectedPet.name,
+        customerName,
+        category: newRecord.category,
+        formTemplate: newRecord.formTemplate
+      };
+      
+      console.log('Navigation params:', navigationParams);
+      
+      // Navigate to medical record form screen
+      console.log('Attempting navigation...');
+      router.push({
+        pathname: '/veterinarian/medical-record-form',
+        params: navigationParams
+      });
+      
+      console.log('Navigation successful, closing modal...');
+      setShowAddRecordModal(false);
+      console.log('=== DEBUG handleSaveRecord END ===');
     } catch (error) {
-      Alert.alert('Error', 'Failed to load form fields');
+      console.error('=== DEBUG ERROR in handleSaveRecord ===');
+      console.error('Error details:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+      Alert.alert('Error', 'Failed to navigate to form: ' + error.message);
     }
   };
   
-  const handleSubmitForm = async () => {
-    try {
-      // Map form data using field labels as keys
-      const mappedFormData = {};
-      formFields.forEach(field => {
-        mappedFormData[field.label] = formData[field.id] || '';
-      });
-      
-      const recordData = {
-        petId: selectedPet.id,
-        petName: selectedPet.name,
-        category: newRecord.category,
-        formTemplate: newRecord.formTemplate,
-        formType: newRecord.formTemplate,
-        formData: mappedFormData,
-        date: new Date().toISOString().split('T')[0],
-        createdAt: new Date(),
-        veterinarian: user?.email,
-        createdBy: user?.email,
-        diagnosis: mappedFormData.diagnosis || 'N/A',
-        treatment: mappedFormData.treatment || 'N/A',
-        notes: mappedFormData.notes || Object.values(mappedFormData).join(', ') || 'N/A'
-      };
-      
-      await addMedicalRecord(recordData, tenantEmail);
-      setShowFormModal(false);
-      setShowAddRecordModal(false);
-      await loadMedicalRecords();
-      
-      Alert.alert('Success', 'Medical record added successfully');
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      Alert.alert('Error', 'Failed to add medical record');
-    }
-  };
+
 
   const handleDeleteAnimalType = async (typeId, typeName) => {
     Alert.alert(
@@ -432,65 +468,7 @@ export default function VetCustomers() {
     );
   };
 
-  const renderFormField = (field) => {
-    switch (field.type) {
-      case 'text':
-        return (
-          <TextInput
-            key={field.id}
-            style={styles.formInput}
-            placeholder={`Enter ${field.label}`}
-            value={formData[field.id] || ''}
-            onChangeText={(text) => setFormData({...formData, [field.id]: text})}
-          />
-        );
-      case 'date':
-        return (
-          <TextInput
-            key={field.id}
-            style={styles.formInput}
-            placeholder="MM/DD/YYYY"
-            value={formData[field.id] || ''}
-            keyboardType="numeric"
-            maxLength={10}
-            onChangeText={(text) => {
-              const cleaned = text.replace(/\D/g, '');
-              let formatted = cleaned;
-              if (cleaned.length >= 4) {
-                formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
-              } else if (cleaned.length >= 2) {
-                formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-              }
-              setFormData({...formData, [field.id]: formatted});
-            }}
-          />
-        );
-      case 'number':
-        return (
-          <TextInput
-            key={field.id}
-            style={styles.formInput}
-            placeholder={`Enter ${field.label}`}
-            keyboardType="numeric"
-            value={formData[field.id] || ''}
-            onChangeText={(text) => {
-              const formatted = text.replace(/[^0-9.]/g, '').replace(/(\.)(?=.*\1)/g, '');
-              setFormData({...formData, [field.id]: formatted});
-            }}
-          />
-        );
-      default:
-        return (
-          <TextInput
-            key={field.id}
-            style={styles.formInput}
-            placeholder={`Enter ${field.label}`}
-            value={formData[field.id] || ''}
-            onChangeText={(text) => setFormData({...formData, [field.id]: text})}
-          />
-        );
-    }
-  };
+
 
   const handleDeleteBreed = async (breedName, animalType) => {
     Alert.alert(
@@ -639,7 +617,7 @@ export default function VetCustomers() {
                 }).map((record, index) => {
                   const displayDate = record.date || 
                     (record.createdAt?.seconds ? new Date(record.createdAt.seconds * 1000).toLocaleDateString() : 'No Date');
-                  const displayTitle = record.formType || record.formTemplate || record.diagnosis || record.category || 'Medical Record';
+                  const displayTitle = record.formType || record.formTemplate || 'Medical Record';
                   
                   return (
                     <TouchableOpacity key={record.id || `record-${index}`} style={styles.medicalRow} onPress={() => {
@@ -649,9 +627,6 @@ export default function VetCustomers() {
                     }}>
                       <Text style={styles.medicalType}>{displayTitle}</Text>
                       <Text style={styles.medicalDate}>{displayDate}</Text>
-                      {record.notes && (
-                        <Text style={styles.medicalNotes} numberOfLines={2}>{record.notes}</Text>
-                      )}
                     </TouchableOpacity>
                   );
                 })
@@ -765,7 +740,7 @@ export default function VetCustomers() {
         </TouchableOpacity>
       )}
       
-      {showMedicalView && (
+      {showMedicalView && selectedCustomer && selectedPet && (
         <TouchableOpacity 
           style={styles.addRecordButton}
           onPress={() => setShowAddRecordModal(true)}
@@ -1022,122 +997,148 @@ export default function VetCustomers() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add Medical Record</Text>
-              <TouchableOpacity onPress={() => setShowAddRecordModal(false)}>
+              <TouchableOpacity onPress={() => {
+                setShowAddRecordModal(false);
+                setShowMedicalView(true);
+              }}>
                 <Ionicons name="close" size={24} color="#7B2C2C" />
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.modalForm}>
-              <View style={[styles.inputGroup, { zIndex: 10000 }]}>
+              <View style={[styles.inputGroup, { zIndex: 2000 }]}>
                 <Text style={styles.inputLabel}>Category *</Text>
-                <View style={styles.dropdownContainer}>
-                  <TouchableOpacity 
-                    style={styles.dropdownButton}
-                    onPress={() => {
-                      setShowCategoryDropdown(!showCategoryDropdown);
-                      setShowTemplateDropdown(false);
-                    }}
-                  >
-                    <Text style={styles.dropdownText}>
-                      {newRecord.category || 'Select Category'}
-                    </Text>
-                    <Text style={styles.dropdownArrow}>▼</Text>
-                  </TouchableOpacity>
-                  {showCategoryDropdown && (
-                    <View style={styles.dropdownMenu}>
-                      <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-                        {categories.length === 0 ? (
-                          <View style={styles.dropdownOption}>
-                            <Text style={styles.dropdownOptionText}>No categories available</Text>
-                          </View>
-                        ) : (
-                          categories.map((category) => (
-                            <TouchableOpacity
-                              key={category.id}
-                              style={styles.dropdownOption}
-                              onPress={() => {
-                                setNewRecord({...newRecord, category: category.name, formTemplate: ''});
-                                setShowCategoryDropdown(false);
-                              }}
-                            >
-                              <Text style={styles.dropdownOptionText}>{category.name}</Text>
-                            </TouchableOpacity>
-                          ))
-                        )}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
+                <TouchableOpacity 
+                  style={[styles.dropdownButton, showCategoryDropdown && styles.dropdownButtonActive]}
+                  onPress={() => {
+                    setShowCategoryDropdown(!showCategoryDropdown);
+                    setShowTemplateDropdown(false);
+                  }}
+                >
+                  <Text style={[styles.dropdownText, !newRecord.category && styles.placeholderText]}>
+                    {newRecord.category || 'Select Category'}
+                  </Text>
+                  <Ionicons 
+                    name={showCategoryDropdown ? 'chevron-up' : 'chevron-down'} 
+                    size={20} 
+                    color="#7B2C2C" 
+                  />
+                </TouchableOpacity>
+                {showCategoryDropdown && (
+                  <View style={styles.categoryDropdownMenu}>
+                    <ScrollView 
+                      style={styles.dropdownScroll} 
+                      nestedScrollEnabled 
+                      showsVerticalScrollIndicator={true}
+                      persistentScrollbar={true}
+                    >
+                      {categories.map((category) => (
+                        <TouchableOpacity
+                          key={category.id}
+                          style={[
+                            styles.dropdownOption,
+                            newRecord.category === category.name && styles.selectedOption
+                          ]}
+                          onPress={() => {
+                            setNewRecord({...newRecord, category: category.name, formTemplate: ''});
+                            setShowCategoryDropdown(false);
+                          }}
+                        >
+                          <Text style={[
+                            styles.dropdownOptionText,
+                            newRecord.category === category.name && styles.selectedOptionText
+                          ]}>
+                            {category.name}
+                          </Text>
+                          {newRecord.category === category.name && (
+                            <Ionicons name="checkmark" size={16} color="#28a745" />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
               </View>
 
-              <View style={[styles.inputGroup, { zIndex: 5000 }]}>
+              <View style={[styles.inputGroup, { zIndex: 1000 }]}>
                 <Text style={styles.inputLabel}>Form Template *</Text>
-                <View style={styles.dropdownContainer}>
-                  <TouchableOpacity 
-                    style={[styles.dropdownButton, !newRecord.category && styles.disabledDropdown]}
-                    onPress={() => {
-                      if (newRecord.category) {
-                        setShowTemplateDropdown(!showTemplateDropdown);
-                        setShowCategoryDropdown(false);
-                      }
-                    }}
-                  >
-                    <Text style={[styles.dropdownText, !newRecord.category && styles.disabledText]}>
-                      {!newRecord.category ? 'Select category first' : (newRecord.formTemplate || 'Select Form Template')}
-                    </Text>
-                    <Text style={styles.dropdownArrow}>▼</Text>
-                  </TouchableOpacity>
-                  {showTemplateDropdown && (
-                    <View style={styles.dropdownMenu}>
-                      <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-                        {(() => {
-                          const filtered = formTemplates.filter(template => {
-                            if (!newRecord.category) return true;
-                            return template.category === newRecord.category;
-                          });
-                          
-                          if (formTemplates.length === 0) {
-                            return [
-                              <View key="no-templates" style={styles.dropdownOption}>
-                                <Text style={styles.dropdownOptionText}>No form templates available</Text>
-                              </View>
-                            ];
-                          }
-                          
-                          if (filtered.length === 0 && newRecord.category) {
-                            return [
-                              <View key="no-forms" style={styles.dropdownOption}>
-                                <Text style={styles.dropdownOptionText}>No forms available for this category</Text>
-                              </View>
-                            ];
-                          }
-                          
-                          return filtered
-                            .sort((a, b) => a.formName.localeCompare(b.formName))
-                            .map((template) => (
-                            <TouchableOpacity
-                              key={template.id}
-                              style={styles.dropdownOption}
-                              onPress={() => {
-                                setNewRecord({...newRecord, formTemplate: template.formName});
-                                setShowTemplateDropdown(false);
-                              }}
-                            >
-                              <Text style={styles.dropdownOptionText}>{template.formName}</Text>
-                            </TouchableOpacity>
-                          ));
-                        })()}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
+                <TouchableOpacity 
+                  style={[
+                    styles.dropdownButton, 
+                    !newRecord.category && styles.disabledDropdown,
+                    showTemplateDropdown && styles.dropdownButtonActive
+                  ]}
+                  onPress={() => {
+                    if (newRecord.category) {
+                      setShowTemplateDropdown(!showTemplateDropdown);
+                      setShowCategoryDropdown(false);
+                    }
+                  }}
+                >
+                  <Text style={[
+                    styles.dropdownText, 
+                    !newRecord.category && styles.disabledText,
+                    !newRecord.formTemplate && newRecord.category && styles.placeholderText
+                  ]}>
+                    {!newRecord.category ? 'Select category first' : (newRecord.formTemplate || 'Select Form Template')}
+                  </Text>
+                  <Ionicons 
+                    name={showTemplateDropdown ? 'chevron-up' : 'chevron-down'} 
+                    size={20} 
+                    color={!newRecord.category ? '#ccc' : '#7B2C2C'} 
+                  />
+                </TouchableOpacity>
+                {showTemplateDropdown && newRecord.category && (
+                  <View style={styles.templateDropdownMenu}>
+                    <ScrollView 
+                      style={styles.dropdownScroll} 
+                      nestedScrollEnabled 
+                      showsVerticalScrollIndicator={true}
+                      persistentScrollbar={true}
+                    >
+                      {formTemplates
+                        .filter(template => template.category === newRecord.category)
+                        .map((template) => (
+                        <TouchableOpacity
+                          key={template.id}
+                          style={[
+                            styles.dropdownOption,
+                            newRecord.formTemplate === template.formName && styles.selectedOption
+                          ]}
+                          onPress={() => {
+                            setNewRecord({...newRecord, formTemplate: template.formName});
+                            setShowTemplateDropdown(false);
+                          }}
+                        >
+                          <Text style={[
+                            styles.dropdownOptionText,
+                            newRecord.formTemplate === template.formName && styles.selectedOptionText
+                          ]}>
+                            {template.formName}
+                          </Text>
+                          {newRecord.formTemplate === template.formName && (
+                            <Ionicons name="checkmark" size={16} color="#28a745" />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                      {formTemplates.filter(template => template.category === newRecord.category).length === 0 && (
+                        <View style={styles.emptyDropdownOption}>
+                          <Text style={styles.emptyDropdownText}>No templates available for this category</Text>
+                        </View>
+                      )}
+                    </ScrollView>
+                  </View>
+                )}
               </View>
             </ScrollView>
 
-            <View style={styles.modalButtons}>
+            <View style={styles.modalButtonsFixed}>
               <TouchableOpacity 
                 style={styles.cancelButton}
-                onPress={() => setShowAddRecordModal(false)}
+                onPress={() => {
+                  setShowAddRecordModal(false);
+                  setShowMedicalView(true);
+                }}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
@@ -1264,39 +1265,7 @@ export default function VetCustomers() {
         </View>
       </Modal>
 
-      {/* Form Modal */}
-      {showFormModal && (
-        <Modal visible={true} transparent animationType="fade">
-          <View style={styles.formPreviewModalOverlay}>
-            <View style={styles.formPreviewModalContent}>
-              <View style={styles.formPreviewHeader}>
-                <TouchableOpacity style={styles.formPreviewBackButton} onPress={() => setShowFormModal(false)}>
-                  <Text style={styles.formPreviewBackText}>←</Text>
-                </TouchableOpacity>
-                <Text style={styles.formPreviewHeaderTitle}>{newRecord.formTemplate}</Text>
-                <TouchableOpacity style={styles.formPreviewSaveHeaderButton} onPress={handleSubmitForm}>
-                  <Text style={styles.formPreviewSaveHeaderText}>Save Record</Text>
-                </TouchableOpacity>
-              </View>
-              
-              <ScrollView style={styles.formPreviewBody} showsVerticalScrollIndicator={false}>
-                <View style={styles.formPreviewDisplayArea}>
-                  <View style={styles.formPreviewFieldsContainer}>
-                    {formFields.map((field) => (
-                      <View key={field.id} style={styles.formPreviewField}>
-                        <Text style={styles.formPreviewFieldLabel}>
-                          {field.label}{field.required && ' *'}
-                        </Text>
-                        {renderFormField(field)}
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-      )}
+
 
     </ThemedView>
   );
@@ -1408,7 +1377,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '90%',
+    height: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1453,17 +1422,29 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
   },
+  modalButtonsFixed: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    padding: 20,
+    gap: 12,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
   cancelButton: {
     flex: 1,
     backgroundColor: 'rgba(220, 53, 69, 0.2)',
     borderWidth: 2,
     borderColor: '#dc3545',
-    padding: 16,
+    padding: 10,
     borderRadius: 8,
     alignItems: 'center',
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#dc3545',
   },
@@ -1472,12 +1453,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(40, 167, 69, 0.2)',
     borderWidth: 2,
     borderColor: '#28a745',
-    padding: 16,
+    padding: 10,
     borderRadius: 8,
     alignItems: 'center',
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#28a745',
   },
@@ -1666,7 +1647,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(123, 44, 44, 0.1)',
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
     backgroundColor: '#fafafa',
     elevation: 2,
     shadowColor: '#7B2C2C',
@@ -1676,10 +1656,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    minHeight: 48,
   },
   dropdownText: {
     fontSize: 16,
     color: '#333',
+    flex: 1,
   },
   disabledText: {
     color: '#999',
@@ -1804,49 +1786,91 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  dropdownContainer: {
-    position: 'relative',
-    marginBottom: 15,
-  },
-  dropdownMenu: {
+  categoryDropdownMenu: {
     position: 'absolute',
-    top: 50,
+    top: '100%',
     left: 0,
     right: 0,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    maxHeight: 150,
-    zIndex: 9999,
-    elevation: 9999,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    borderColor: '#7B2C2C',
+    borderRadius: 12,
+    maxHeight: 200,
+    zIndex: 20000,
+    elevation: 25,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    marginTop: 4,
+  },
+  templateDropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#7B2C2C',
+    borderRadius: 12,
+    maxHeight: 200,
+    zIndex: 10000,
+    elevation: 20,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    marginTop: 4,
   },
   dropdownScroll: {
-    maxHeight: 150,
+    maxHeight: 200,
+    flexGrow: 0,
   },
   dropdownOption: {
-    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: 'rgba(123, 44, 44, 0.1)',
   },
   dropdownOptionText: {
     fontSize: 16,
     color: '#333',
+    flex: 1,
   },
-  dropdownArrow: {
-    fontSize: 12,
-    color: '#666',
+  selectedOption: {
+    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+  },
+  selectedOptionText: {
+    color: '#28a745',
+    fontWeight: '600',
+  },
+  emptyDropdownOption: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  emptyDropdownText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  dropdownButtonActive: {
+    borderColor: '#7B2C2C',
+    borderWidth: 1,
+    backgroundColor: '#fafafa',
+  },
+  placeholderText: {
+    color: '#999',
+    fontStyle: 'italic',
   },
   disabledDropdown: {
     backgroundColor: '#f5f5f5',
-    borderColor: '#ccc',
+    borderColor: 'rgba(123, 44, 44, 0.1)',
+    opacity: 0.6,
   },
   disabledText: {
-    color: '#999',
+    color: '#ccc',
   },
   formPreviewModalOverlay: {
     flex: 1,
