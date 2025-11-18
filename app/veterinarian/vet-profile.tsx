@@ -116,11 +116,11 @@ export default function VetProfile() {
                 onPress={async () => {
                   setShowLogoutModal(false);
                   try {
-                    await logout();
-                    router.replace('/auth/admin-login');
+                    const loginPath = await logout();
+                    router.replace(loginPath || '/veterinarian/mobile-login');
                   } catch (error) {
                     console.error('Error during logout:', error);
-                    router.replace('/auth/admin-login');
+                    router.replace('/veterinarian/mobile-login');
                   }
                 }}
               >

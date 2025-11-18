@@ -37,8 +37,14 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
 
   const loadVetData = async () => {
     try {
-      const vets = await getVeterinarians(userEmail);
-      const currentVet = vets.find(vet => vet.email === userEmail);
+      const currentUserEmail = user?.email || userEmail;
+      if (!currentUserEmail) {
+        console.log('No user email available');
+        return;
+      }
+      
+      const vets = await getVeterinarians(currentUserEmail);
+      const currentVet = vets.find(vet => vet.email === currentUserEmail);
       setVetData(currentVet);
     } catch (error) {
       console.error('Error loading vet data:', error);

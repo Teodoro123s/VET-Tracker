@@ -1,11 +1,11 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from 'react-native';
-import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import ForgotPasswordModal from '@/components/ForgotPasswordModal';
+import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/Colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ForgotPasswordModal from '@/components/ForgotPasswordModal';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function MobileLogin() {
   const router = useRouter();

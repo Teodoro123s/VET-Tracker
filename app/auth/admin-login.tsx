@@ -1,12 +1,7 @@
 import React from 'react';
-import { Platform } from 'react-native';
 import LoginWeb from '../../components/LoginWeb';
-import LoginMobile from '../../components/LoginMobile';
 
+// Admin login is web-only - mobile users should use veterinarian login
 export default function AdminLoginScreen() {
-  if (Platform.OS === 'web') {
-    return <LoginWeb />;
-  }
-  
-  return <LoginMobile />;
+  return <LoginWeb />;
 }

@@ -25,14 +25,19 @@ export default function IndexScreen() {
           router.replace('/server/superadmin');
         } else if (user.role === 'admin') {
           router.replace('/client/dashboard');
-        } else if (user.role === 'veterinarian' || user.role === 'staff' || user.email?.includes('veterinarian') || user.email?.includes('staff')) {
-          router.replace('/veterinarian/vet-appointments');
+        } else if (user.role === 'veterinarian' || user.role === 'staff') {
+          // Redirect veterinarians to mobile interface on mobile, appointments on web
+          if (Platform.OS === 'web') {
+            router.replace('/veterinarian/vet-appointments');
+          } else {
+            router.replace('/veterinarian/vet-mobile');
+          }
         } else {
           // Unknown role, redirect to appropriate login
           if (Platform.OS === 'web') {
             router.replace('/auth/admin-login');
           } else {
-            router.replace('/auth/mobile-login');
+            router.replace('/veterinarian/mobile-login');
           }
         }
       } else {
@@ -40,7 +45,7 @@ export default function IndexScreen() {
         if (Platform.OS === 'web') {
           router.replace('/auth/admin-login');
         } else {
-          router.replace('/auth/mobile-login');
+          router.replace('/veterinarian/mobile-login');
         }
       }
     }

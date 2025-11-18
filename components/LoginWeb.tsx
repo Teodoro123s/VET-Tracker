@@ -139,9 +139,9 @@ export default function LoginWeb() {
         return;
       }
       
-      // Role validation: Only allow admin and superadmin roles for admin login
+      // Role validation: Only allow admin and superadmin roles for web admin login
       if (userData.role !== 'admin' && userData.role !== 'superadmin') {
-        setErrorMessage('Access denied. This login is for administrators only. Please use the mobile app.');
+        setErrorMessage('Access denied. This login is for clinic administrators only. Veterinarians should use the mobile app.');
         return;
       }
       

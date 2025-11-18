@@ -158,6 +158,7 @@ function AppContent() {
             <Stack.Screen name="server/subscription-periods" />
             <Stack.Screen name="server/transaction-history" />
             <Stack.Screen name="server/superadmin-dashboard" />
+            <Stack.Screen name="veterinarian/vet-mobile" />
             <Stack.Screen name="veterinarian/vet-calendar" />
             <Stack.Screen name="veterinarian/vet-appointments" />
             <Stack.Screen name="veterinarian/vet-medical-record-detail" />

@@ -34,7 +34,7 @@ export default function MobileLogin() {
         
         // Only veterinarian and staff can access mobile
         if (userRole === 'veterinarian' || userRole === 'staff') {
-          router.replace('/veterinarian/vet-appointments');
+          router.replace('/veterinarian/vet-mobile');
         } else if (userRole === 'admin' || userRole === 'superadmin') {
           setErrorMessage('Admin accounts cannot access mobile interface. Please use web login.');
         } else {

@@ -287,6 +287,7 @@ export default function VetMobile() {
       }).length;
       
       console.log('📋 Pending today:', pendingToday);
+      console.log('✅ Completed today:', completedToday);
       
       const weeklyAppointments = weekData.reduce((s, v) => s + v, 0);
       console.log('📊 Total weekly appointments:', weeklyAppointments);
@@ -382,37 +383,6 @@ export default function VetMobile() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Welcome Section */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeText}>Welcome, {vetDetails.name}</Text>
-          <View style={styles.refreshButtonContainer}>
-            <TouchableOpacity 
-              style={[styles.refreshButton, refreshing && styles.refreshingButton]} 
-              onPress={handleRefresh}
-              disabled={refreshing}
-            >
-              <Text style={styles.refreshText}>
-                {refreshing ? 'Refreshing...' : 'Refresh Data'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.debugButton} 
-              onPress={() => {
-                console.log('🔍 Manual Debug Trigger');
-                console.log('Current Stats:', vetStats);
-                console.log('Weekly Data:', weeklyData);
-                console.log('Today Appointments List:', todayAppointmentsList);
-                Alert.alert(
-                  'Debug Info', 
-                  `Weekly: ${vetStats.weeklyAppointments}\nToday: ${vetStats.todayAppointments}\nCompleted: ${vetStats.completedToday}\nPending: ${vetStats.pendingRecords}\nUpcoming: ${vetStats.upcomingAppointments}\nPatients: ${vetStats.totalPatients}\n\nCheck console for details`
-                );
-              }}
-            >
-              <Text style={styles.debugText}>Debug</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Enhanced Stats Grid */}
         <View style={styles.statsGrid}>
           <TouchableOpacity style={styles.statCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
@@ -423,7 +393,7 @@ export default function VetMobile() {
           <TouchableOpacity style={styles.statCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
             <Ionicons name="time" size={28} color="#f59e0b" />
             <ThemedText style={styles.statValue}>{vetStats.upcomingAppointments}</ThemedText>
-            <ThemedText style={styles.statLabel}>Upcoming</ThemedText>
+            <ThemedText style={styles.statLabel}>Pending</ThemedText>
           </TouchableOpacity>
         </View>
 
@@ -447,15 +417,15 @@ export default function VetMobile() {
           <View style={styles.actionsGrid}>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/add-appointment')}>
               <Ionicons name="add-circle" size={36} color="#7B2C2C" />
-              <Text style={styles.actionText}>New Appointment</Text>
+              <Text style={styles.actionText}>New{'\n'}Schedule</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard} onPress={() => setShowAddCustomerModal(true)}>
               <Ionicons name="person-add" size={36} color="#7B2C2C" />
-              <Text style={styles.actionText}>Add Customer</Text>
+              <Text style={styles.actionText}>Add{'\n'}Customer</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-customers')}>
               <Ionicons name="search" size={36} color="#7B2C2C" />
-              <Text style={styles.actionText}>Search Patient</Text>
+              <Text style={styles.actionText}>Search{'\n'}Patient</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-calendar')}>
               <Ionicons name="calendar" size={36} color="#7B2C2C" />
@@ -463,7 +433,7 @@ export default function VetMobile() {
             </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
               <Ionicons name="list" size={36} color="#7B2C2C" />
-              <Text style={styles.actionText}>View All Appointments</Text>
+              <Text style={styles.actionText}>View{'\n'}Schedules</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -484,7 +454,7 @@ export default function VetMobile() {
                 <Ionicons name="checkmark-done" size={24} color="#10b981" />
                 <View style={styles.summaryContent}>
                   <Text style={styles.summaryValue}>{vetStats.completedToday}</Text>
-                  <Text style={styles.summaryLabel}>Completed</Text>
+                  <Text style={styles.summaryLabel}>Done Today</Text>
                 </View>
               </View>
             </View>
@@ -493,7 +463,7 @@ export default function VetMobile() {
                 <Ionicons name="hourglass-outline" size={24} color="#f59e0b" />
                 <View style={styles.summaryContent}>
                   <Text style={styles.summaryValue}>{vetStats.pendingRecords}</Text>
-                  <Text style={styles.summaryLabel}>Pending</Text>
+                  <Text style={styles.summaryLabel}>Pending Today</Text>
                 </View>
               </View>
               <View style={styles.summaryItem}>
@@ -721,7 +691,7 @@ export default function VetMobile() {
                 style={styles.confirmLogoutButton}
                 onPress={() => {
                   setShowLogoutModal(false);
-                  router.push('/');
+                  router.push('/veterinarian/mobile-login');
                 }}
               >
                 <Text style={styles.confirmLogoutButtonText}>Logout</Text>
@@ -835,24 +805,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
-  },
-  welcomeSection: {
-    marginBottom: 30,
-    alignItems: 'center',
-  },
-  welcomeText: {
-    fontSize: 20,
-    color: Colors.text.primary,
-    marginBottom: 5,
-  },
-  refreshButtonContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  dateText: {
-    fontSize: 16,
-    color: Colors.text.secondary,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -1214,35 +1166,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#fff',
-  },
-  refreshButton: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  refreshingButton: {
-    backgroundColor: '#999',
-  },
-  refreshText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  debugButton: {
-    backgroundColor: '#4a5568',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  debugText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
   },
   quickStatsSection: {
     marginBottom: 24,

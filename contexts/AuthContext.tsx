@@ -186,8 +186,14 @@ export const AuthProvider = ({ children }) => {
           // Ignore storage errors
         }
       }
+      
+      // Return the appropriate login path
+      const { Platform } = await import('react-native');
+      return Platform.OS === 'web' ? '/auth/admin-login' : '/veterinarian/mobile-login';
     } catch (error) {
       console.error('Error during logout:', error);
+      const { Platform } = await import('react-native');
+      return Platform.OS === 'web' ? '/auth/admin-login' : '/veterinarian/mobile-login';
     }
   };
 
