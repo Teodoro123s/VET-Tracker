@@ -141,10 +141,13 @@ export default function SubscriptionsScreen() {
   
   const [tenantEmails, setTenantEmails] = useState([]);
 
-  // Fetch tenant emails from database
+  // Fetch tenant emails from database (only admin role)
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'tenants'), (snapshot) => {
-      const emails = snapshot.docs.map(doc => doc.data().email).filter(email => email);
+      const emails = snapshot.docs
+        .map(doc => ({ email: doc.data().email, role: doc.data().role }))
+        .filter(item => item.email && item.role === 'admin')
+        .map(item => item.email);
       setTenantEmails(emails);
     });
     
@@ -175,12 +178,12 @@ export default function SubscriptionsScreen() {
       <SuperAdminSidebar />
       <View style={styles.mainContent}>
         <View style={styles.header}>
-          <Text style={styles.headerText}>Subscription Management</Text>
+          <Text style={styles.headerText}>Subscription Periods</Text>
           <View style={styles.searchContainer}>
             <Ionicons name="search" size={14} color="#999" />
             <TextInput 
               style={styles.searchInput}
-              placeholder="Search tenants..."
+              placeholder="Search subscriptions..."
               placeholderTextColor="#bbb"
               value={searchTerm}
               onChangeText={setSearchTerm}
@@ -193,7 +196,7 @@ export default function SubscriptionsScreen() {
           <View style={styles.tableContainer}>
             <View style={styles.tableTopRow}>
               <View style={styles.headerRow}>
-                <Text style={styles.detailTitle}>Subscription Management</Text>
+                <Text style={styles.detailTitle}>Active Subscriptions</Text>
                 <View style={styles.filterButtons}>
                   <TouchableOpacity 
                     style={[styles.filterButton, statusFilter === 'Active' && styles.activeFilterButton]} 

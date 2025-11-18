@@ -14,6 +14,7 @@ SplashScreen.preventAutoHideAsync();
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { TenantProvider } from '@/contexts/TenantContext';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import React, { createContext, useContext } from 'react';
 
 const CustomerContext = createContext();
@@ -52,10 +53,14 @@ import VetMobileHeader from '@/components/VetMobileHeader';
 
 import { subscriptionScheduler } from '@/lib/utils/subscriptionScheduler';
 import { useAuth } from '@/contexts/AuthContext';
+import { useProtectedRoute } from '@/lib/utils/subscriptionGuard';
 
 function AppContent() {
   const pathname = usePathname();
   const { user } = useAuth();
+  
+  // Apply route protection for subscription
+  useProtectedRoute();
   
   // Check for veterinarian routes
   const isVetRoute = pathname.startsWith('/veterinarian/') && pathname !== '/veterinarian/mobile-login';
@@ -214,11 +219,13 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <TenantProvider>
-        <NotificationProvider>
-          <CustomerProvider>
-            <AppContent />
-          </CustomerProvider>
-        </NotificationProvider>
+        <SubscriptionProvider>
+          <NotificationProvider>
+            <CustomerProvider>
+              <AppContent />
+            </CustomerProvider>
+          </NotificationProvider>
+        </SubscriptionProvider>
       </TenantProvider>
     </AuthProvider>
   );

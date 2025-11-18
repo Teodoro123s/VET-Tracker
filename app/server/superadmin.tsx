@@ -399,14 +399,14 @@ export default function SuperAdminScreen() {
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.headerText}>Subscriber Management</Text>
+          <Text style={styles.headerText}>Clinic Management</Text>
           <View style={styles.headerActions}>
 
             <View style={styles.searchContainer}>
               <Ionicons name="search" size={14} color="#800000" />
               <TextInput 
                 style={styles.searchInput}
-                placeholder="Search subscribers..."
+                placeholder="Search clinics..."
                 placeholderTextColor="#bbb"
                 value={searchTerm}
                 onChangeText={setSearchTerm}
@@ -418,7 +418,7 @@ export default function SuperAdminScreen() {
         <View style={styles.tableContainer}>
             <View style={styles.tableTopRow}>
             <View style={styles.headerRow}>
-              <Text style={styles.detailTitle}>Subscriber Management</Text>
+              <Text style={styles.detailTitle}>All Clinics</Text>
               <View style={styles.filterButtons}>
                 <TouchableOpacity 
                   style={[styles.filterButton, statusFilter === 'Active' && styles.activeFilterButton]} 
@@ -581,7 +581,7 @@ export default function SuperAdminScreen() {
                 }}>
                   <Ionicons name="arrow-back" size={16} color="#ffffff" />
                 </TouchableOpacity>
-                <Text style={styles.detailTitle}>Subscriber Details</Text>
+                <Text style={styles.detailTitle}>Clinic Details</Text>
               </View>
               </View>
               

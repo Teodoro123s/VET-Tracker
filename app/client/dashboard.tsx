@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCustomers, getAppointments, getVeterinarians, getPets, getMedicalForms } from '../../lib/services/firebaseService';
 import { useTenant } from '../../contexts/TenantContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useRouter } from 'expo-router';
 
 const screenWidth = Dimensions.get('window').width;
 
 export default function Dashboard() {
   const { userEmail } = useTenant();
+  const { user } = useAuth();
+  const { hasActiveSubscription, daysRemaining, loading: subscriptionLoading } = useSubscription();
   const router = useRouter();
   const [stats, setStats] = useState({
     totalPets: 0,
@@ -21,6 +25,19 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState([]);
   const [todayAppointments, setTodayAppointments] = useState([]);
+
+  // Check subscription on mount
+  useEffect(() => {
+    if (!subscriptionLoading && user?.role === 'admin' && !hasActiveSubscription) {
+      Alert.alert(
+        '⚠️ Subscription Expired',
+        'Your subscription has expired. Access to most features is restricted. Please contact support to renew your subscription.',
+        [
+          { text: 'OK', onPress: () => router.replace('/client/settings') }
+        ]
+      );
+    }
+  }, [subscriptionLoading, hasActiveSubscription, user?.role]);
 
   useEffect(() => {
     if (userEmail) {

@@ -9,9 +9,27 @@ import { getSystemStats, getClinicGrowthData, getSubscriptionData } from '@/lib/
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/config/firebaseConfig';
 
+// Subscription Analytics Interface
+interface SubscriptionAnalytics {
+  totalSubscriptions: number;
+  activeCount: number;
+  expiredCount: number;
+  expiringCount: number;
+  revenue: number;
+  mostPopularPeriod: string;
+}
+
 export default function SuperAdminDashboardScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [subscriptionAnalytics, setSubscriptionAnalytics] = useState<SubscriptionAnalytics>({
+    totalSubscriptions: 0,
+    activeCount: 0,
+    expiredCount: 0,
+    expiringCount: 0,
+    revenue: 0,
+    mostPopularPeriod: 'N/A'
+  });
   
   const [systemStats, setSystemStats] = useState({
     totalClinics: 0,
@@ -34,6 +52,7 @@ export default function SuperAdminDashboardScreen() {
 
   useEffect(() => {
     loadSystemData();
+    loadSubscriptionAnalytics();
   }, []);
 
   useEffect(() => {
@@ -67,6 +86,85 @@ export default function SuperAdminDashboardScreen() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSubscriptionAnalytics = async () => {
+    try {
+      const transactionsSnapshot = await getDocs(collection(db, 'transactions'));
+      const now = new Date();
+      
+      let activeCount = 0;
+      let expiredCount = 0;
+      let expiringCount = 0;
+      let totalRevenue = 0;
+      const periodCounts: Record<string, number> = {};
+      
+      const tenantsByEmail = new Map<string, any[]>();
+      
+      transactionsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const createdAt = data.createdAt?.toDate() || new Date();
+        const periodDays = getPeriodDays(data.period);
+        const endDate = new Date(createdAt);
+        endDate.setDate(createdAt.getDate() + periodDays);
+        
+        // Count period popularity
+        periodCounts[data.period] = (periodCounts[data.period] || 0) + 1;
+        
+        // Calculate revenue
+        const price = parseFloat(data.price?.toString().replace(/[^0-9.]/g, '') || '0');
+        totalRevenue += price;
+        
+        if (!tenantsByEmail.has(data.email)) {
+          tenantsByEmail.set(data.email, []);
+        }
+        tenantsByEmail.get(data.email)!.push({ ...data, endDate, createdAt });
+      });
+      
+      tenantsByEmail.forEach((transactions, email) => {
+        transactions.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+        const first = transactions[0];
+        
+        if (now <= first.endDate) {
+          const daysLeft = Math.ceil((first.endDate.getTime() - now.getTime()) / (1000*60*60*24));
+          activeCount++;
+          if (daysLeft <= 7) expiringCount++;
+        } else {
+          expiredCount++;
+        }
+      });
+      
+      // Find most popular period
+      let mostPopular = 'N/A';
+      let maxCount = 0;
+      Object.entries(periodCounts).forEach(([period, count]) => {
+        if (count > maxCount) {
+          maxCount = count;
+          mostPopular = period;
+        }
+      });
+      
+      setSubscriptionAnalytics({
+        totalSubscriptions: tenantsByEmail.size,
+        activeCount,
+        expiredCount,
+        expiringCount,
+        revenue: totalRevenue,
+        mostPopularPeriod: mostPopular
+      });
+    } catch (error) {
+      console.error('Error loading subscription analytics:', error);
+    }
+  };
+
+  const getPeriodDays = (period: string): number => {
+    switch (period) {
+      case '1 month': return 30;
+      case '6 months': return 180;
+      case '1 year': return 365;
+      case '2 years': return 730;
+      default: return 30;
     }
   };
 
@@ -176,7 +274,7 @@ export default function SuperAdminDashboardScreen() {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Quick Actions</Text>
                 <View style={styles.actionsGrid}>
-                  <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/server/subscriptions')}>
+                  <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/server/superadmin')}>
                     <View style={[styles.actionIcon, { backgroundColor: '#EFF6FF' }]}>
                       <Ionicons name="business-outline" size={24} color="#3B82F6" />
                     </View>
@@ -230,6 +328,43 @@ export default function SuperAdminDashboardScreen() {
                     <Ionicons name="pulse" size={32} color="#10B981" style={{ marginBottom: 8 }} />
                     <Text style={styles.metricValue}>{systemStats.systemUptime}</Text>
                     <Text style={styles.metricLabel}>System Uptime</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Subscription Analytics */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Subscription Analytics</Text>
+                <View style={styles.metricsGrid}>
+                  <View style={styles.metricCard}>
+                    <Ionicons name="bar-chart" size={32} color="#8B5CF6" style={{ marginBottom: 8 }} />
+                    <Text style={styles.metricValue}>{subscriptionAnalytics.totalSubscriptions}</Text>
+                    <Text style={styles.metricLabel}>Total Subscriptions</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Ionicons name="checkmark-done-circle" size={32} color="#10B981" style={{ marginBottom: 8 }} />
+                    <Text style={[styles.metricValue, { color: '#10B981' }]}>{subscriptionAnalytics.activeCount}</Text>
+                    <Text style={styles.metricLabel}>Active</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Ionicons name="time" size={32} color="#F59E0B" style={{ marginBottom: 8 }} />
+                    <Text style={[styles.metricValue, { color: '#F59E0B' }]}>{subscriptionAnalytics.expiringCount}</Text>
+                    <Text style={styles.metricLabel}>Expiring Soon (≤7 days)</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Ionicons name="close-circle" size={32} color="#EF4444" style={{ marginBottom: 8 }} />
+                    <Text style={[styles.metricValue, { color: '#EF4444' }]}>{subscriptionAnalytics.expiredCount}</Text>
+                    <Text style={styles.metricLabel}>Expired</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Ionicons name="cash" size={32} color="#3B82F6" style={{ marginBottom: 8 }} />
+                    <Text style={[styles.metricValue, { fontSize: 20 }]}>₱{subscriptionAnalytics.revenue.toLocaleString()}</Text>
+                    <Text style={styles.metricLabel}>Total Revenue</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Ionicons name="trophy" size={32} color="#F59E0B" style={{ marginBottom: 8 }} />
+                    <Text style={[styles.metricValue, { fontSize: 18 }]}>{subscriptionAnalytics.mostPopularPeriod}</Text>
+                    <Text style={styles.metricLabel}>Most Popular Period</Text>
                   </View>
                 </View>
               </View>

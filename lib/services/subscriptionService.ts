@@ -1,5 +1,7 @@
 import { collection, doc, setDoc, getDocs, query, orderBy, where, updateDoc, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
+import { addSubscriptionHistory } from './subscriptionHistoryService';
+import { sendActivationNotification, sendExpirationNotification, createSubscriptionNotification } from './subscriptionNotificationService';
 
 export interface SubscriptionPeriod {
   id: string;
@@ -13,6 +15,34 @@ export interface SubscriptionPeriod {
   status: 'active' | 'queued' | 'expired' | 'cancelled';
   createdAt: Date;
   activatedAt?: Date;
+}
+
+/**
+ * Update tenant subscription status in database
+ */
+export async function updateTenantSubscriptionStatus(
+  email: string, 
+  status: 'active' | 'expired'
+): Promise<void> {
+  try {
+    const tenantsQuery = query(
+      collection(db, 'tenants'),
+      where('email', '==', email)
+    );
+    
+    const snapshot = await getDocs(tenantsQuery);
+    
+    for (const docSnap of snapshot.docs) {
+      await updateDoc(doc(db, 'tenants', docSnap.id), {
+        status: status,
+        lastStatusUpdate: Timestamp.now()
+      });
+    }
+    
+    console.log(`✅ Tenant status updated: ${email} -> ${status}`);
+  } catch (error) {
+    console.error('Error updating tenant status:', error);
+  }
 }
 
 
@@ -70,7 +100,27 @@ export async function addSubscriptionPeriod(
       createdAt: Timestamp.fromDate(now)
     });
     
-
+    // Add to subscription history
+    await addSubscriptionHistory(
+      tenantId,
+      email,
+      status === 'active' ? 'created' : 'created',
+      period,
+      amount,
+      { status, startDate: startDate.toISOString(), endDate: endDate.toISOString() }
+    );
+    
+    // Send notification
+    if (status === 'active') {
+      await updateTenantSubscriptionStatus(email, 'active');
+      await sendActivationNotification(email, period, endDate);
+      await createSubscriptionNotification(tenantId, email, 'activated', 
+        `Your ${period} subscription is now active until ${endDate.toLocaleDateString()}`);
+    } else {
+      const queuedCount = await getQueuedSubscriptionCount(email);
+      await createSubscriptionNotification(tenantId, email, 'queued', 
+        `Your ${period} subscription has been queued (Position: ${queuedCount})`);
+    }
     
     return {
       success: true,
@@ -140,6 +190,27 @@ export async function activateQueuedPeriods(): Promise<void> {
       
       const expiredPeriod = expiredDoc.data() as SubscriptionPeriod;
       
+      // Update tenant status to expired
+      await updateTenantSubscriptionStatus(expiredPeriod.email, 'expired');
+      
+      // Add to history
+      await addSubscriptionHistory(
+        expiredPeriod.tenantId,
+        expiredPeriod.email,
+        'expired',
+        expiredPeriod.period,
+        expiredPeriod.amount
+      );
+      
+      // Send expiration notification
+      await sendExpirationNotification(expiredPeriod.email, expiredPeriod.period);
+      await createSubscriptionNotification(
+        expiredPeriod.tenantId,
+        expiredPeriod.email,
+        'expired',
+        `Your ${expiredPeriod.period} subscription has expired`
+      );
+      
       // Check for queued periods for this tenant
       const queuedQuery = query(
         collection(db, 'subscriptionPeriods'),
@@ -157,15 +228,56 @@ export async function activateQueuedPeriods(): Promise<void> {
           if (!aCreated || !bCreated) return 0;
           return aCreated.toMillis() - bCreated.toMillis();
         });
+        
         const nextPeriod = queuedPeriods[0];
+        const nextPeriodData = nextPeriod.data();
+        
         await updateDoc(doc(db, 'subscriptionPeriods', nextPeriod.id), {
           status: 'active',
           activatedAt: Timestamp.fromDate(now)
         });
+        
+        // Update tenant status to active
+        await updateTenantSubscriptionStatus(nextPeriodData.email, 'active');
+        
+        // Add to history
+        await addSubscriptionHistory(
+          nextPeriodData.tenantId,
+          nextPeriodData.email,
+          'activated',
+          nextPeriodData.period,
+          nextPeriodData.amount
+        );
+        
+        // Send activation notification
+        const endDate = nextPeriodData.endDate?.toDate() || new Date();
+        await sendActivationNotification(nextPeriodData.email, nextPeriodData.period, endDate);
+        await createSubscriptionNotification(
+          nextPeriodData.tenantId,
+          nextPeriodData.email,
+          'activated',
+          `Your queued ${nextPeriodData.period} subscription is now active`
+        );
       }
     }
   } catch (error) {
     console.error('Error activating queued periods:', error);
+  }
+}
+
+// Helper function to get queued subscription count
+async function getQueuedSubscriptionCount(email: string): Promise<number> {
+  try {
+    const queuedQuery = query(
+      collection(db, 'subscriptionPeriods'),
+      where('email', '==', email),
+      where('status', '==', 'queued')
+    );
+    
+    const snapshot = await getDocs(queuedQuery);
+    return snapshot.size;
+  } catch (error) {
+    return 0;
   }
 }
 
