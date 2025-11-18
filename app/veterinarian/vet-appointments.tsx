@@ -338,7 +338,8 @@ export default function VetAppointments() {
       {/* Appointments List */}
       <ScrollView 
         style={styles.appointmentsList} 
-        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.appointmentsListContent}
+        showsVerticalScrollIndicator={true}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -489,6 +490,9 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  appointmentsListContent: {
+    paddingBottom: 100,
+  },
   appointmentCard: {
     backgroundColor: '#fff',
     borderRadius: 8,
@@ -635,13 +639,13 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#28a745',
+    backgroundColor: '#7B2C2C',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
   },
 });

@@ -639,27 +639,23 @@ export default function VetCustomers() {
           </View>
         ) : selectedCustomer && !showPetsView && !selectedPet ? (
           <View style={styles.customerDetailsView}>
-            <ScrollView style={styles.scrollableList} showsVerticalScrollIndicator={false}>
-              <View style={styles.detailTable}>
-                {[
-                  { label: 'Name', value: `${selectedCustomer.firstname || ''} ${selectedCustomer.surname || ''}`.trim() || 'Unknown Customer' },
-                  { label: 'Phone', value: selectedCustomer.contact },
-                  { label: 'Email', value: selectedCustomer.email || 'Not provided' },
-                  { label: 'Address', value: selectedCustomer.address || 'Not provided' },
-                  { label: 'Number of Pets', value: selectedCustomer.pets?.toString() || '0' },
-                  { label: 'See Pets', value: 'View Pet Details', isAction: true }
-                ].map((item, index) => (
-                  <View key={index} style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>{item.label}</Text>
-                    {item.isAction ? (
-                      <TouchableOpacity onPress={() => setShowPetsView(true)}>
-                        <Text style={styles.detailActionValue}>{item.value}</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text style={styles.detailValue}>{item.value}</Text>
-                    )}
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
+              <View style={{ paddingTop: 20, paddingBottom: 5, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#800020' }}>Customer Details</Text>
+              </View>
+              <View style={{ padding: 20 }}>
+                <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(123, 44, 44, 0.1)', marginBottom: 20, elevation: 8, shadowColor: '#7B2C2C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}>
+                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#eee', paddingVertical: 8 }}>
+                    <Text style={{ flex: 1, fontWeight: 'bold', color: '#800020' }}>Field</Text>
+                    <Text style={{ flex: 2, fontWeight: 'bold', color: '#800020' }}>Value</Text>
                   </View>
-                ))}
+                  {Object.entries(selectedCustomer || {}).map(([key, value]) => (
+                    <View key={key} style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
+                      <Text style={{ flex: 1, color: '#333' }}>{key}</Text>
+                      <Text style={{ flex: 2, color: '#333' }}>{String(value)}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
             </ScrollView>
           </View>
@@ -1274,13 +1270,13 @@ export default function VetCustomers() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f5f7fa',
   },
 
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#7B2C2C',
   },
   addButton: {
     position: 'absolute',
@@ -1289,14 +1285,14 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#28a745',
+    backgroundColor: '#7B2C2C',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
   },
   addPetButton: {
     position: 'absolute',
@@ -1305,49 +1301,62 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#28a745',
+    backgroundColor: '#7B2C2C',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
-    paddingTop: 10,
-    paddingHorizontal: 12,
-    paddingBottom: 8,
+    backgroundColor: '#fff',
+    paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottomColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   searchInput: {
     flex: 1,
     marginLeft: 8,
     fontSize: 16,
-    color: '#7B2C2C',
+    color: '#333',
   },
   listContainer: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f5f7fa',
   },
   scrollableList: {
     flex: 1,
-    paddingBottom: 80,
+    paddingBottom: 100,
   },
   customerRow: {
     backgroundColor: '#fff',
     paddingVertical: 16,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(123, 44, 44, 0.1)',
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(123, 44, 44, 0.1)',
+    elevation: 2,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   customerName: {
     fontSize: 16,
-    color: '#666',
+    color: '#333',
     fontWeight: '500',
   },
   loadingContainer: {
@@ -1402,13 +1411,13 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: 'rgba(123, 44, 44, 0.1)',
+    borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fafafa',
+    fontSize: 14,
+    backgroundColor: '#fff',
     elevation: 2,
-    shadowColor: '#7B2C2C',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -1436,31 +1445,34 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: 'rgba(220, 53, 69, 0.2)',
-    borderWidth: 2,
-    borderColor: '#dc3545',
-    padding: 10,
-    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 14,
+    borderRadius: 20,
     alignItems: 'center',
   },
   cancelButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#dc3545',
+    color: '#666',
   },
   saveButton: {
     flex: 1,
-    backgroundColor: 'rgba(40, 167, 69, 0.2)',
-    borderWidth: 2,
-    borderColor: '#28a745',
-    padding: 10,
-    borderRadius: 8,
+    backgroundColor: '#7B2C2C',
+    padding: 14,
+    borderRadius: 20,
     alignItems: 'center',
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   saveButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#28a745',
+    color: '#fff',
   },
   customerDetailsView: {
     flex: 1,
@@ -1476,10 +1488,15 @@ const styles = StyleSheet.create({
   },
   returnButton: {
     backgroundColor: '#7B2C2C',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     alignItems: 'center',
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   returnIcon: {
     color: '#ffffff',
@@ -1551,7 +1568,7 @@ const styles = StyleSheet.create({
   petsTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#7B2C2C',
     marginLeft: 16,
   },
   petsList: {
@@ -1562,17 +1579,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingVertical: 16,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(123, 44, 44, 0.1)',
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(123, 44, 44, 0.1)',
+    elevation: 2,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   petName: {
     fontSize: 16,
-    color: '#7B2C2C',
-    fontWeight: '500',
+    color: '#333',
+    fontWeight: '600',
   },
   petDetails: {
     fontSize: 14,
-    color: '#7B2C2C',
+    color: '#666',
     marginTop: 4,
   },
   petDetailsView: {
@@ -1592,17 +1617,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     paddingVertical: 16,
     paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(123, 44, 44, 0.1)',
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(123, 44, 44, 0.1)',
+    elevation: 2,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   medicalType: {
     fontSize: 16,
-    color: '#7B2C2C',
-    fontWeight: '500',
+    color: '#333',
+    fontWeight: '600',
   },
   medicalDate: {
     fontSize: 14,
-    color: '#7B2C2C',
+    color: '#666',
     marginTop: 4,
   },
   medicalNotes: {
@@ -1633,23 +1666,23 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#28a745',
+    backgroundColor: '#7B2C2C',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
   },
   dropdownButton: {
     borderWidth: 1,
-    borderColor: 'rgba(123, 44, 44, 0.1)',
+    borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#fff',
     elevation: 2,
-    shadowColor: '#7B2C2C',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -1727,21 +1760,28 @@ const styles = StyleSheet.create({
   customCancelButton: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 20,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
   },
   customCancelText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#666',
   },
   customSaveButton: {
     flex: 1,
     backgroundColor: '#7B2C2C',
-    padding: 12,
-    borderRadius: 8,
+    padding: 14,
+    borderRadius: 20,
     alignItems: 'center',
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   modalTitle: {
     fontSize: 18,
@@ -1749,7 +1789,7 @@ const styles = StyleSheet.create({
     color: '#7B2C2C',
   },
   customSaveText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: 'white',
   },

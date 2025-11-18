@@ -776,6 +776,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
+    paddingLeft: 30,
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
     backgroundColor: '#f8f9fa',

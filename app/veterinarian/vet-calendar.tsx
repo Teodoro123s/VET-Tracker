@@ -2,74 +2,64 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Animated, 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getAppointments, updateAppointment, deleteAppointment, getVeterinarians } from '@/lib/services/firebaseService';
+import { getAppointments, getVeterinarianAppointments, updateAppointment, deleteAppointment } from '@/lib/services/firebaseService';
 import { useAuth } from '@/contexts/AuthContext';
-import { createTestAppointments } from '@/lib/services/testAppointments';
 
 export default function VetCalendarScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
   
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedDate, setSelectedDate] = useState(null);
-  const slideAnim = useRef(new Animated.Value(500)).current;
+  const slideAnim = useRef(new Animated.Value(600)).current;
   const [statusFilter, setStatusFilter] = useState('All');
-  const [translateX] = useState(new Animated.Value(0));
 
   
   useEffect(() => {
-    fetchAppointments();
-  }, []);
-  
-  const STATUS_COLORS = {
-    Done: '#007bff', // blue for completed/done
-    Pending: '#28a745',
-    Due: '#dc3545',
-  };
+    console.log('=== VET CALENDAR MOUNT ===');
+    console.log('User:', user);
+    console.log('User email:', user?.email);
+    if (user?.email) {
+      fetchAppointments();
+    } else {
+      console.log('No user email, skipping fetch');
+    }
+  }, [user?.email]);
   
   const fetchAppointments = async () => {
     try {
-      // Get all appointments (veterinarians can see all appointments)
+      console.log('=== FETCH APPOINTMENTS START ===');
+      console.log('User email:', user?.email);
+      
+      setLoading(true);
+      
+      if (!user?.email) {
+        console.log('No user email, cannot fetch');
+        setLoading(false);
+        return;
+      }
+      
+      // Use getAppointments (same as vet-appointments page) to get ALL appointments
+      // Veterinarians can see all appointments in their clinic
       const appointmentData = await getAppointments(user?.email);
       console.log('Fetched all appointments:', appointmentData?.length || 0);
       
-      const now = new Date();
+      if (appointmentData && appointmentData.length > 0) {
+        console.log('First appointment sample:', appointmentData[0]);
+      }
       
-      // Apply smart status logic
-      const processedAppointments = appointmentData.map(appointment => {
-        // Don't change completed/cancelled status - normalize all to 'Done'
-        if (appointment.status === 'completed' || appointment.status === 'Done' || appointment.status === 'Completed') {
-          return { ...appointment, status: 'Done' };
-        }
-        if (appointment.status === 'cancelled') {
-          return { ...appointment, status: 'cancelled' };
-        }
-
-        // For pending/scheduled/due appointments, check if they're overdue
-        let appointmentDateTime;
-        if (appointment.appointmentDate?.seconds) {
-          appointmentDateTime = new Date(appointment.appointmentDate.seconds * 1000);
-        } else {
-          appointmentDateTime = new Date(appointment.appointmentDate);
-        }
-
-        if (isNaN(appointmentDateTime.getTime())) {
-          return { ...appointment, status: 'Pending' };
-        }
-
-        // Smart status assignment: overdue = Due, future = Pending
-        const isPast = appointmentDateTime.getTime() <= now.getTime();
-        const newStatus = isPast ? 'Due' : 'Pending';
-        
-        return { ...appointment, status: newStatus };
-      });
-      
-      setAppointments(processedAppointments || []);
+      setAppointments(appointmentData || []);
+      console.log('=== FETCH APPOINTMENTS END ===');
     } catch (error) {
       console.error('Error fetching appointments:', error);
+      console.error('Error stack:', error.stack);
       setAppointments([]);
+      Alert.alert('Error', 'Failed to load appointments. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
   
@@ -77,14 +67,10 @@ export default function VetCalendarScreen() {
     // All appointments are already filtered for this veterinarian
     let filtered = appointments;
     
-    // Smart status assignment - Re-calculate in real-time
+    // Smart status assignment
     const now = new Date();
     filtered = filtered.map(apt => {
-      // Keep completed/cancelled status unchanged but normalize to 'Done'
-      if (apt.status === 'Done' || apt.status === 'Completed' || apt.status === 'completed') {
-        return { ...apt, status: 'Done' };
-      }
-      if (apt.status === 'cancelled') {
+      if (apt.status === 'Completed' || apt.status === 'completed' || apt.status === 'cancelled') {
         return apt;
       }
       
@@ -99,16 +85,23 @@ export default function VetCalendarScreen() {
         return { ...apt, status: 'Pending' };
       }
       
-      // Smart status: if time has passed, it's Due, otherwise Pending
-      const isPast = appointmentTime.getTime() <= now.getTime();
-      const newStatus = isPast ? 'Due' : 'Pending';
+      const timeDiff = appointmentTime.getTime() - now.getTime();
+      const hoursDiff = timeDiff / (1000 * 60 * 60);
+      
+      let newStatus;
+      if (hoursDiff <= 0) {
+        newStatus = 'Due'; // Past due
+      } else {
+        newStatus = 'Pending'; // Future appointment
+      }
       
       return { ...apt, status: newStatus };
     });
-    
+    console.log('getVetAppointments -> filtered count after status assignment:', filtered.length);
     // Filter by status
     if (statusFilter !== 'All') {
-      filtered = filtered.filter(apt => apt.status === statusFilter);
+      const filterStatus = statusFilter === 'Done' ? 'Completed' : statusFilter;
+      filtered = filtered.filter(apt => apt.status === filterStatus);
     }
     
     // Sort appointments
@@ -192,10 +185,7 @@ export default function VetCalendarScreen() {
               return vetAppts.filter(apt => {
                 let currentStatus = apt.status;
                 
-                // Normalize completed status
-                if (apt.status === 'Completed' || apt.status === 'completed' || apt.status === 'Done') {
-                  currentStatus = 'Done';
-                } else if (apt.status !== 'cancelled') {
+                if (apt.status !== 'Completed' && apt.status !== 'completed' && apt.status !== 'cancelled') {
                   let appointmentTime;
                   if (apt.appointmentDate?.seconds) {
                     appointmentTime = new Date(apt.appointmentDate.seconds * 1000);
@@ -204,12 +194,19 @@ export default function VetCalendarScreen() {
                   }
                   
                   if (!isNaN(appointmentTime.getTime())) {
-                    const isPast = appointmentTime.getTime() <= now.getTime();
-                    currentStatus = isPast ? 'Due' : 'Pending';
+                    const timeDiff = appointmentTime.getTime() - now.getTime();
+                    const hoursDiff = timeDiff / (1000 * 60 * 60);
+                    
+                    if (hoursDiff <= 0) {
+                      currentStatus = 'Due';
+                    } else {
+                      currentStatus = 'Pending';
+                    }
                   }
                 }
                 
-                return currentStatus === status;
+                const filterStatus = status === 'Done' ? 'Completed' : status;
+                return currentStatus === filterStatus;
               }).length;
             })();
             
@@ -243,15 +240,15 @@ export default function VetCalendarScreen() {
             
             <View style={styles.legend}>
               <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: STATUS_COLORS.Due }]} />
+                <View style={[styles.legendDot, { backgroundColor: '#dc3545' }]} />
                 <Text style={styles.legendText}>Due</Text>
               </View>
               <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: STATUS_COLORS.Pending }]} />
+                <View style={[styles.legendDot, { backgroundColor: '#28a745' }]} />
                 <Text style={styles.legendText}>Pending</Text>
               </View>
               <View style={styles.legendItem}>
-                <View style={[styles.legendDot, { backgroundColor: STATUS_COLORS.Done }]} />
+                <View style={[styles.legendDot, { backgroundColor: '#007bff' }]} />
                 <Text style={styles.legendText}>Done</Text>
               </View>
             </View>
@@ -316,6 +313,9 @@ export default function VetCalendarScreen() {
                       return false;
                     }
                   }) : [];
+                  if (dayAppointments.length > 0) {
+                    console.log(`Day ${selectedYear}-${selectedMonth + 1}-${day} has ${dayAppointments.length} appointments (first id: ${dayAppointments[0]?.id})`);
+                  }
                   
                   const hasAppointments = dayAppointments.length > 0;
                   const isTodayBox = isCurrentMonth && day === todayDate.getDate() && selectedMonth === todayDate.getMonth() && selectedYear === todayDate.getFullYear();
@@ -334,12 +334,14 @@ export default function VetCalendarScreen() {
                       ]} 
                       onPress={() => {
                         if (isCurrentMonth) {
-                          setSelectedDate({ day, month: selectedMonth, year: selectedYear });
+                          const newSelected = { day, month: selectedMonth, year: selectedYear };
+                          console.log('Selecting date:', newSelected);
+                          setSelectedDate(newSelected);
                           Animated.timing(slideAnim, {
                             toValue: 0,
                             duration: 300,
                             useNativeDriver: false,
-                          }).start();
+                          }).start(() => console.log('Schedule panel animated in for', newSelected));
                         }
                       }}
                     >
@@ -356,7 +358,7 @@ export default function VetCalendarScreen() {
                           const uniqueStatuses = new Set();
                           dayAppointments.forEach(apt => {
                             let normalizedStatus;
-                            if (apt.status === 'Completed' || apt.status === 'completed' || apt.status === 'Done') {
+                            if (apt.status === 'Completed' || apt.status === 'completed') {
                               normalizedStatus = 'Done';
                             } else if (apt.status === 'Due' || apt.status === 'due') {
                               normalizedStatus = 'Due';
@@ -366,7 +368,14 @@ export default function VetCalendarScreen() {
                             uniqueStatuses.add(normalizedStatus);
                           });
                           return Array.from(uniqueStatuses).slice(0, 3).map((status, idx) => {
-                            const getStatusColor = () => STATUS_COLORS[status] || STATUS_COLORS.Done;
+                            const getStatusColor = () => {
+                              switch(status) {
+                                case 'Done': return '#007bff';
+                                case 'Pending': return '#28a745';
+                                case 'Due': return '#dc3545';
+                                default: return '#007bff';
+                              }
+                            };
                             return (
                               <View
                                 key={status}
@@ -395,7 +404,7 @@ export default function VetCalendarScreen() {
               </Text>
               <TouchableOpacity onPress={() => {
                 Animated.timing(slideAnim, {
-                  toValue: 500,
+                  toValue: 600,
                   duration: 300,
                   useNativeDriver: false,
                 }).start(() => setSelectedDate(null));
@@ -573,7 +582,8 @@ export default function VetCalendarScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f5f7fa',
+    position: 'relative',
   },
 
 
@@ -624,10 +634,15 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   navButton: {
-    backgroundColor: '#800020',
-    borderRadius: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: '#7B2C2C',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   navButtonText: {
     color: '#ffffff',
@@ -637,7 +652,7 @@ const styles = StyleSheet.create({
   monthTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#800020',
+    color: '#7B2C2C',
   },
   weekHeader: {
     flexDirection: 'row',
@@ -651,7 +666,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#800020',
+    color: '#7B2C2C',
   },
   daysGrid: {
     flexDirection: 'row',
@@ -671,9 +686,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#e8f5e8',
   },
   todayBox: {
-    backgroundColor: 'rgba(128, 0, 32, 0.2)',
-    borderWidth: 1,
-    borderColor: '#800020',
+    backgroundColor: 'rgba(123, 44, 44, 0.15)',
+    borderWidth: 2,
+    borderColor: '#7B2C2C',
   },
   otherMonthBox: {
     backgroundColor: '#f8f9fa',
@@ -825,13 +840,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   scheduleContainer: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    bottom: 20,
     backgroundColor: '#fff',
-    borderRadius: 8,
-    marginTop: 15,
-    padding: 15,
+    borderRadius: 12,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#ddd',
-    height: 600,
+    maxHeight: '70%',
+    zIndex: 50,
+    elevation: 20,
   },
   scheduleHeader: {
     flexDirection: 'row',
@@ -845,7 +865,7 @@ const styles = StyleSheet.create({
   scheduleTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#800020',
+    color: '#7B2C2C',
     flex: 1,
   },
   closeButton: {

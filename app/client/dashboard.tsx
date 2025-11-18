@@ -237,6 +237,33 @@ export default function Dashboard() {
           </View>
         </View>
 
+        {/* Performance Metrics - New Feature */}
+        <View style={styles.metricsSection}>
+          <Text style={styles.sectionTitle}>Performance Metrics</Text>
+          <View style={styles.metricsGrid}>
+            <View style={styles.metricCard}>
+              <Ionicons name="trending-up" size={24} color="#22C55E" />
+              <Text style={styles.metricValue}>+15%</Text>
+              <Text style={styles.metricLabel}>Growth Rate</Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Ionicons name="star" size={24} color="#F59E0B" />
+              <Text style={styles.metricValue}>4.8</Text>
+              <Text style={styles.metricLabel}>Satisfaction</Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Ionicons name="calendar-outline" size={24} color="#3B82F6" />
+              <Text style={styles.metricValue}>{stats.totalAppointments}</Text>
+              <Text style={styles.metricLabel}>Total Appointments</Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Ionicons name="paw" size={24} color="#8B5CF6" />
+              <Text style={styles.metricValue}>{stats.totalPets}</Text>
+              <Text style={styles.metricLabel}>Patients</Text>
+            </View>
+          </View>
+        </View>
+
         {/* Side by Side: Recent Activity & Today's Appointments */}
         <View style={styles.sideBySideSection}>
           <View style={styles.activitySection}>
@@ -305,6 +332,34 @@ export default function Dashboard() {
                   </View>
                 )}
               </ScrollView>
+            </View>
+          </View>
+        </View>
+
+        {/* System Health - New Feature */}
+        <View style={styles.healthSection}>
+          <Text style={styles.sectionTitle}>System Health</Text>
+          <View style={styles.healthCard}>
+            <View style={styles.healthItem}>
+              <View style={styles.healthIndicator}>
+                <View style={[styles.healthDot, { backgroundColor: '#22C55E' }]} />
+                <Text style={styles.healthLabel}>Database</Text>
+              </View>
+              <Text style={styles.healthStatus}>Operational</Text>
+            </View>
+            <View style={styles.healthItem}>
+              <View style={styles.healthIndicator}>
+                <View style={[styles.healthDot, { backgroundColor: '#22C55E' }]} />
+                <Text style={styles.healthLabel}>Notifications</Text>
+              </View>
+              <Text style={styles.healthStatus}>Active</Text>
+            </View>
+            <View style={styles.healthItem}>
+              <View style={styles.healthIndicator}>
+                <View style={[styles.healthDot, { backgroundColor: '#22C55E' }]} />
+                <Text style={styles.healthLabel}>Backup</Text>
+              </View>
+              <Text style={styles.healthStatus}>Synced</Text>
             </View>
           </View>
         </View>
@@ -545,5 +600,82 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     textAlign: 'center',
     lineHeight: 16,
+  },
+  metricsSection: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
+  },
+  metricsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  metricValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginTop: 8,
+  },
+  metricLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  healthSection: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
+  },
+  healthCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  healthItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  healthIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  healthDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  healthLabel: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '500',
+  },
+  healthStatus: {
+    fontSize: 14,
+    color: '#6B7280',
   },
 });

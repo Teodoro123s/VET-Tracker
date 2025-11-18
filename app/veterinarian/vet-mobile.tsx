@@ -132,14 +132,13 @@ export default function VetMobile() {
       console.log('Retry count:', retryCount);
       
       const appointments = await getVeterinarianAppointments(user.email, user.email);
-      console.log('Fetched appointments:', appointments.length);
-      console.log('Sample appointment:', appointments[0]);
+      console.log('Fetched appointments:', appointments?.length || 0, 'sample:', appointments && appointments[0]);
       
       const now = new Date();
       const today = now.toDateString();
       console.log('Today date string:', today);
       
-      const todayApts = appointments.filter(apt => {
+      const todayApts = (appointments || []).filter(apt => {
         try {
           const aptDate = apt.appointmentDate?.seconds 
             ? new Date(apt.appointmentDate.seconds * 1000)
@@ -148,7 +147,7 @@ export default function VetMobile() {
         } catch { return false; }
       });
       
-      const upcomingApts = appointments.filter(apt => {
+      const upcomingApts = (appointments || []).filter(apt => {
         try {
           const aptDate = apt.appointmentDate?.seconds 
             ? new Date(apt.appointmentDate.seconds * 1000)
@@ -161,7 +160,7 @@ export default function VetMobile() {
       for (let i = 5; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
-        const dayCount = appointments.filter(apt => {
+        const dayCount = (appointments || []).filter(apt => {
           try {
             const aptDate = apt.appointmentDate?.seconds 
               ? new Date(apt.appointmentDate.seconds * 1000)
@@ -176,18 +175,21 @@ export default function VetMobile() {
       console.log('Upcoming appointments:', upcomingApts.length, upcomingApts);
       console.log('Weekly data:', weekData);
       
+      const completedToday = todayApts.filter(a => (a.status === 'completed' || a.status === 'Completed' || a.status === 'Done')).length;
+      const weeklyAppointments = weekData.reduce((s, v) => s + v, 0);
+
       setVetStats({
         todayAppointments: todayApts.length,
         pendingRecords: 0,
-        weeklyAppointments: 0,
-        completedToday: 0,
+        weeklyAppointments,
+        completedToday,
         upcomingAppointments: upcomingApts.length,
         totalPatients: 0
       });
-      
+
       setWeeklyData(weekData);
-      setTodayAppointmentsList(todayApts.slice(0, 5));
-      setUpcomingAppointmentsList(upcomingApts.slice(0, 3));
+      setTodayAppointmentsList((todayApts || []).slice(0, 5));
+      setUpcomingAppointmentsList((upcomingApts || []).slice(0, 3));
       
       console.log('=== END MOBILE DASHBOARD DEBUG ===');
       
@@ -268,15 +270,29 @@ export default function VetMobile() {
 
         {/* Enhanced Stats Grid */}
         <View style={styles.statsGrid}>
-          <TouchableOpacity style={styles.statCard} onPress={() => confirmNavigation('/veterinarian/vet-calendar', 'Calendar')}>
-            <Ionicons name="calendar" size={24} color={Colors.primary} />
+          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
+            <Ionicons name="calendar" size={28} color="#7B2C2C" />
             <ThemedText style={styles.statValue}>{vetStats.todayAppointments}</ThemedText>
-            <ThemedText style={styles.statLabel}>Today</ThemedText>
+            <ThemedText style={styles.statLabel}>Today's Appointments</ThemedText>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.statCard} onPress={() => confirmNavigation('/veterinarian/vet-calendar', 'Calendar')}>
-            <Ionicons name="time" size={24} color="#f59e0b" />
+          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
+            <Ionicons name="time" size={28} color="#f59e0b" />
             <ThemedText style={styles.statValue}>{vetStats.upcomingAppointments}</ThemedText>
             <ThemedText style={styles.statLabel}>Upcoming</ThemedText>
+          </TouchableOpacity>
+        </View>
+
+        {/* Additional Quick Stats */}
+        <View style={styles.statsGrid}>
+          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/veterinarian/vet-customers')}>
+            <Ionicons name="people" size={28} color="#10b981" />
+            <ThemedText style={styles.statValue}>{vetStats.totalPatients}</ThemedText>
+            <ThemedText style={styles.statLabel}>Total Patients</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
+            <Ionicons name="checkmark-circle" size={28} color="#3b82f6" />
+            <ThemedText style={styles.statValue}>{vetStats.completedToday}</ThemedText>
+            <ThemedText style={styles.statLabel}>Completed Today</ThemedText>
           </TouchableOpacity>
         </View>
 
@@ -329,22 +345,102 @@ export default function VetMobile() {
         <View style={styles.quickActions}>
           <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
           <View style={styles.actionsGrid}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/add-appointment')}>
+              <Ionicons name="add-circle" size={36} color="#7B2C2C" />
+              <Text style={styles.actionText}>New Appointment</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.actionCard} onPress={() => setShowAddCustomerModal(true)}>
-              <Ionicons name="person-add" size={32} color={Colors.primary} />
+              <Ionicons name="person-add" size={36} color="#7B2C2C" />
               <Text style={styles.actionText}>Add Customer</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => confirmNavigation('/veterinarian/vet-customers', 'Patient Search')}>
-              <Ionicons name="search" size={32} color={Colors.primary} />
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-customers')}>
+              <Ionicons name="search" size={36} color="#7B2C2C" />
               <Text style={styles.actionText}>Search Patient</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => confirmNavigation('/veterinarian/vet-calendar', 'Calendar')}>
-              <Ionicons name="calendar" size={32} color={Colors.primary} />
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-calendar')}>
+              <Ionicons name="calendar" size={36} color="#7B2C2C" />
               <Text style={styles.actionText}>Calendar</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => confirmNavigation('/veterinarian/vet-appointments', 'Appointments')}>
-              <Ionicons name="list" size={32} color={Colors.primary} />
-              <Text style={styles.actionText}>Appointments</Text>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
+              <Ionicons name="list" size={36} color="#7B2C2C" />
+              <Text style={styles.actionText}>View All Appointments</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-notifications')}>
+              <Ionicons name="notifications" size={36} color="#7B2C2C" />
+              <Text style={styles.actionText}>Notifications</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/medical-record-selection')}>
+              <Ionicons name="document-text" size={36} color="#7B2C2C" />
+              <Text style={styles.actionText}>Medical Records</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={() => setShowProfile(true)}>
+              <Ionicons name="person" size={36} color="#7B2C2C" />
+              <Text style={styles.actionText}>My Profile</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={handleRefresh}>
+              <Ionicons name="refresh" size={36} color="#7B2C2C" />
+              <Text style={styles.actionText}>Refresh Data</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Emergency Contacts - New Feature */}
+        <View style={styles.emergencySection}>
+          <ThemedText style={styles.sectionTitle}>Emergency Resources</ThemedText>
+          <View style={styles.emergencyCard}>
+            <TouchableOpacity style={styles.emergencyItem}>
+              <Ionicons name="call" size={24} color="#ef4444" />
+              <View style={styles.emergencyContent}>
+                <Text style={styles.emergencyTitle}>Animal Poison Control</Text>
+                <Text style={styles.emergencySubtitle}>24/7 Hotline Available</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.emergencyItem}>
+              <Ionicons name="medical" size={24} color="#ef4444" />
+              <View style={styles.emergencyContent}>
+                <Text style={styles.emergencyTitle}>Emergency Protocol</Text>
+                <Text style={styles.emergencySubtitle}>Quick Reference Guide</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Quick Stats Summary */}
+        <View style={styles.quickStatsSection}>
+          <ThemedText style={styles.sectionTitle}>Weekly Summary</ThemedText>
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryItem}>
+                <Ionicons name="calendar-outline" size={24} color="#3b82f6" />
+                <View style={styles.summaryContent}>
+                  <Text style={styles.summaryValue}>{vetStats.weeklyAppointments}</Text>
+                  <Text style={styles.summaryLabel}>This Week</Text>
+                </View>
+              </View>
+              <View style={styles.summaryItem}>
+                <Ionicons name="checkmark-done" size={24} color="#10b981" />
+                <View style={styles.summaryContent}>
+                  <Text style={styles.summaryValue}>{vetStats.completedToday}</Text>
+                  <Text style={styles.summaryLabel}>Completed</Text>
+                </View>
+              </View>
+            </View>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryItem}>
+                <Ionicons name="hourglass-outline" size={24} color="#f59e0b" />
+                <View style={styles.summaryContent}>
+                  <Text style={styles.summaryValue}>{vetStats.todayAppointments - vetStats.completedToday}</Text>
+                  <Text style={styles.summaryLabel}>Pending</Text>
+                </View>
+              </View>
+              <View style={styles.summaryItem}>
+                <Ionicons name="trending-up" size={24} color="#8b5cf6" />
+                <View style={styles.summaryContent}>
+                  <Text style={styles.summaryValue}>{vetStats.upcomingAppointments}</Text>
+                  <Text style={styles.summaryLabel}>Upcoming</Text>
+                </View>
+              </View>
+            </View>
           </View>
         </View>
 
@@ -703,35 +799,36 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   statCard: {
-    backgroundColor: Colors.surface,
-    padding: 12,
+    backgroundColor: '#fff',
+    padding: 16,
     borderRadius: 12,
     alignItems: 'center',
     width: '48%',
     elevation: 3,
-    shadowColor: '#000',
+    shadowColor: '#7B2C2C',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     borderWidth: 1,
-    borderColor: Colors.border.light,
+    borderColor: '#e5e7eb',
     marginBottom: 12,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: Colors.primary,
-    marginBottom: 4,
+    color: '#7B2C2C',
+    marginVertical: 8,
   },
   statLabel: {
-    fontSize: 12,
-    color: Colors.text.secondary,
+    fontSize: 11,
+    color: '#6b7280',
     textAlign: 'center',
+    fontWeight: '500',
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: Colors.text.primary,
+    color: '#7B2C2C',
     marginBottom: 16,
   },
   quickActions: {
@@ -741,28 +838,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 12,
   },
   actionCard: {
-    backgroundColor: Colors.surface,
-    padding: 16,
+    backgroundColor: '#fff',
+    padding: 20,
     borderRadius: 12,
     alignItems: 'center',
-    width: '48%',
+    width: '30%',
     marginBottom: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowRadius: 3,
     borderWidth: 1,
-    borderColor: Colors.border.light,
+    borderColor: '#e5e7eb',
   },
   actionText: {
-    fontSize: 12,
-    color: Colors.text.primary,
+    fontSize: 11,
+    color: '#374151',
     marginTop: 8,
     textAlign: 'center',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
@@ -1049,5 +1147,75 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  quickStatsSection: {
+    marginBottom: 24,
+  },
+  summaryCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    elevation: 2,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  summaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingHorizontal: 8,
+  },
+  summaryContent: {
+    marginLeft: 12,
+  },
+  summaryValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.primary,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: Colors.text.secondary,
+    marginTop: 2,
+  },
+  emergencySection: {
+    marginBottom: 24,
+  },
+  emergencyCard: {
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: '#fecaca',
+  },
+  emergencyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#fecaca',
+  },
+  emergencyContent: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  emergencyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#dc2626',
+    marginBottom: 2,
+  },
+  emergencySubtitle: {
+    fontSize: 12,
+    color: '#991b1b',
   },
 });
