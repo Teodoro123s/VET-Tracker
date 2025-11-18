@@ -464,7 +464,6 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '500',
   },
-});
   loadingText: {
     fontSize: Typography.body,
     color: '#666',

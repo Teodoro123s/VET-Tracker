@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Platform, Alert, TextInput, Dimensions } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { addCustomer } from '@/lib/services/firebaseService';
@@ -13,6 +13,7 @@ const screenWidth = Dimensions.get('window').width;
 
 export default function VetMobile() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { user } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -50,6 +51,13 @@ export default function VetMobile() {
     experience: 'Loading...'
   });
 
+  // Auto-open Add Customer modal if parameter is passed
+  useEffect(() => {
+    if (params.openAddCustomer === 'true') {
+      setShowAddCustomerModal(true);
+    }
+  }, [params]);
+
   useEffect(() => {
     if (user?.email) {
       loadData();
@@ -68,6 +76,25 @@ export default function VetMobile() {
   const handleRefresh = async () => {
     setRefreshing(true);
     await loadData();
+  };
+
+  const handleAddCustomer = async () => {
+    if (!newCustomer.firstname || !newCustomer.surname) {
+      Alert.alert('Error', 'Please fill in first name and surname');
+      return;
+    }
+
+    try {
+      await addCustomer(newCustomer, user?.email);
+      setNewCustomer({ firstname: '', surname: '', email: '', contact: '', address: '' });
+      setShowAddCustomerModal(false);
+      Alert.alert('Success', 'Customer added successfully');
+      // Optionally refresh stats after adding customer
+      await loadData();
+    } catch (error) {
+      console.error('Error adding customer:', error);
+      Alert.alert('Error', 'Failed to add customer');
+    }
   };
 
   const fetchVetDetails = async () => {
@@ -114,6 +141,7 @@ export default function VetMobile() {
 
   const fetchVetStats = async (retryCount = 0) => {
     if (!user?.email) {
+      console.log('❌ No user email found');
       setVetStats({
         todayAppointments: 0,
         pendingRecords: 0,
@@ -126,85 +154,174 @@ export default function VetMobile() {
     }
     
     try {
-      const { getVeterinarianAppointments } = await import('@/lib/services/firebaseService');
-      console.log('=== MOBILE DASHBOARD DEBUG ===');
-      console.log('User email:', user.email);
-      console.log('Retry count:', retryCount);
+      const { getAppointments, getCustomers, getPets } = await import('@/lib/services/firebaseService');
+      console.log('=== 📊 MOBILE DASHBOARD DATA FETCH START ===');
+      console.log('👤 User email:', user.email);
+      console.log('🔄 Retry count:', retryCount);
       
-      const appointments = await getVeterinarianAppointments(user.email, user.email);
-      console.log('Fetched appointments:', appointments?.length || 0, 'sample:', appointments && appointments[0]);
+      // Use getAppointments (same as appointments page) to get ALL appointments
+      const [allAppointments, customers, pets] = await Promise.all([
+        getAppointments(user.email),
+        getCustomers(user.email).catch(() => []),
+        getPets(user.email).catch(() => [])
+      ]);
       
+      console.log('📅 Fetched appointments:', allAppointments?.length || 0);
+      console.log('👥 Fetched customers:', customers?.length || 0);
+      console.log('🐾 Fetched pets:', pets?.length || 0);
+      
+      if (allAppointments && allAppointments.length > 0) {
+        console.log('📋 Sample appointment:', JSON.stringify(allAppointments[0], null, 2));
+      }
+      
+      // Apply same smart status logic as appointments page
       const now = new Date();
-      const today = now.toDateString();
-      console.log('Today date string:', today);
+      const appointments = allAppointments.map(appointment => {
+        // Keep completed/cancelled status unchanged - normalize all to 'Done'
+        if (appointment.status === 'completed' || appointment.status === 'Completed' || 
+            appointment.status === 'Done' || appointment.status === 'cancelled') {
+          if (appointment.status !== 'cancelled') {
+            return { ...appointment, status: 'Done' };
+          }
+          return appointment;
+        }
+        
+        let appointmentDateTime;
+        if (appointment.appointmentDate?.seconds) {
+          appointmentDateTime = new Date(appointment.appointmentDate.seconds * 1000);
+        } else {
+          appointmentDateTime = new Date(appointment.appointmentDate || appointment.dateTime);
+        }
+        
+        if (isNaN(appointmentDateTime.getTime())) {
+          return { ...appointment, status: 'Pending' };
+        }
+        
+        // Smart status assignment: Due = overdue, Pending = future
+        const isPast = appointmentDateTime.getTime() <= now.getTime();
+        const newStatus = isPast ? 'Due' : 'Pending';
+        
+        return { ...appointment, status: newStatus };
+      });
       
+      const today = now.toDateString();
+      console.log('📆 Today date string:', today);
+      console.log('🕐 Current time:', now.toISOString());
+      
+      // Filter today's appointments
       const todayApts = (appointments || []).filter(apt => {
         try {
           const aptDate = apt.appointmentDate?.seconds 
             ? new Date(apt.appointmentDate.seconds * 1000)
             : new Date(apt.appointmentDate);
-          return aptDate.toDateString() === today;
-        } catch { return false; }
+          const isToday = aptDate.toDateString() === today;
+          if (isToday) {
+            console.log('✅ Today appointment:', {
+              pet: apt.petName,
+              customer: apt.customerName,
+              date: aptDate.toISOString(),
+              status: apt.status
+            });
+          }
+          return isToday;
+        } catch (error) { 
+          console.error('❌ Error parsing appointment date:', error, apt);
+          return false; 
+        }
       });
       
+      // Filter upcoming appointments
       const upcomingApts = (appointments || []).filter(apt => {
         try {
           const aptDate = apt.appointmentDate?.seconds 
             ? new Date(apt.appointmentDate.seconds * 1000)
             : new Date(apt.appointmentDate);
-          return aptDate > now;
-        } catch { return false; }
+          const isFuture = aptDate > now;
+          return isFuture;
+        } catch (error) { 
+          console.error('❌ Error parsing upcoming appointment date:', error);
+          return false; 
+        }
       });
       
+      // Calculate weekly data (last 6 days)
+      console.log('📊 Calculating weekly data...');
       const weekData = [];
       for (let i = 5; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
+        date.setHours(0, 0, 0, 0);
+        const endDate = new Date(date);
+        endDate.setHours(23, 59, 59, 999);
+        
         const dayCount = (appointments || []).filter(apt => {
           try {
             const aptDate = apt.appointmentDate?.seconds 
               ? new Date(apt.appointmentDate.seconds * 1000)
               : new Date(apt.appointmentDate);
-            return aptDate.toDateString() === date.toDateString();
+            const isInRange = aptDate >= date && aptDate <= endDate;
+            return isInRange;
           } catch { return false; }
         }).length;
+        
+        console.log(`   Day ${6-i} (${date.toDateString()}): ${dayCount} appointments`);
         weekData.push(dayCount);
       }
       
-      console.log('Today appointments:', todayApts.length, todayApts);
-      console.log('Upcoming appointments:', upcomingApts.length, upcomingApts);
-      console.log('Weekly data:', weekData);
+      console.log('📈 Weekly data array:', weekData);
+      console.log('✅ Today appointments count:', todayApts.length);
+      console.log('🔜 Upcoming appointments count:', upcomingApts.length);
       
-      const completedToday = todayApts.filter(a => (a.status === 'completed' || a.status === 'Completed' || a.status === 'Done')).length;
+      // Calculate completed today - match appointments page logic (status === 'Done')
+      const completedToday = todayApts.filter(a => {
+        const isDone = a.status === 'Done';
+        if (isDone) {
+          console.log('✔️ Completed appointment:', a.petName, 'Status:', a.status);
+        }
+        return isDone;
+      }).length;
+      
+      // Calculate pending today (status = 'Pending' or 'Due', excluding 'Done' and 'cancelled')
+      const pendingToday = todayApts.filter(a => {
+        return a.status === 'Pending' || a.status === 'Due';
+      }).length;
+      
+      console.log('📋 Pending today:', pendingToday);
+      
       const weeklyAppointments = weekData.reduce((s, v) => s + v, 0);
+      console.log('📊 Total weekly appointments:', weeklyAppointments);
 
-      setVetStats({
+      const statsData = {
         todayAppointments: todayApts.length,
-        pendingRecords: 0,
+        pendingRecords: pendingToday,
         weeklyAppointments,
         completedToday,
         upcomingAppointments: upcomingApts.length,
-        totalPatients: 0
-      });
-
+        totalPatients: pets.length || 0
+      };
+      
+      console.log('📊 Final stats:', JSON.stringify(statsData, null, 2));
+      
+      setVetStats(statsData);
       setWeeklyData(weekData);
       setTodayAppointmentsList((todayApts || []).slice(0, 5));
       setUpcomingAppointmentsList((upcomingApts || []).slice(0, 3));
       
-      console.log('=== END MOBILE DASHBOARD DEBUG ===');
+      console.log('=== ✅ MOBILE DASHBOARD DATA FETCH COMPLETE ===');
       
     } catch (error) {
-      console.error('Error fetching vet stats:', error);
+      console.error('❌ Error fetching vet stats:', error);
+      console.error('Error details:', error.message, error.stack);
       
       // Retry logic for network issues
       if (retryCount < 2) {
-        console.log('Retrying data fetch...');
+        console.log('🔄 Retrying data fetch in 1 second...');
         setTimeout(() => fetchVetStats(retryCount + 1), 1000);
         return;
       }
       
       // Fallback to sample data if all retries fail
-      console.log('Using fallback sample data');
+      console.log('⚠️ Using fallback sample data');
       const sampleData = [
         { petName: 'Max', customerName: 'John Doe', reason: 'Checkup', appointmentDate: new Date() },
         { petName: 'Bella', customerName: 'Jane Smith', reason: 'Vaccination', appointmentDate: new Date(Date.now() + 86400000) }
@@ -241,6 +358,17 @@ export default function VetMobile() {
     setShowLogoutModal(true);
   };
 
+  // Function to open Add Customer modal programmatically
+  const openAddCustomerModal = () => {
+    setShowAddCustomerModal(true);
+  };
+
+  // Function to close Add Customer modal and reset form
+  const closeAddCustomerModal = () => {
+    setShowAddCustomerModal(false);
+    setNewCustomer({ firstname: '', surname: '', email: '', contact: '', address: '' });
+  };
+
   if (loading) {
     return (
       <ThemedView style={styles.container}>
@@ -257,15 +385,32 @@ export default function VetMobile() {
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
           <Text style={styles.welcomeText}>Welcome, {vetDetails.name}</Text>
-          <TouchableOpacity 
-            style={[styles.refreshButton, refreshing && styles.refreshingButton]} 
-            onPress={handleRefresh}
-            disabled={refreshing}
-          >
-            <Text style={styles.refreshText}>
-              {refreshing ? 'Refreshing...' : 'Refresh Data'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.refreshButtonContainer}>
+            <TouchableOpacity 
+              style={[styles.refreshButton, refreshing && styles.refreshingButton]} 
+              onPress={handleRefresh}
+              disabled={refreshing}
+            >
+              <Text style={styles.refreshText}>
+                {refreshing ? 'Refreshing...' : 'Refresh Data'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.debugButton} 
+              onPress={() => {
+                console.log('🔍 Manual Debug Trigger');
+                console.log('Current Stats:', vetStats);
+                console.log('Weekly Data:', weeklyData);
+                console.log('Today Appointments List:', todayAppointmentsList);
+                Alert.alert(
+                  'Debug Info', 
+                  `Weekly: ${vetStats.weeklyAppointments}\nToday: ${vetStats.todayAppointments}\nCompleted: ${vetStats.completedToday}\nPending: ${vetStats.pendingRecords}\nUpcoming: ${vetStats.upcomingAppointments}\nPatients: ${vetStats.totalPatients}\n\nCheck console for details`
+                );
+              }}
+            >
+              <Text style={styles.debugText}>Debug</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Enhanced Stats Grid */}
@@ -296,51 +441,6 @@ export default function VetMobile() {
           </TouchableOpacity>
         </View>
 
-        {/* Analytics Section */}
-        <View style={styles.analyticsSection}>
-          <ThemedText style={styles.sectionTitle}>Weekly Overview</ThemedText>
-          <View style={styles.analyticsCard}>
-            <Text style={styles.chartTitle}>Weekly Appointments</Text>
-            <LineChart
-              data={{
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-                datasets: [{
-                  data: weeklyData.length > 0 ? weeklyData : [0, 0, 0, 0, 0, 0],
-                  strokeWidth: 3
-                }]
-              }}
-              width={screenWidth - 80}
-              height={180}
-              chartConfig={{
-                backgroundColor: Colors.surface,
-                backgroundGradientFrom: Colors.surface,
-                backgroundGradientTo: Colors.surface,
-                decimalPlaces: 0,
-                color: (opacity = 1) => Colors.primary,
-                labelColor: (opacity = 1) => Colors.text.secondary,
-                style: {
-                  borderRadius: 8
-                },
-                propsForDots: {
-                  r: '4',
-                  strokeWidth: '2',
-                  stroke: Colors.primary
-                },
-                propsForBackgroundLines: {
-                  strokeDasharray: '',
-                  stroke: Colors.border.light,
-                  strokeWidth: 1
-                }
-              }}
-              bezier
-              style={{
-                marginVertical: 8,
-                borderRadius: 8
-              }}
-            />
-          </View>
-        </View>
-
         {/* Quick Actions */}
         <View style={styles.quickActions}>
           <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
@@ -364,43 +464,6 @@ export default function VetMobile() {
             <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
               <Ionicons name="list" size={36} color="#7B2C2C" />
               <Text style={styles.actionText}>View All Appointments</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/vet-notifications')}>
-              <Ionicons name="notifications" size={36} color="#7B2C2C" />
-              <Text style={styles.actionText}>Notifications</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/veterinarian/medical-record-selection')}>
-              <Ionicons name="document-text" size={36} color="#7B2C2C" />
-              <Text style={styles.actionText}>Medical Records</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => setShowProfile(true)}>
-              <Ionicons name="person" size={36} color="#7B2C2C" />
-              <Text style={styles.actionText}>My Profile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={handleRefresh}>
-              <Ionicons name="refresh" size={36} color="#7B2C2C" />
-              <Text style={styles.actionText}>Refresh Data</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Emergency Contacts - New Feature */}
-        <View style={styles.emergencySection}>
-          <ThemedText style={styles.sectionTitle}>Emergency Resources</ThemedText>
-          <View style={styles.emergencyCard}>
-            <TouchableOpacity style={styles.emergencyItem}>
-              <Ionicons name="call" size={24} color="#ef4444" />
-              <View style={styles.emergencyContent}>
-                <Text style={styles.emergencyTitle}>Animal Poison Control</Text>
-                <Text style={styles.emergencySubtitle}>24/7 Hotline Available</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.emergencyItem}>
-              <Ionicons name="medical" size={24} color="#ef4444" />
-              <View style={styles.emergencyContent}>
-                <Text style={styles.emergencyTitle}>Emergency Protocol</Text>
-                <Text style={styles.emergencySubtitle}>Quick Reference Guide</Text>
-              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -429,7 +492,7 @@ export default function VetMobile() {
               <View style={styles.summaryItem}>
                 <Ionicons name="hourglass-outline" size={24} color="#f59e0b" />
                 <View style={styles.summaryContent}>
-                  <Text style={styles.summaryValue}>{vetStats.todayAppointments - vetStats.completedToday}</Text>
+                  <Text style={styles.summaryValue}>{vetStats.pendingRecords}</Text>
                   <Text style={styles.summaryLabel}>Pending</Text>
                 </View>
               </View>
@@ -450,28 +513,33 @@ export default function VetMobile() {
           <View style={styles.activityCard}>
             {todayAppointmentsList.length > 0 ? (
               todayAppointmentsList.map((appointment, index) => {
-                const appointmentTime = appointment.appointmentDate?.seconds 
-                  ? new Date(appointment.appointmentDate.seconds * 1000)
-                  : new Date(appointment.appointmentDate);
-                const timeString = appointmentTime.toLocaleTimeString('en-US', { 
-                  hour: 'numeric', 
-                  minute: '2-digit', 
-                  hour12: true 
-                });
-                
-                return (
-                  <View key={index} style={styles.activityItem}>
-                    <Ionicons name="calendar" size={20} color={Colors.primary} />
-                    <View style={styles.activityContent}>
-                      <Text style={styles.activityTitle}>
-                        {appointment.petName || 'Pet'} - {appointment.reason || 'Appointment'}
-                      </Text>
-                      <Text style={styles.activityTime}>
-                        {appointment.customerName || 'Customer'} at {timeString}
-                      </Text>
+                try {
+                  const appointmentTime = appointment.appointmentDate?.seconds 
+                    ? new Date(appointment.appointmentDate.seconds * 1000)
+                    : new Date(appointment.appointmentDate);
+                  const timeString = appointmentTime.toLocaleTimeString('en-US', { 
+                    hour: 'numeric', 
+                    minute: '2-digit', 
+                    hour12: true 
+                  });
+                  
+                  return (
+                    <View key={appointment.id || index} style={styles.activityItem}>
+                      <Ionicons name="calendar" size={20} color={Colors.primary} />
+                      <View style={styles.activityContent}>
+                        <Text style={styles.activityTitle}>
+                          {appointment.petName || 'Pet'} - {appointment.reason || appointment.service || 'Appointment'}
+                        </Text>
+                        <Text style={styles.activityTime}>
+                          {appointment.customerName || 'Customer'} at {timeString}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                );
+                  );
+                } catch (error) {
+                  console.error('Error rendering appointment:', error, appointment);
+                  return null;
+                }
               })
             ) : (
               <View style={styles.activityItem}>
@@ -491,32 +559,37 @@ export default function VetMobile() {
             <ThemedText style={styles.sectionTitle}>Upcoming Appointments</ThemedText>
             <View style={styles.activityCard}>
               {upcomingAppointmentsList.map((appointment, index) => {
-                const appointmentTime = appointment.appointmentDate?.seconds 
-                  ? new Date(appointment.appointmentDate.seconds * 1000)
-                  : new Date(appointment.appointmentDate);
-                const dateString = appointmentTime.toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric' 
-                });
-                const timeString = appointmentTime.toLocaleTimeString('en-US', { 
-                  hour: 'numeric', 
-                  minute: '2-digit', 
-                  hour12: true 
-                });
-                
-                return (
-                  <View key={index} style={styles.activityItem}>
-                    <Ionicons name="time" size={20} color="#f59e0b" />
-                    <View style={styles.activityContent}>
-                      <Text style={styles.activityTitle}>
-                        {appointment.petName || 'Pet'} - {appointment.reason || 'Appointment'}
-                      </Text>
-                      <Text style={styles.activityTime}>
-                        {appointment.customerName || 'Customer'} on {dateString} at {timeString}
-                      </Text>
+                try {
+                  const appointmentTime = appointment.appointmentDate?.seconds 
+                    ? new Date(appointment.appointmentDate.seconds * 1000)
+                    : new Date(appointment.appointmentDate);
+                  const dateString = appointmentTime.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric' 
+                  });
+                  const timeString = appointmentTime.toLocaleTimeString('en-US', { 
+                    hour: 'numeric', 
+                    minute: '2-digit', 
+                    hour12: true 
+                  });
+                  
+                  return (
+                    <View key={appointment.id || index} style={styles.activityItem}>
+                      <Ionicons name="time" size={20} color="#f59e0b" />
+                      <View style={styles.activityContent}>
+                        <Text style={styles.activityTitle}>
+                          {appointment.petName || 'Pet'} - {appointment.reason || appointment.service || 'Appointment'}
+                        </Text>
+                        <Text style={styles.activityTime}>
+                          {appointment.customerName || 'Customer'} on {dateString} at {timeString}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                );
+                  );
+                } catch (error) {
+                  console.error('Error rendering upcoming appointment:', error, appointment);
+                  return null;
+                }
               })}
             </View>
           </View>
@@ -658,23 +731,22 @@ export default function VetMobile() {
         </View>
       </Modal>
 
-      {/* Add Customer Modal */}
       <Modal
         visible={showAddCustomerModal}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setShowAddCustomerModal(false)}
+        onRequestClose={closeAddCustomerModal}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.addCustomerModalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.addCustomerModalTitle}>Add New Customer</Text>
-              <TouchableOpacity onPress={() => setShowAddCustomerModal(false)}>
-                <Ionicons name="close" size={24} color="#666" />
+              <TouchableOpacity onPress={closeAddCustomerModal}>
+                <Ionicons name="close" size={24} color="#7B2C2C" />
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.addCustomerForm}>
+            <ScrollView style={styles.modalForm}>
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>First Name *</Text>
                 <TextInput
@@ -682,7 +754,7 @@ export default function VetMobile() {
                   value={newCustomer.firstname}
                   onChangeText={(text) => setNewCustomer({...newCustomer, firstname: text})}
                   placeholder="Enter first name"
-                  placeholderTextColor="#999"
+                  placeholderTextColor="rgba(123, 44, 44, 0.5)"
                 />
               </View>
 
@@ -693,7 +765,7 @@ export default function VetMobile() {
                   value={newCustomer.surname}
                   onChangeText={(text) => setNewCustomer({...newCustomer, surname: text})}
                   placeholder="Enter surname"
-                  placeholderTextColor="#999"
+                  placeholderTextColor="rgba(123, 44, 44, 0.5)"
                 />
               </View>
 
@@ -704,7 +776,7 @@ export default function VetMobile() {
                   value={newCustomer.email}
                   onChangeText={(text) => setNewCustomer({...newCustomer, email: text})}
                   placeholder="Enter email address"
-                  placeholderTextColor="#999"
+                  placeholderTextColor="rgba(123, 44, 44, 0.5)"
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
@@ -717,7 +789,7 @@ export default function VetMobile() {
                   value={newCustomer.contact}
                   onChangeText={(text) => setNewCustomer({...newCustomer, contact: text})}
                   placeholder="Enter contact number"
-                  placeholderTextColor="#999"
+                  placeholderTextColor="rgba(123, 44, 44, 0.5)"
                   keyboardType="phone-pad"
                 />
               </View>
@@ -729,35 +801,21 @@ export default function VetMobile() {
                   value={newCustomer.address}
                   onChangeText={(text) => setNewCustomer({...newCustomer, address: text})}
                   placeholder="Enter address"
-                  placeholderTextColor="#999"
+                  placeholderTextColor="rgba(123, 44, 44, 0.5)"
                 />
               </View>
             </ScrollView>
 
-            <View style={styles.addCustomerModalButtons}>
+            <View style={styles.modalButtons}>
               <TouchableOpacity 
                 style={styles.cancelButton}
-                onPress={() => setShowAddCustomerModal(false)}
+                onPress={closeAddCustomerModal}
               >
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.saveButton}
-                onPress={async () => {
-                  if (!newCustomer.firstname || !newCustomer.surname) {
-                    Alert.alert('Error', 'Please fill in first name and surname');
-                    return;
-                  }
-                  try {
-                    await addCustomer(newCustomer, user?.email);
-                    setNewCustomer({ firstname: '', surname: '', email: '', contact: '', address: '' });
-                    setShowAddCustomerModal(false);
-                    Alert.alert('Success', 'Customer added successfully');
-                  } catch (error) {
-                    console.error('Error adding customer:', error);
-                    Alert.alert('Error', 'Failed to add customer');
-                  }
-                }}
+                onPress={handleAddCustomer}
               >
                 <Text style={styles.saveButtonText}>Add Customer</Text>
               </TouchableOpacity>
@@ -786,6 +844,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: Colors.text.primary,
     marginBottom: 5,
+  },
+  refreshButtonContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
   },
   dateText: {
     fontSize: 16,
@@ -864,9 +927,8 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(45, 55, 72, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: Colors.surface,
@@ -881,10 +943,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
-    paddingBottom: 15,
+    padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border.light,
+    borderBottomColor: '#eee',
   },
   profileDetails: {
     marginBottom: 20,
@@ -1082,19 +1143,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   addCustomerModalContent: {
-    backgroundColor: Colors.surface,
+    backgroundColor: 'white',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '90%',
-    borderWidth: 1,
-    borderColor: Colors.border.light,
+    height: '80%',
   },
   addCustomerModalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: Colors.text.primary,
+    color: '#7B2C2C',
   },
-  addCustomerForm: {
+  modalForm: {
     padding: 20,
     maxHeight: 400,
   },
@@ -1104,33 +1163,57 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.text.primary,
+    color: '#7B2C2C',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: Colors.border.light,
+    borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fafafa',
+    fontSize: 14,
+    backgroundColor: '#fff',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  addCustomerModalButtons: {
+  modalButtons: {
     flexDirection: 'row',
     padding: 20,
     gap: 12,
   },
-  saveButton: {
+  cancelButton: {
     flex: 1,
-    backgroundColor: Colors.primary,
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    padding: 14,
+    borderRadius: 20,
     alignItems: 'center',
   },
-  saveButtonText: {
-    fontSize: 16,
+  cancelButtonText: {
+    fontSize: 14,
     fontWeight: '600',
-    color: Colors.text.inverse,
+    color: '#666',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#7B2C2C',
+    padding: 14,
+    borderRadius: 20,
+    alignItems: 'center',
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  saveButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   refreshButton: {
     backgroundColor: Colors.primary,
@@ -1143,6 +1226,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#999',
   },
   refreshText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  debugButton: {
+    backgroundColor: '#4a5568',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  debugText: {
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
@@ -1186,36 +1282,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.text.secondary,
     marginTop: 2,
-  },
-  emergencySection: {
-    marginBottom: 24,
-  },
-  emergencyCard: {
-    backgroundColor: '#fef2f2',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: '#fecaca',
-  },
-  emergencyItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#fecaca',
-  },
-  emergencyContent: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  emergencyTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#dc2626',
-    marginBottom: 2,
-  },
-  emergencySubtitle: {
-    fontSize: 12,
-    color: '#991b1b',
   },
 });
