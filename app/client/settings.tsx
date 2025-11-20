@@ -125,7 +125,7 @@ export default function SettingsScreen() {
                   <View style={styles.warningTextContainer}>
                     <Text style={styles.warningTitle}>⏳ Grace Period Active</Text>
                     <Text style={styles.warningDescription}>
-                      Your subscription has expired but you're in a {graceDaysRemaining}-day grace period. 
+                      Your subscription has expired but you&apos;re in a {graceDaysRemaining}-day grace period. 
                       Most features remain accessible, but please renew soon to avoid service interruption.
                     </Text>
                   </View>

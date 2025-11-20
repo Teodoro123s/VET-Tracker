@@ -311,7 +311,7 @@ export default function Dashboard() {
           </View>
 
           <View style={styles.appointmentsSection}>
-            <Text style={styles.sectionTitle}>Today's Appointments</Text>
+            <Text style={styles.sectionTitle}>Today&apos;s Appointments</Text>
             <View style={styles.appointmentsList}>
               <ScrollView style={styles.appointmentsScrollView} showsVerticalScrollIndicator={false}>
                 {todayAppointments.length > 0 ? (

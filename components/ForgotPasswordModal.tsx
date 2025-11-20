@@ -50,7 +50,7 @@ export default function ForgotPasswordModal({ visible, onClose, userType }: Forg
               
               <View style={styles.modalContent}>
                 <Text style={styles.modalMessage}>
-                  Enter your email address and we'll send you new login credentials.
+                  Enter your email address and we&apos;ll send you new login credentials.
                 </Text>
                 
                 <TextInput

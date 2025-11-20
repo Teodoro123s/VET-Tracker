@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import SuperAdminSidebar from '@/components/SuperAdminSidebar';
 import SearchableDropdown from '@/components/SearchableDropdown';
 import { createTenant, registerUser } from '../../lib/services/firebaseService';
-import { createClinicUser } from '../../lib/clientAuth';
 import { fetchAllTenants, deleteTenant, subscribeToTenants, updateSubscriber, createSubscriber, Subscriber } from '../../lib/services/superAdminService';
 import { sendCredentialsEmail, generateSecurePassword } from '../../lib/utils/emailService';
 import { deleteUserCompletely } from '../../lib/utils/completeUserDeletion';

@@ -3,10 +3,9 @@ import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import Tesseract from 'tesseract.js';
 import SearchableDropdown from '@/components/SearchableDropdown';
-import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '@/lib/services/firebaseService';
+import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian , registerUser } from '@/lib/services/firebaseService';
 import { generateSecurePassword } from '@/lib/utils/emailService';
 import { sendCredentialsEmail } from '@/lib/services/emailjsService';
-import { registerUser } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
 // import { uploadImage } from '@/lib/services/storageService';
 
