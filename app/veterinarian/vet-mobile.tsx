@@ -682,10 +682,10 @@ export default function VetMobile() {
             <Text style={styles.logoutModalText}>Are you sure you want to logout? You will need to login again to access the system.</Text>
             <View style={styles.logoutModalButtons}>
               <TouchableOpacity 
-                style={styles.cancelButton}
+                style={styles.logoutCancelButton}
                 onPress={() => setShowLogoutModal(false)}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <Text style={styles.logoutCancelButtonText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.confirmLogoutButton}
@@ -1070,14 +1070,14 @@ const styles = StyleSheet.create({
     gap: 12,
     width: '100%',
   },
-  cancelButton: {
+  logoutCancelButton: {
     flex: 1,
     backgroundColor: Colors.border.light,
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
-  cancelButtonText: {
+  logoutCancelButtonText: {
     color: Colors.text.primary,
     fontSize: 16,
     fontWeight: '500',
