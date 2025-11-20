@@ -4,7 +4,7 @@ import { View, Text, StyleSheet } from 'react-native';
 export class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError, error };
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error) {

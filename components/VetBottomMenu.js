@@ -16,17 +16,24 @@ export default function VetBottomMenu() {
   ];
 
   return (
-    
+    <View style={styles.container}>
       {menuItems.map((item) => (
-         router.push(item.route)}
-         >
-           
-          
+        <TouchableOpacity
+          key={item.name}
+          style={styles.menuItem}
+          onPress={() => router.push(item.route)}
+        >
+          <Ionicons 
+            name={item.icon}
+            size={24}
+            color={pathname === item.route ? Colors.primary : Colors.text.secondary}
+          />
+          <Text style={[styles.menuText, pathname === item.route && styles.activeText]}>
             {item.name}
-          
-        
+          </Text>
+        </TouchableOpacity>
       ))}
-    
+    </View>
   );
 }
 
@@ -34,21 +41,21 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     backgroundColor: Colors.surface,
-    borderTopWidth,
+    borderTopWidth: 1,
     borderTopColor: Colors.border.light,
-    paddingVertical,
-    paddingHorizontal,
-    paddingBottom,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
   menuItem: {
-    flex,
+    flex: 1,
     alignItems: 'center',
-    paddingVertical,
+    paddingVertical: 8,
   },
   menuText: {
-    fontSize,
+    fontSize: 12,
     color: Colors.text.secondary,
-    marginTop,
+    marginTop: 4,
   },
   activeText: {
     color: Colors.primary,

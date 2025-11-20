@@ -11,16 +11,17 @@ export default function DashboardChart({
   width = screenWidth * 0.4, 
   height = 180,
   loading = false 
-}: DashboardChartProps) {
+}) {
   const chartConfig = {
     backgroundColor: '#ffffff',
     backgroundGradientFrom: '#ffffff',
     backgroundGradientTo: '#ffffff',
-    decimalPlaces,
+    decimalPlaces: 0,
     color: (opacity = 1) => `rgba(123, 42, 59, ${opacity})`,
     labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
     style: {
-      borderRadius},
+      borderRadius: 16
+    },
     propsForDots: {
       r: '4',
       strokeWidth: '2',

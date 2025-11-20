@@ -7,12 +7,12 @@ export default function ClientHeader({ title }) {
   const { user } = useAuth();
 
   return (
-    
-      {title}
+    <View style={styles.header}>
+      <Text style={styles.title}>{title}</Text>
       {user?.email && (
-        
+        <NotificationBell userEmail={user.email} />
       )}
-    
+    </View>
   );
 }
 
@@ -21,14 +21,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal,
-    paddingVertical,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     backgroundColor: Colors.surface,
-    borderBottomWidth,
+    borderBottomWidth: 1,
     borderBottomColor: Colors.border.light,
   },
   title: {
-    fontSize,
+    fontSize: 20,
     fontWeight: 'bold',
     color: Colors.primary,
   },

@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet } from 'react-native';
 import { notificationService, InAppNotification } from '../lib/services/notificationService';
 import { Colors } from '../constants/Colors';
-export default function NotificationBell({ tenantId, userEmail }: NotificationBellProps) {
-  const [notifications, setNotifications] = useState ([]);
+export default function NotificationBell({ tenantId, userEmail }) {
+  const [notifications, setNotifications] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 

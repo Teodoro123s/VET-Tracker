@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Modal } from 'react-native';
-export default function DrawerLayout({ isOpen, onClose, children, drawerContent }: DrawerLayoutProps) {
+export default function DrawerLayout({ isOpen, onClose, children, drawerContent }) {
   return (
     
       {children}
