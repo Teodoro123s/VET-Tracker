@@ -388,7 +388,7 @@ export default function VetMobile() {
           <TouchableOpacity style={styles.statCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
             <Ionicons name="calendar" size={28} color="#7B2C2C" />
             <ThemedText style={styles.statValue}>{vetStats.todayAppointments}</ThemedText>
-            <ThemedText style={styles.statLabel}>Today's Appointments</ThemedText>
+            <ThemedText style={styles.statLabel}>Today&apos;s Appointments</ThemedText>
           </TouchableOpacity>
           <TouchableOpacity style={styles.statCard} onPress={() => router.push('/veterinarian/vet-appointments')}>
             <Ionicons name="time" size={28} color="#f59e0b" />
@@ -479,7 +479,7 @@ export default function VetMobile() {
 
         {/* Today's Appointments */}
         <View style={styles.recentActivity}>
-          <ThemedText style={styles.sectionTitle}>Today's Appointments</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Today&apos;s Appointments</ThemedText>
           <View style={styles.activityCard}>
             {todayAppointmentsList.length > 0 ? (
               todayAppointmentsList.map((appointment, index) => {

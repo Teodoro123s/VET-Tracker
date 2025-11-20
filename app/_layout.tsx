@@ -4,18 +4,25 @@ import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState , createContext, useContext } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import 'react-native-reanimated';
 
-// Keep the splash screen visible while we fetch resources
-SplashScreen.preventAutoHideAsync();
-
 import { NotificationProvider } from '@/contexts/NotificationContext';
-import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthProvider , useAuth } from '@/contexts/AuthContext';
 import { TenantProvider } from '@/contexts/TenantContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
-import React, { createContext, useContext } from 'react';
+import Sidebar from '@/components/Sidebar';
+import VetBottomMenu from '@/components/VetBottomMenu';
+import VetMobileHeader from '@/components/VetMobileHeader';
+// import ChatBot from '../components/ChatBot'; // Commented out - component not available
+
+
+import { subscriptionScheduler } from '@/lib/utils/subscriptionScheduler';
+import { useProtectedRoute } from '@/lib/utils/subscriptionGuard';
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
 
 const CustomerContext = createContext();
 
@@ -45,15 +52,6 @@ function CustomerProvider({ children }) {
     </CustomerContext.Provider>
   );
 }
-import Sidebar from '@/components/Sidebar';
-import VetBottomMenu from '@/components/VetBottomMenu';
-import VetMobileHeader from '@/components/VetMobileHeader';
-// import ChatBot from '../components/ChatBot'; // Commented out - component not available
-
-
-import { subscriptionScheduler } from '@/lib/utils/subscriptionScheduler';
-import { useAuth } from '@/contexts/AuthContext';
-import { useProtectedRoute } from '@/lib/utils/subscriptionGuard';
 
 function AppContent() {
   const pathname = usePathname();

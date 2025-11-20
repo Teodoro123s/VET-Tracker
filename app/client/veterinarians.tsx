@@ -3,10 +3,9 @@ import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import Tesseract from 'tesseract.js';
 import SearchableDropdown from '@/components/SearchableDropdown';
-import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '@/lib/services/firebaseService';
+import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian , registerUser } from '@/lib/services/firebaseService';
 import { generateSecurePassword } from '@/lib/utils/emailService';
 import { sendCredentialsEmail } from '@/lib/services/emailjsService';
-import { registerUser } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
 // import { uploadImage } from '@/lib/services/storageService';
 
@@ -1652,26 +1651,6 @@ const styles = StyleSheet.create({
   passwordSection: {
     marginTop: 10,
   },
-  passwordRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10,
-  },
-  passwordInputContainer: {
-    flex: 1,
-  },
-  generatePasswordButton: {
-    backgroundColor: '#28a745',
-    borderRadius: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 0,
-  },
-  generatePasswordText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
   accountNote: {
     fontSize: 12,
     color: '#666',
@@ -1683,20 +1662,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     gap: 10,
-  },
-  generatePasswordButton: {
-    backgroundColor: '#007BFF',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    minWidth: 150,
-  },
-  generatePasswordText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
   },
   disabledButton: {
     backgroundColor: '#6c757d',
