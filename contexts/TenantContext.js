@@ -2,9 +2,9 @@ import React, { createContext, useContext } from 'react';
 import { useAuth } from './AuthContext';
 
 const TenantContext = createContext({
-  userEmail,
-  isSuperAdmin,
-  tenantId,
+  userEmail: null,
+  isSuperAdmin: false,
+  tenantId: null,
 });
 
 export const useTenant = () => useContext(TenantContext);

@@ -2286,15 +2286,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 15,
-    fontSize: 12,
-    backgroundColor: '#fafafa',
-  },
   inputTypeDropdownContainer: {
     position: 'relative',
     zIndex: 2001,

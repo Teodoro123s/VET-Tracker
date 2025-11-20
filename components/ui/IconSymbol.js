@@ -26,5 +26,5 @@ const MAPPING = {
    color,
    style,
  }) {
-  return ;
+  return <MaterialIcons name={MAPPING[name] || 'help-outline'} size={size} color={color} style={style} />;
 }

@@ -1696,9 +1696,6 @@ const styles = StyleSheet.create({
     color: '#333',
     flex: 1,
   },
-  disabledText: {
-    color: '#999',
-  },
   dropdownList: {
     borderWidth: 1,
     borderColor: 'rgba(123, 44, 44, 0.1)',
@@ -1711,9 +1708,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-  },
-  dropdownScroll: {
-    maxHeight: 150,
   },
   addNewItem: {
     backgroundColor: '#f8f9fa',

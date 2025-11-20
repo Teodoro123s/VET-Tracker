@@ -19,7 +19,7 @@ export function NotificationProvider({ children }) {
         if (stored) {
           const parsedNotifications = JSON.parse(stored).map((n) => ({
             ...n,
-            timestamp Date(n.timestamp)
+            timestamp: new Date(n.timestamp)
           }));
           setNotifications(parsedNotifications);
         }
@@ -60,7 +60,7 @@ export function NotificationProvider({ children }) {
       case 'pending': return 3;
       case 'new': return 4;
       case 'cancelled': return 5;
-      default 6;
+      default: return 6;
     }
   };
 
@@ -68,8 +68,8 @@ export function NotificationProvider({ children }) {
     const newNotification = {
       ...notification,
       id: Date.now().toString(),
-      timestamp Date(),
-      read,
+      timestamp: new Date(),
+      read: false,
     };
     setNotifications(prev => {
       const updated = [newNotification, ...prev];
@@ -83,12 +83,12 @@ export function NotificationProvider({ children }) {
 
   const markAsRead = (id) => {
     setNotifications(prev => 
-      prev.map(notif => notif.id === id ? { ...notif, read } : notif)
+      prev.map(notif => notif.id === id ? { ...notif, read: true } : notif)
     );
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev => prev.map(notif => ({ ...notif, read })));
+    setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
   };
 
   const checkAppointments = async () => {
@@ -113,8 +113,8 @@ export function NotificationProvider({ children }) {
             message: `${appointment.customerName || appointment.name} - ${appointment.petName} (${appointment.service})`,
             type: 'new',
             appointmentId: appointment.id,
-            timestamp,
-            read,
+            timestamp: new Date(),
+            read: false,
           });
         }
 
@@ -126,8 +126,8 @@ export function NotificationProvider({ children }) {
             message: `${appointment.customerName || appointment.name} - ${appointment.petName} (${appointment.service}) at ${appointment.time || 'scheduled time'}`,
             type: 'due',
             appointmentId: appointment.id,
-            timestamp,
-            read,
+            timestamp: new Date(),
+            read: false,
           });
         }
 
@@ -139,8 +139,8 @@ export function NotificationProvider({ children }) {
             message: `${appointment.customerName || appointment.name} - ${appointment.petName} (${appointment.service}) at ${appointment.time || 'scheduled time'}`,
             type: 'pending',
             appointmentId: appointment.id,
-            timestamp,
-            read,
+            timestamp: new Date(),
+            read: false,
           });
         }
 
@@ -152,8 +152,8 @@ export function NotificationProvider({ children }) {
             message: `${appointment.customerName || appointment.name} - ${appointment.petName} (${appointment.service}) was scheduled for ${appointmentDate}`,
             type: 'overdue',
             appointmentId: appointment.id,
-            timestamp,
-            read,
+            timestamp: new Date(),
+            read: false,
           });
         }
 
@@ -169,8 +169,8 @@ export function NotificationProvider({ children }) {
               message: `${appointment.customerName || appointment.name} - ${appointment.petName} (${appointment.service}) has been cancelled`,
               type: 'cancelled',
               appointmentId: appointment.id,
-              timestamp,
-              read,
+              timestamp: new Date(),
+              read: false,
             });
           }
         }
