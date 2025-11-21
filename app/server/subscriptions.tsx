@@ -619,7 +619,6 @@ const styles = StyleSheet.create({
   searchInput: {
     width: 200,
     fontSize: 12,
-    outlineStyle: 'none',
   },
   content: {
     flex: 1,

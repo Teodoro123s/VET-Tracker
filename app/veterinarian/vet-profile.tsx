@@ -11,7 +11,7 @@ export default function VetProfile() {
   const { userEmail } = useTenant();
   const router = useRouter();
   const { logout } = useAuth();
-  const [vetData, setVetData] = useState(null);
+  const [vetData, setVetData] = useState<any>(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
 
@@ -50,7 +50,7 @@ export default function VetProfile() {
       <View style={styles.profileDetails}>
         <View style={styles.detailCard}>
           <Text style={styles.sectionTitle}>Contact & Professional Information</Text>
-          {console.log('Rendering with vetData:', vetData)}
+          {/* debug: vetData logged in console during development */}
           <View style={styles.detailRow}>
             <Ionicons name="mail" size={20} color={Colors.primary} />
             <View style={styles.detailText}>
@@ -116,11 +116,11 @@ export default function VetProfile() {
                 onPress={async () => {
                   setShowLogoutModal(false);
                   try {
-                    const loginPath = await logout();
-                    router.replace(loginPath || '/veterinarian/mobile-login');
+                    await logout();
+                    router.replace('/auth/admin-login');
                   } catch (error) {
                     console.error('Error during logout:', error);
-                    router.replace('/veterinarian/mobile-login');
+                    router.replace('/auth/admin-login');
                   }
                 }}
               >

@@ -1,5 +1,6 @@
 import { db, auth } from '../config/firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc, query, where } from 'firebase/firestore';
+import { ensureTenantHasAccess } from './accessService';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 
 // Define interfaces for TypeScript
@@ -44,6 +45,19 @@ interface Credential {
   [key: string]: any;
 }
 
+// Temporary helper: normalize Firestore document snapshots to plain objects
+// and cast to `any` to reduce TypeScript noise. Replace with proper
+// typed interfaces later as part of triage.
+const docData = <T = any>(d: any): T => {
+  try {
+    if (!d) return {} as T;
+    if (typeof d.data === 'function') return d.data() as T;
+    return d as T;
+  } catch (e) {
+    return {} as T;
+  }
+};
+
 // Get tenant ID from user email by looking up in tenants collection
 export const getTenantId = async (userEmail: string): Promise<string | null> => {
   console.log('=== GET TENANT ID ===');
@@ -58,7 +72,7 @@ export const getTenantId = async (userEmail: string): Promise<string | null> => 
     const q = query(collection(db, 'tenants'), where('email', '==', userEmail));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
-      const userData = querySnapshot.docs[0].data();
+      const userData = docData(querySnapshot.docs[0]);
       const tenantId = userData.tenantId || userData.id || null;
       console.log('Found tenant ID from direct lookup:', tenantId);
       return tenantId;
@@ -68,7 +82,7 @@ export const getTenantId = async (userEmail: string): Promise<string | null> => 
     console.log('Checking all tenants, count:', allTenants.docs.length);
 
     for (const tenantDoc of allTenants.docs) {
-      const tenantData = tenantDoc.data();
+      const tenantData = docData(tenantDoc);
 
       if (tenantData.createdBy === userEmail) {
         return tenantData.tenantId || tenantData.id || null;
@@ -107,7 +121,7 @@ const getTenantCollection = async (userEmail: string | null, collectionName: str
 export const getSubscribers = async () => {
   try {
     const querySnapshot = await getDocs(collection(db, 'subscribers'));
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) }));
   } catch (error) {
     console.error('Error fetching subscribers:', error);
     return [];
@@ -118,7 +132,7 @@ export const getSubscribers = async () => {
 export const getAllTenants = async () => {
   try {
     const querySnapshot = await getDocs(collection(db, 'tenants'));
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) }));
   } catch (error) {
     console.error('Error fetching tenants:', error);
     return [];
@@ -256,7 +270,7 @@ export const getVeterinarians = async (userEmail?: string) => {
   try {
     const tenantCollection = await getTenantCollection(userEmail || '', 'veterinarians');
     const querySnapshot = await getDocs(tenantCollection);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) }));
   } catch (error) {
     console.error('Error fetching veterinarians:', error);
     return [];
@@ -271,7 +285,7 @@ export const getVeterinarianByEmail = async (userEmail?: string, vetEmail?: stri
     if (!tenantId) return null;
     
     const querySnapshot = await getDocs(collection(db, `tenants/${tenantId}/veterinarians`));
-    const vets = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const vets = querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) }));
     console.log('All veterinarians found:', vets);
     const foundVet = vets.find(vet => vet.email === vetEmail);
     console.log('Found veterinarian:', foundVet);
@@ -285,6 +299,10 @@ export const getVeterinarianByEmail = async (userEmail?: string, vetEmail?: stri
 // Add a new veterinarian (tenant-aware)
 export const addVeterinarian = async (vetData, userEmail?: string) => {
   try {
+    const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
+
     const tenantCollection = await getTenantCollection(userEmail || '', 'veterinarians');
     const docRef = await addDoc(tenantCollection, vetData);
     return { id: docRef.id, ...vetData };
@@ -298,6 +316,8 @@ export const addVeterinarian = async (vetData, userEmail?: string) => {
 export const updateVeterinarian = async (vetId, updateData, userEmail?: string) => {
   try {
     const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
     const collectionPath = tenantId ? `tenants/${tenantId}/veterinarians` : 'veterinarians';
     await updateDoc(doc(db, collectionPath, vetId), updateData);
   } catch (error) {
@@ -311,7 +331,7 @@ export const getCustomers = async (userEmail?: string) => {
   try {
     const tenantCollection = await getTenantCollection(userEmail || '', 'customers');
     const querySnapshot = await getDocs(tenantCollection);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) }));
   } catch (error) {
     console.error('Error fetching customers:', error);
     return [];
@@ -330,7 +350,7 @@ export const getCustomerById = async (userEmail?: string, customerId?: string) =
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() };
+      return { id: docSnap.id, ...docData(docSnap) };
     } else {
       return null;
     }
@@ -343,6 +363,12 @@ export const getCustomerById = async (userEmail?: string, customerId?: string) =
 // Add a new customer (tenant-aware)
 export const addCustomer = async (customerData, userEmail?: string) => {
   try {
+    const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+
+    // Ensure tenant has write access (not locked/expired beyond grace)
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
+
     const tenantCollection = await getTenantCollection(userEmail || '', 'customers');
     const docRef = await addDoc(tenantCollection, customerData);
     return { id: docRef.id, ...customerData };
@@ -357,7 +383,7 @@ export const getPets = async (userEmail) => {
   try {
     const tenantCollection = await getTenantCollection(userEmail || '', 'pets');
     const querySnapshot = await getDocs(tenantCollection);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) }));
   } catch (error) {
     console.error('Error fetching pets:', error);
     return [];
@@ -367,6 +393,10 @@ export const getPets = async (userEmail) => {
 // Add a new pet (tenant-aware)
 export const addPet = async (petData, userEmail) => {
   try {
+    const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
+
     const tenantCollection = await getTenantCollection(userEmail || '', 'pets');
     const docRef = await addDoc(tenantCollection, petData);
     return { id: docRef.id, ...petData };
@@ -381,7 +411,7 @@ export const getAppointments = async (userEmail?: string): Promise<Appointment[]
   try {
     const tenantCollection = await getTenantCollection(userEmail || '', 'appointments');
     const querySnapshot = await getDocs(tenantCollection);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) } as Appointment));
   } catch (error) {
     console.error('Error fetching appointments:', error);
     return [];
@@ -391,6 +421,10 @@ export const getAppointments = async (userEmail?: string): Promise<Appointment[]
 // Add a new appointment (tenant-aware)
 export const addAppointment = async (userEmail?: string, appointmentData?: any) => {
   try {
+    const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
+
     const tenantCollection = await getTenantCollection(userEmail || '', 'appointments');
     const docRef = await addDoc(tenantCollection, appointmentData);
     return { id: docRef.id, ...appointmentData };
@@ -405,7 +439,7 @@ export const getVeterinarianAppointments = async (userEmail?: string, vetEmail?:
   try {
     const tenantCollection = await getTenantCollection(userEmail || '', 'appointments');
     const querySnapshot = await getDocs(tenantCollection);
-    const allAppointments = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const allAppointments = querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) }));
     
     // Filter appointments for the specific veterinarian
     const vetAppointments = allAppointments.filter(appointment => 
@@ -428,6 +462,8 @@ export const getVeterinarianAppointments = async (userEmail?: string, vetEmail?:
 export const updateAppointment = async (userEmail, appointmentId, updateData) => {
   try {
     const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
     const collectionPath = tenantId ? `tenants/${tenantId}/appointments` : 'appointments';
     await updateDoc(doc(db, collectionPath, appointmentId), updateData);
   } catch (error) {
@@ -443,7 +479,7 @@ export const getMedicalForms = async (userEmail?: string) => {
   try {
     const tenantCollection = await getTenantCollection(userEmail || '', 'medicalForms');
     const querySnapshot = await getDocs(tenantCollection);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) }));
   } catch (error) {
     console.error('Error fetching medical forms:', error);
     return [];
@@ -462,7 +498,7 @@ export const getMedicalFormById = async (userEmail?: string, formId?: string) =>
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() };
+      return { id: docSnap.id, ...docData(docSnap) };
     } else {
       return null;
     }
@@ -477,7 +513,7 @@ export const getMedicalRecords = async (userEmail?: string) => {
   try {
     const tenantCollection = await getTenantCollection(userEmail || '', 'medicalRecords');
     const querySnapshot = await getDocs(tenantCollection);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) }));
   } catch (error) {
     console.error('Error fetching medical records:', error);
     return [];
@@ -496,7 +532,7 @@ export const getMedicalRecordById = async (userEmail?: string, recordId?: string
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
-      const recordData = { id: docSnap.id, ...docSnap.data() };
+      const recordData = { id: docSnap.id, ...docData(docSnap) };
       console.log('Medical Record by ID from DB:', recordData);
       console.log('Retrieved FormData:', recordData.formData);
       console.log('Retrieved FormData type:', typeof recordData.formData);
@@ -523,7 +559,7 @@ export const getPetById = async (userEmail?: string, petId?: string) => {
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() };
+      return { id: docSnap.id, ...docData(docSnap) };
     } else {
       return null;
     }
@@ -537,6 +573,8 @@ export const getPetById = async (userEmail?: string, petId?: string) => {
 export const updatePet = async (petId, updateData, userEmail?: string) => {
   try {
     const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
     const collectionPath = tenantId ? `tenants/${tenantId}/pets` : 'pets';
     await updateDoc(doc(db, collectionPath, petId), updateData);
   } catch (error) {
@@ -550,7 +588,7 @@ export const getMedicalHistory = async (userEmail?: string, petId?: string) => {
   try {
     const tenantCollection = await getTenantCollection(userEmail || '', 'medicalRecords');
     const querySnapshot = await getDocs(tenantCollection);
-    const allRecords = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const allRecords = querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) }));
     const filteredRecords = allRecords.filter(record => record.petId === petId);
     console.log('Medical Records from DB:', filteredRecords);
     return filteredRecords;
@@ -567,6 +605,10 @@ export const addMedicalRecord = async (recordData, userEmail?: string) => {
     console.log('FormData being saved:', recordData.formData);
     console.log('FormData type:', typeof recordData.formData);
     console.log('FormData keys:', recordData.formData ? Object.keys(recordData.formData) : 'no formData');
+    const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
+
     const tenantCollection = await getTenantCollection(userEmail || '', 'medicalRecords');
     const docRef = await addDoc(tenantCollection, recordData);
     return { id: docRef.id, ...recordData };
@@ -605,13 +647,15 @@ export const deleteCustomer = async (id, userEmail?: string) => {
     
     const tenantId = await getTenantId(userEmail || '');
     console.log('Resolved tenant ID:', tenantId);
-    
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
+
     const collectionPath = tenantId ? `tenants/${tenantId}/customers` : 'customers';
     console.log('Collection path:', collectionPath);
-    
+
     const docRef = doc(db, collectionPath, id);
     console.log('Document reference created:', docRef.path);
-    
+
     await deleteDoc(docRef);
     console.log('Document deleted successfully');
   } catch (error) {
@@ -627,6 +671,8 @@ export const deleteCustomer = async (id, userEmail?: string) => {
 export const updateCustomer = async (customerId, updateData, userEmail?: string) => {
   try {
     const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
     const collectionPath = tenantId ? `tenants/${tenantId}/customers` : 'customers';
     await updateDoc(doc(db, collectionPath, customerId), updateData);
   } catch (error) {
@@ -667,6 +713,8 @@ export const deletePet = async (id, userEmail?: string) => {
     
     // Then delete the pet
     const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
     const collectionPath = tenantId ? `tenants/${tenantId}/pets` : 'pets';
     await deleteDoc(doc(db, collectionPath, id));
   } catch (error) {
@@ -682,16 +730,11 @@ export const deleteVeterinarian = async (id, userEmail?: string) => {
     console.log('User email:', userEmail);
     
     const tenantId = await getTenantId(userEmail || '');
-    console.log('Resolved tenant ID:', tenantId);
-    
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
     const collectionPath = tenantId ? `tenants/${tenantId}/veterinarians` : 'veterinarians';
-    console.log('Collection path:', collectionPath);
-    
     const docRef = doc(db, collectionPath, id);
-    console.log('Document reference created:', docRef.path);
-    
     await deleteDoc(docRef);
-    console.log('Document deleted successfully');
   } catch (error) {
     console.error('=== FIREBASE DELETE VETERINARIAN ERROR ===');
     console.error('Error deleting veterinarian:', error);
@@ -750,7 +793,7 @@ export const getMedicalCategories = async (userEmail?: string) => {
   try {
     const tenantCollection = await getTenantCollection(userEmail || '', 'medicalCategories');
     const querySnapshot = await getDocs(tenantCollection);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) }));
   } catch (error) {
     console.error('Error fetching medical categories:', error);
     return [];
@@ -760,8 +803,11 @@ export const getMedicalCategories = async (userEmail?: string) => {
 // Add a new medical form (tenant-aware)
 export const addMedicalForm = async (formData, userEmail?: string) => {
   try {
-    const tenantCollection = await getTenantCollection(userEmail || '', 'medicalForms');
-    const docRef = await addDoc(tenantCollection, formData);
+    const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
+    const collectionPath = tenantId ? `tenants/${tenantId}/medicalForms` : 'medicalForms';
+    const docRef = await addDoc(collection(db, collectionPath), formData);
     return { id: docRef.id, ...formData };
   } catch (error) {
     console.error('Error adding medical form:', error);
@@ -772,8 +818,11 @@ export const addMedicalForm = async (formData, userEmail?: string) => {
 // Add a new medical category (tenant-aware)
 export const addMedicalCategory = async (categoryData, userEmail?: string) => {
   try {
-    const tenantCollection = await getTenantCollection(userEmail || '', 'medicalCategories');
-    const docRef = await addDoc(tenantCollection, categoryData);
+    const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
+    const collectionPath = tenantId ? `tenants/${tenantId}/medicalCategories` : 'medicalCategories';
+    const docRef = await addDoc(collection(db, collectionPath), categoryData);
     return { id: docRef.id, ...categoryData };
   } catch (error) {
     console.error('Error adding medical category:', error);
@@ -787,7 +836,7 @@ export const getFormFields = async (formName, userEmail) => {
     const tenantCollection = await getTenantCollection(userEmail || '', 'formFields');
     const querySnapshot = await getDocs(tenantCollection);
     const fields = querySnapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .map(doc => ({ id: doc.id, ...docData(doc) }))
       .filter(field => field.formName === formName);
     return fields;
   } catch (error) {
@@ -799,8 +848,11 @@ export const getFormFields = async (formName, userEmail) => {
 // Add a new form field (tenant-aware)
 export const addFormField = async (fieldData, userEmail?: string) => {
   try {
-    const tenantCollection = await getTenantCollection(userEmail || '', 'formFields');
-    const docRef = await addDoc(tenantCollection, fieldData);
+    const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
+    const collectionPath = tenantId ? `tenants/${tenantId}/formFields` : 'formFields';
+    const docRef = await addDoc(collection(db, collectionPath), fieldData);
     return { id: docRef.id, ...fieldData };
   } catch (error) {
     console.error('Error adding form field:', error);
@@ -909,7 +961,7 @@ export const getStaff = async (userEmail?: string) => {
   try {
     const tenantCollection = await getTenantCollection(userEmail || '', 'staff');
     const querySnapshot = await getDocs(tenantCollection);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) }));
   } catch (error) {
     console.error('Error fetching staff:', error);
     return [];
@@ -918,8 +970,11 @@ export const getStaff = async (userEmail?: string) => {
 
 export const addStaff = async (staffData, userEmail?: string) => {
   try {
-    const tenantCollection = await getTenantCollection(userEmail || '', 'staff');
-    const docRef = await addDoc(tenantCollection, staffData);
+    const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
+    const collectionPath = tenantId ? `tenants/${tenantId}/staff` : 'staff';
+    const docRef = await addDoc(collection(db, collectionPath), staffData);
     return { id: docRef.id, ...staffData };
   } catch (error) {
     console.error('Error adding staff:', error);
@@ -954,7 +1009,7 @@ export const getAnimalTypes = async (userEmail?: string) => {
   try {
     const tenantCollection = await getTenantCollection(userEmail || '', 'animalTypes');
     const querySnapshot = await getDocs(tenantCollection);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) }));
   } catch (error) {
     console.error('Error fetching animal types:', error);
     return [];
@@ -963,8 +1018,11 @@ export const getAnimalTypes = async (userEmail?: string) => {
 
 export const addAnimalType = async (animalTypeData, userEmail?: string) => {
   try {
-    const tenantCollection = await getTenantCollection(userEmail || '', 'animalTypes');
-    const docRef = await addDoc(tenantCollection, animalTypeData);
+    const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
+    const collectionPath = tenantId ? `tenants/${tenantId}/animalTypes` : 'animalTypes';
+    const docRef = await addDoc(collection(db, collectionPath), animalTypeData);
     return { id: docRef.id, ...animalTypeData };
   } catch (error) {
     console.error('Error adding animal type:', error);
@@ -997,8 +1055,11 @@ export const getBreeds = async (userEmail?: string) => {
 
 export const addBreed = async (breedData, userEmail?: string) => {
   try {
-    const tenantCollection = await getTenantCollection(userEmail || '', 'breeds');
-    const docRef = await addDoc(tenantCollection, breedData);
+    const tenantId = await getTenantId(userEmail || '');
+    if (!tenantId) throw new Error('Tenant not found for user');
+    await ensureTenantHasAccess(tenantId, { required: 'write' });
+    const collectionPath = tenantId ? `tenants/${tenantId}/breeds` : 'breeds';
+    const docRef = await addDoc(collection(db, collectionPath), breedData);
     return { id: docRef.id, ...breedData };
   } catch (error) {
     console.error('Error adding breed:', error);
@@ -1122,7 +1183,7 @@ export const loginWithCredentialOverlap = async (email: string, password: string
     const querySnapshot = await getDocs(collection(db, collectionPath));
     
     const userCreds = querySnapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .map(doc => ({ id: doc.id, ...docData(doc) }))
       .filter(cred => cred.email === email)
       .sort((a, b) => new Date(b.pendingPasswordCreatedAt || 0).getTime() - new Date(a.pendingPasswordCreatedAt || 0).getTime());
     
@@ -1164,7 +1225,7 @@ export const getReasonOptions = async (userEmail?: string) => {
   try {
     const tenantCollection = await getTenantCollection(userEmail || '', 'reasonOptions');
     const querySnapshot = await getDocs(tenantCollection);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...docData(doc) }));
   } catch (error) {
     console.error('Error fetching reason options:', error);
     return [];

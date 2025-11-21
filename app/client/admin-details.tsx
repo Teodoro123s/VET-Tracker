@@ -28,7 +28,7 @@ export default function AdminDetailsScreen() {
   
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [drawerAnimation] = useState(new Animated.Value(-350));
-  const [editAdmin, setEditAdmin] = useState({});
+  const [editAdmin, setEditAdmin] = useState<any>({});
 
   return (
     <View style={styles.container}>

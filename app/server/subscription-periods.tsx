@@ -456,7 +456,6 @@ const styles = StyleSheet.create({
   searchInput: {
     width: 200,
     fontSize: Typography.fieldInput,
-    outlineStyle: 'none',
   },
   content: {
     flex: 1,

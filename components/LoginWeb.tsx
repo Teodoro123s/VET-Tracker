@@ -19,6 +19,7 @@ export default function LoginWeb() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   const handleLogin = async () => {
     setErrorMessage('');
@@ -56,12 +57,19 @@ export default function LoginWeb() {
             const { verifyPassword } = await import('../lib/utils/passwordUtils');
             
             if (verifyPassword(password, superadminData.passwordHash, superadminData.salt)) {
-              await AsyncStorage.setItem('currentUser', JSON.stringify({
-                email: superadminData.email,
-                role: 'superadmin',
-                name: superadminData.displayName || 'Edzhel Teodoro'
-              }));
-              
+              try {
+                const payload = JSON.stringify({
+                  email: superadminData.email,
+                  role: 'superadmin',
+                  name: superadminData.displayName || 'Edzhel Teodoro'
+                });
+                if (rememberMe) {
+                  try { localStorage.setItem('currentUser', payload); } catch (e) {}
+                } else {
+                  try { sessionStorage.setItem('currentUser', payload); } catch (e) {}
+                }
+              } catch (e) {}
+
               await checkAuthState();
               router.replace('/server/superadmin');
               return;
@@ -86,12 +94,19 @@ export default function LoginWeb() {
             });
             
             if (password === 'superadmin123') {
-              await AsyncStorage.setItem('currentUser', JSON.stringify({
-                email: 'edzhelteodoro@gmail.com',
-                role: 'superadmin',
-                name: 'Edzhel Teodoro'
-              }));
-              
+              try {
+                const payload = JSON.stringify({
+                  email: 'edzhelteodoro@gmail.com',
+                  role: 'superadmin',
+                  name: 'Edzhel Teodoro'
+                });
+                if (rememberMe) {
+                  try { localStorage.setItem('currentUser', payload); } catch (e) {}
+                } else {
+                  try { sessionStorage.setItem('currentUser', payload); } catch (e) {}
+                }
+              } catch (e) {}
+
               await checkAuthState();
               router.replace('/server/superadmin');
               return;
@@ -147,14 +162,21 @@ export default function LoginWeb() {
       
       console.log('Login successful:', userData);
       
-      // Store user data in AsyncStorage
-      await AsyncStorage.setItem('currentUser', JSON.stringify({
-        email: userData.email,
-        role: userData.role,
-        tenantId: userData.tenantId,
-        clinicName: userData.clinicName
-      }));
-      
+      // Store user data according to remember preference (web)
+      try {
+        const payload = JSON.stringify({
+          email: userData.email,
+          role: userData.role,
+          tenantId: userData.tenantId,
+          clinicName: userData.clinicName
+        });
+        if (rememberMe) {
+          try { localStorage.setItem('currentUser', payload); } catch (e) {}
+        } else {
+          try { sessionStorage.setItem('currentUser', payload); } catch (e) {}
+        }
+      } catch (e) {}
+
       // Update auth context immediately
       await checkAuthState();
       
@@ -235,6 +257,11 @@ export default function LoginWeb() {
               />
             </TouchableOpacity>
           </View>
+
+          <TouchableOpacity style={styles.rememberRow} onPress={() => setRememberMe(!rememberMe)}>
+            <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]} />
+            <Text style={styles.rememberText}>Remember me</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity 
             style={[styles.loginButton, isLoading && styles.loginButtonDisabled]} 
@@ -382,5 +409,26 @@ const styles = StyleSheet.create({
     color: Colors.secondary,
     fontSize: 14,
     fontWeight: '500',
+  },
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: Colors.border.light,
+    marginRight: 8,
+    backgroundColor: 'transparent',
+  },
+  checkboxChecked: {
+    backgroundColor: Colors.primary,
+  },
+  rememberText: {
+    color: Colors.text.secondary,
+    fontSize: 14,
   },
 });

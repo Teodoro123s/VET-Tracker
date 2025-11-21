@@ -17,8 +17,12 @@ interface Appointment {
   appointmentTime: string;
   reason: string;
   veterinarian: string;
-  status: 'scheduled' | 'completed' | 'cancelled';
+  status: 'scheduled' | 'completed' | 'cancelled' | 'pending' | 'due';
   notes?: string;
+  completedAt?: Date;
+  veterinarianEmail?: string;
+  assignedVet?: string;
+  vetEmail?: string;
 }
 
 export default function AppointmentsScreen() {
@@ -131,8 +135,8 @@ export default function AppointmentsScreen() {
         }
         
         let appointmentDateTime;
-        if (appointment.appointmentDate?.seconds) {
-          appointmentDateTime = new Date(appointment.appointmentDate.seconds * 1000);
+        if ((appointment.appointmentDate as any)?.seconds) {
+          appointmentDateTime = new Date((appointment.appointmentDate as any).seconds * 1000);
         } else {
           appointmentDateTime = new Date(appointment.appointmentDate);
         }
@@ -245,7 +249,7 @@ export default function AppointmentsScreen() {
       
       // Navigate to medical record form screen
       router.push({
-        pathname: '/client/medical-record-form',
+        pathname: '/client/medical-record-detail',
         params: {
           appointmentId: selectedAppointment?.id,
           petName: selectedAppointment?.petName,
@@ -283,9 +287,9 @@ export default function AppointmentsScreen() {
         formTemplate: newRecord.formTemplate,
         formData,
         date: new Date().toISOString().split('T')[0],
-        diagnosis: formData.diagnosis || 'N/A',
-        treatment: formData.treatment || 'N/A',
-        notes: formData.notes || Object.values(formData).join(', ') || 'N/A'
+        diagnosis: (formData as any).diagnosis || 'N/A',
+        treatment: (formData as any).treatment || 'N/A',
+        notes: (formData as any).notes || Object.values(formData).join(', ') || 'N/A'
       };
       
       await addMedicalRecord(recordData, user.email);
@@ -691,14 +695,14 @@ export default function AppointmentsScreen() {
     .sort((a, b) => {
       let dateA, dateB;
       
-      if (a.appointmentDate?.seconds) {
-        dateA = new Date(a.appointmentDate.seconds * 1000);
+      if ((a.appointmentDate as any)?.seconds) {
+        dateA = new Date((a.appointmentDate as any).seconds * 1000);
       } else {
         dateA = new Date(a.appointmentDate);
       }
       
-      if (b.appointmentDate?.seconds) {
-        dateB = new Date(b.appointmentDate.seconds * 1000);
+      if ((b.appointmentDate as any)?.seconds) {
+        dateB = new Date((b.appointmentDate as any).seconds * 1000);
       } else {
         dateB = new Date(b.appointmentDate);
       }
@@ -733,9 +737,9 @@ export default function AppointmentsScreen() {
       if (!date) return { date: 'No Date', time: '' };
       
       let dateObj;
-      if (date.seconds) {
+      if ((date as any).seconds) {
         // Firestore timestamp
-        dateObj = new Date(date.seconds * 1000);
+        dateObj = new Date((date as any).seconds * 1000);
       } else {
         dateObj = new Date(date);
       }
@@ -1284,8 +1288,8 @@ export default function AppointmentsScreen() {
                     const dayAppointments = appointments.filter(apt => {
                       try {
                         let aptDate;
-                        if (apt.appointmentDate?.seconds) {
-                          aptDate = new Date(apt.appointmentDate.seconds * 1000);
+                        if ((apt.appointmentDate as any)?.seconds) {
+                          aptDate = new Date((apt.appointmentDate as any).seconds * 1000);
                         } else {
                           aptDate = new Date(apt.appointmentDate);
                         }
@@ -1349,7 +1353,7 @@ export default function AppointmentsScreen() {
                               };
                               return (
                                 <View
-                                  key={status}
+                                  key={String(status)}
                                   style={[styles.appointmentDot, { backgroundColor: getStatusColor() }]}
                                 />
                               );
@@ -1406,8 +1410,8 @@ export default function AppointmentsScreen() {
                     })
                     .sort((a, b) => {
                       try {
-                        let dateA = a.appointmentDate?.seconds ? new Date(a.appointmentDate.seconds * 1000) : new Date(a.appointmentDate);
-                        let dateB = b.appointmentDate?.seconds ? new Date(b.appointmentDate.seconds * 1000) : new Date(b.appointmentDate);
+                        let dateA = (a.appointmentDate as any)?.seconds ? new Date((a.appointmentDate as any).seconds * 1000) : new Date(a.appointmentDate);
+                        let dateB = (b.appointmentDate as any)?.seconds ? new Date((b.appointmentDate as any).seconds * 1000) : new Date(b.appointmentDate);
                         return dateA.getTime() - dateB.getTime();
                       } catch {
                         return 0;
@@ -1862,7 +1866,7 @@ export default function AppointmentsScreen() {
 
       {/* Date Picker Modal */}
       {showDatePicker && (
-        <Modal transparent={true} visible={showDatePicker} animationType="scale">
+        <Modal transparent={true} visible={showDatePicker} animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.datePickerModal}>
               <View style={styles.modalHeader}>
@@ -1974,7 +1978,7 @@ export default function AppointmentsScreen() {
 
       {/* Time Picker Modal */}
       {showTimePicker && (
-        <Modal transparent={true} visible={showTimePicker} animationType="scale">
+        <Modal transparent={true} visible={showTimePicker} animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.timePickerModal}>
               <View style={styles.modalHeader}>
@@ -2133,7 +2137,7 @@ export default function AppointmentsScreen() {
 
       {/* Edit Reason Modal */}
       {showEditReasonModal && (
-        <Modal transparent={true} visible={showEditReasonModal} animationType="scale">
+        <Modal transparent={true} visible={showEditReasonModal} animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.reasonModal}>
               <View style={styles.modalHeader}>
@@ -2251,7 +2255,7 @@ const styles = StyleSheet.create({
   searchInput: {
     width: 150,
     fontSize: 12,
-    outlineStyle: 'none',
+    // outlineStyle removed for React Native
   },
   content: {
     padding: 20,
@@ -2308,8 +2312,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   dateText: {
     fontSize: 12,
@@ -2317,8 +2320,7 @@ const styles = StyleSheet.create({
     fontWeight: 'normal',
     textAlign: 'center',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   timeText: {
     fontSize: 12,
@@ -2326,8 +2328,7 @@ const styles = StyleSheet.create({
     fontWeight: 'normal',
     textAlign: 'center',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   tableBody: {
     flex: 1,
@@ -2514,37 +2515,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1000,
   },
-  dropdownButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    backgroundColor: '#fafafa',
-    padding: 12,
-  },
-  disabledDropdown: {
-    backgroundColor: '#f0f0f0',
-    opacity: 0.6,
-  },
-  dropdownMenu: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    maxHeight: 150,
-    zIndex: 1001,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
   selectedCustomer: {
     fontSize: 12,
     color: '#333',
@@ -2552,6 +2522,10 @@ const styles = StyleSheet.create({
   },
   dropdownScroll: {
     maxHeight: 140,
+  },
+  disabledDropdown: {
+    backgroundColor: '#f0f0f0',
+    opacity: 0.6,
   },
   drawerButtons: {
     flexDirection: 'row',
@@ -2689,11 +2663,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#800000',
     borderColor: '#800000',
   },
-  dateText: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
-  },
   selectedDateText: {
     color: '#fff',
     fontWeight: 'bold',
@@ -2735,11 +2704,6 @@ const styles = StyleSheet.create({
   selectedTime: {
     backgroundColor: '#800000',
     borderColor: '#800000',
-  },
-  timeText: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
   },
   selectedTimeText: {
     color: '#fff',
@@ -2831,6 +2795,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 12,
   },
+  customerList: {
+    maxHeight: 140,
+  },
+  customerOptionText: {
+    fontSize: 12,
+    color: '#333',
+    padding: 8,
+  },
   reasonInputContainer: {
     padding: 20,
     alignItems: 'center',
@@ -2857,7 +2829,7 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: '#fff',
     color: '#333',
-    outlineStyle: 'none',
+    // outlineStyle removed for React Native
   },
   tableTopRow: {
     backgroundColor: '#fff',
@@ -3019,8 +2991,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
 
   cellText: {
@@ -3266,23 +3237,19 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 2,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   petInfo: {
     fontSize: 15,
     color: '#666',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   appointmentTime: {
     fontSize: 12,
     color: '#666',
     marginTop: 4,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
   },
   doneButton: {
     backgroundColor: '#28a745',
@@ -3466,13 +3433,6 @@ const styles = StyleSheet.create({
   petDropdownArrow: {
     fontSize: 12,
     color: '#666',
-  },
-  dropdownScroll: {
-    maxHeight: 150,
-  },
-  disabledDropdown: {
-    backgroundColor: '#f5f5f5',
-    borderColor: '#ccc',
   },
   disabledText: {
     color: '#999',

@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions, Modal, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useTenant } from '@/contexts/TenantContext';
-import { useSubscription } from '@/contexts/SubscriptionContext';
 import { Typography, Spacing } from '@/constants/Typography';
 
 export default function Sidebar() {
@@ -14,7 +13,6 @@ export default function Sidebar() {
   const { logout, user } = useAuth();
   const { unreadCount } = useNotifications();
   const { userEmail } = useTenant();
-  const { hasActiveSubscription, daysRemaining, totalDaysRemaining, queuedPeriods, loading, isInGracePeriod, graceDaysRemaining } = useSubscription();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [clinicName, setClinicName] = useState('');
   
@@ -24,38 +22,15 @@ export default function Sidebar() {
   }, [user, userEmail]);
 
   const menuItems = [
-    { name: 'Dashboard', icon: require('@/assets/dashboard.png'), route: '/client/dashboard', requiresSubscription: true },
-    { name: 'Appointments', icon: require('@/assets/appointments.png'), route: '/client/appointments', requiresSubscription: true },
-    { name: 'Customers', icon: require('@/assets/customers.png'), route: '/client/customers', requiresSubscription: true },
-    { name: 'Personnel', icon: require('@/assets/veterinarians.png'), route: '/client/veterinarians', requiresSubscription: true },
-    { name: 'Medical Records', icon: require('@/assets/medical-forms.png'), route: '/client/records', requiresSubscription: true },
-    { name: 'Notifications', icon: require('@/assets/notifications.png'), route: '/client/notifications', requiresSubscription: true },
-    { name: 'Settings', icon: require('@/assets/settings.png'), route: '/client/settings', requiresSubscription: false },
-    { name: 'Logout', icon: require('@/assets/logout.png'), route: null, requiresSubscription: false },
+    { name: 'Dashboard', icon: require('@/assets/dashboard.png'), route: '/client/dashboard' },
+    { name: 'Appointments', icon: require('@/assets/appointments.png'), route: '/client/appointments' },
+    { name: 'Customers', icon: require('@/assets/customers.png'), route: '/client/customers' },
+    { name: 'Personnel', icon: require('@/assets/veterinarians.png'), route: '/client/veterinarians' },
+    { name: 'Medical Records', icon: require('@/assets/medical-forms.png'), route: '/client/records' },
+    { name: 'Notifications', icon: require('@/assets/notifications.png'), route: '/client/notifications' },
+    { name: 'Settings', icon: require('@/assets/settings.png'), route: '/client/settings' },
+    { name: 'Logout', icon: require('@/assets/logout.png'), route: null },
   ];
-
-  const handleMenuClick = (item) => {
-    if (item.name === 'Logout') {
-      setShowLogoutModal(true);
-      return;
-    }
-
-    // Check subscription status for restricted routes (allow grace period access)
-    const hasAccess = hasActiveSubscription || isInGracePeriod;
-    
-    if (item.requiresSubscription && !hasAccess && user?.role === 'admin') {
-      Alert.alert(
-        'Subscription Expired',
-        isInGracePeriod 
-          ? `You are in grace period (${graceDaysRemaining} days remaining). Please contact support to renew your subscription.`
-          : 'Your subscription has expired. Please contact support to renew your subscription and continue using the system.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    router.push(item.route);
-  };
 
   return (
     <View style={styles['sidebar-container']}>
@@ -67,61 +42,19 @@ export default function Sidebar() {
         >
           <Text style={styles['sidebar-email-text']}>{clinicName}</Text>
         </TouchableOpacity>
-        
-        {/* Subscription Countdown */}
-        {user?.role === 'admin' && !loading && (
-          <View style={styles.subscriptionCountdown}>
-            {hasActiveSubscription ? (
-              <>
-                <View style={styles.countdownRow}>
-                  <Ionicons name="time-outline" size={14} color={daysRemaining <= 7 ? '#ef4444' : '#10b981'} />
-                  <Text style={[styles.countdownText, daysRemaining <= 7 && styles.countdownWarning]}>
-                    {daysRemaining} {daysRemaining === 1 ? 'day' : 'days'} left
-                  </Text>
-                </View>
-                {queuedPeriods > 0 && (
-                  <Text style={styles.queuedText}>
-                    Total: {totalDaysRemaining} days (+{queuedPeriods} queued)
-                  </Text>
-                )}
-              </>
-            ) : isInGracePeriod ? (
-              <View style={styles.gracePeriodBanner}>
-                <Ionicons name="alert-circle" size={14} color="#f59e0b" />
-                <Text style={styles.gracePeriodText}>
-                  Grace: {graceDaysRemaining} day{graceDaysRemaining > 1 ? 's' : ''} left
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.expiredBanner}>
-                <Ionicons name="alert-circle" size={14} color="#ef4444" />
-                <Text style={styles.expiredText}>Subscription Expired</Text>
-              </View>
-            )}
-          </View>
-        )}
       </View>
       {menuItems.map((item) => (
         <TouchableOpacity
           key={item.name}
-          style={[
-            styles['sidebar-menu-item'],
-            item.requiresSubscription && !hasActiveSubscription && !isInGracePeriod && user?.role === 'admin' && styles['sidebar-menu-item-disabled']
-          ]}
-          onPress={() => handleMenuClick(item)}
+          style={styles['sidebar-menu-item']}
+          onPress={() => item.name === 'Logout' ? setShowLogoutModal(true) : router.push(item.route)}
         >
           <Image source={item.icon} style={styles['sidebar-menu-icon']} />
-          <Text style={[
-            styles['sidebar-menu-text'],
-            item.requiresSubscription && !hasActiveSubscription && !isInGracePeriod && user?.role === 'admin' && styles['sidebar-menu-text-disabled']
-          ]}>{item.name}</Text>
+          <Text style={styles['sidebar-menu-text']}>{item.name}</Text>
           {item.name === 'Notifications' && unreadCount > 0 && (
             <View style={styles['sidebar-notification-badge']}>
               <Text style={styles['sidebar-badge-text']}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
             </View>
-          )}
-          {item.requiresSubscription && !hasActiveSubscription && !isInGracePeriod && user?.role === 'admin' && (
-            <Ionicons name="lock-closed" size={16} color="#999" style={{ marginLeft: 'auto' }} />
           )}
         </TouchableOpacity>
       ))}
@@ -177,7 +110,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xlarge,
     borderRightWidth: 1,
     backgroundColor: '#800000',
-    borderRightColor: Colors.border,
+    borderRightColor: Colors.border.dark,
   },
   'sidebar-logo-section': {
     marginTop: 0,
@@ -215,7 +148,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.medium,
     paddingHorizontal: Spacing.medium,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.border.dark,
   },
   'sidebar-menu-text': {
     fontSize: Typography.sidebarItem,
@@ -239,58 +172,6 @@ const styles = StyleSheet.create({
     color: Colors.text.inverse,
     fontSize: 10,
     fontWeight: 'bold',
-  },
-  'sidebar-menu-item-disabled': {
-    opacity: 0.5,
-  },
-  'sidebar-menu-text-disabled': {
-    color: '#cccccc',
-  },
-  subscriptionCountdown: {
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
-    width: '100%',
-  },
-  countdownRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  countdownText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  countdownWarning: {
-    color: '#fbbf24',
-  },
-  queuedText: {
-    color: '#d1d5db',
-    fontSize: 10,
-    marginTop: 4,
-  },
-  expiredBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  expiredText: {
-    color: '#fca5a5',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  gracePeriodBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  gracePeriodText: {
-    color: '#fbbf24',
-    fontSize: 12,
-    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,

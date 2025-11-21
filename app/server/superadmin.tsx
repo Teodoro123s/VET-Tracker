@@ -5,11 +5,11 @@ import { Ionicons } from '@expo/vector-icons';
 import SuperAdminSidebar from '@/components/SuperAdminSidebar';
 import SearchableDropdown from '@/components/SearchableDropdown';
 import { createTenant, registerUser } from '../../lib/services/firebaseService';
-import { createClinicUser } from '../../lib/clientAuth';
 import { fetchAllTenants, deleteTenant, subscribeToTenants, updateSubscriber, createSubscriber, Subscriber } from '../../lib/services/superAdminService';
 import { sendCredentialsEmail, generateSecurePassword } from '../../lib/utils/emailService';
 import { deleteUserCompletely } from '../../lib/utils/completeUserDeletion';
-import { addSubscriptionPeriod } from '../../lib/services/subscriptionService';
+import { addSubscriptionPeriod , lockTenantByEmail, unlockTenantByEmail } from '../../lib/services/subscriptionService';
+
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/config/firebaseConfig';
 import { Typography, Spacing, ButtonSizes, ModalSizes } from '@/constants/Typography';
@@ -25,7 +25,7 @@ function SubscriptionPeriodsTable({ selectedTenant }) {
     if (selectedTenant?.email) {
       const unsubscribe = onSnapshot(collection(db, 'transactions'), (snapshot) => {
         const transactions = snapshot.docs.map(doc => {
-          const data = doc.data();
+          const data = doc.data() as any;
           const createdAt = data.createdAt?.toDate() || new Date();
           const periodDays = data.period === '1 month' ? 30 : 
                            data.period === '6 months' ? 180 : 
@@ -258,7 +258,7 @@ export default function SuperAdminScreen() {
     if (selectedTenant?.email) {
       const unsubscribe = onSnapshot(collection(db, 'transactions'), (snapshot) => {
         const transactions = snapshot.docs.map(doc => {
-          const data = doc.data();
+          const data = doc.data() as any;
           const createdAt = data.createdAt?.toDate() || new Date();
           const periodDays = data.period === '1 month' ? 30 : data.period === '6 months' ? 180 : data.period === '1 year' ? 365 : 730;
           const endDate = new Date(createdAt);
@@ -352,7 +352,7 @@ export default function SuperAdminScreen() {
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'transactions'), (snapshot) => {
       const transactions = snapshot.docs.map(doc => {
-        const data = doc.data();
+          const data = doc.data() as any;
         const createdAt = data.createdAt?.toDate() || new Date();
         return {
           id: doc.id,
@@ -606,6 +606,45 @@ export default function SuperAdminScreen() {
               <View style={styles.tableRow}>
                 <Text style={[styles.cell, {flex: 1}]}>Actions</Text>
                 <View style={[styles.actionButtonsRow, {flex: 2}]}>
+                  <TouchableOpacity
+                    style={[styles.lockButton, { flex: 0, minWidth: 150, marginRight: 8 }]}
+                    onPress={() => {
+                      const action = selectedTenant?.status === 'locked' ? 'unlock' : 'lock';
+                      Alert.alert(
+                        action === 'lock' ? 'Lock Account' : 'Unlock Account',
+                        `Are you sure you want to ${action} ${selectedTenant?.email}?`,
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: action === 'lock' ? 'Lock' : 'Unlock', onPress: async () => {
+                            try {
+                              setIsLoading(true);
+                              if (action === 'lock') {
+                                await lockTenantByEmail(selectedTenant?.email, 'Locked by SuperAdmin');
+                                const updatedSubscribers = subscribers.map(sub => sub.id === selectedTenant.id ? { ...sub, status: 'locked' } : sub);
+                                setSubscribers(updatedSubscribers);
+                                setSelectedTenant({ ...selectedTenant, status: 'locked' });
+                                setNotification({ type: 'warning', message: `Tenant ${selectedTenant?.email} locked` });
+                              } else {
+                                await unlockTenantByEmail(selectedTenant?.email, 'Unlocked by SuperAdmin');
+                                const updatedSubscribers = subscribers.map(sub => sub.id === selectedTenant.id ? { ...sub, status: 'active' } : sub);
+                                setSubscribers(updatedSubscribers);
+                                setSelectedTenant({ ...selectedTenant, status: 'active' });
+                                setNotification({ type: 'success', message: `Tenant ${selectedTenant?.email} unlocked` });
+                              }
+                              setTimeout(() => setNotification(null), 4000);
+                            } catch (error) {
+                              console.error('Error locking/unlocking tenant:', error);
+                              Alert.alert('Error', error?.message || 'Operation failed');
+                            } finally {
+                              setIsLoading(false);
+                            }
+                          } }
+                        ]
+                      );
+                    }}
+                  >
+                    <Text style={styles.lockButtonText}>{selectedTenant?.status === 'locked' ? 'Unlock Account' : 'Lock Account'}</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity 
                     style={[styles.resendCredentialsButton, { flex: 0, minWidth: 150, opacity: isGeneratingPassword ? 0.5 : 1 }]} 
                     disabled={isGeneratingPassword}
@@ -643,7 +682,7 @@ export default function SuperAdminScreen() {
                       const emailResult = await sendCredentialsEmail(selectedTenant?.email, newTempPassword);
                       
                       // Hash new password before storing
-                      const { hashPassword } = await import('../../lib/utils/passwordUtils');
+                      const { hashPassword } = await import('../../lib/utils/passwordUtils.js');
                       const { passwordHash, salt } = hashPassword(newTempPassword);
                       
                       // Update database with new hashed password
@@ -755,7 +794,7 @@ export default function SuperAdminScreen() {
                       const emailResult = await sendCredentialsEmail(newSubscriber.email, tempPassword);
                       
                       // Hash password before storing
-                      const { hashPassword } = await import('../../lib/utils/passwordUtils');
+                      const { hashPassword } = await import('../../lib/utils/passwordUtils.js');
                       const { passwordHash, salt } = hashPassword(tempPassword);
                       
                       // Only create database records if email was sent successfully
@@ -843,7 +882,6 @@ const styles = StyleSheet.create({
   searchInput: {
     width: 200,
     fontSize: Typography.fieldInput,
-    outlineStyle: 'none',
   },
   headerActions: {
     flexDirection: 'row',
@@ -948,6 +986,9 @@ const styles = StyleSheet.create({
   statusCell: {
     flex: 1,
     paddingRight: 10,
+  },
+  statusContainer: {
+    flex: 1,
   },
   statusBadge: {
     borderRadius: 12,
@@ -1123,11 +1164,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     marginRight: 2,
   },
-  dropdownArrow: {
-    fontSize: 8,
-    color: '#666',
-    fontWeight: 'bold',
-  },
   dropdownMenu: {
     position: 'absolute',
     top: 0,
@@ -1140,16 +1176,7 @@ const styles = StyleSheet.create({
     minWidth: 35,
     elevation: 5,
   },
-  dropdownOption: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  dropdownOptionText: {
-    fontSize: 10,
-    textAlign: 'center',
-  },
+  
   pageBtn: {
     backgroundColor: '#800000',
     paddingHorizontal: 6,
@@ -1280,10 +1307,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 12,
   },
-  periodDropdownContainer: {
-    position: 'relative',
-    zIndex: 1500,
-  },
   periodDropdownMenu: {
     position: 'absolute',
     top: 50,
@@ -1360,6 +1383,18 @@ const styles = StyleSheet.create({
   deleteSubscriberText: {
     color: '#fff',
     fontSize: 10,
+    fontWeight: 'bold',
+  },
+  lockButton: {
+    backgroundColor: '#FF6B6B',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  lockButtonText: {
+    color: '#fff',
+    fontSize: 12,
     fontWeight: 'bold',
   },
   notification: {

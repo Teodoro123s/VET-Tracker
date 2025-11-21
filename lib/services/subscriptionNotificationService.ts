@@ -1,6 +1,6 @@
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
-import { sendCredentialsEmail } from '../utils/emailService';
+import { sendGenericEmail } from '../utils/emailService';
 
 /**
  * Send expiration warning notification
@@ -33,7 +33,8 @@ VET-Tracker Team
     `.trim();
 
     // Send email using existing email service
-    await sendCredentialsEmail(email, message, subject);
+    // Send email using generic email service (logs in this build)
+    await sendGenericEmail(email, message, subject);
     
     console.log(`✉️ Expiration warning sent to ${email} (${daysRemaining} days remaining)`);
     
@@ -79,7 +80,7 @@ Best regards,
 VET-Tracker Team
     `.trim();
 
-    await sendCredentialsEmail(email, message, subject);
+    await sendGenericEmail(email, message, subject);
     
     console.log(`✉️ Expiration notification sent to ${email}`);
     
@@ -129,7 +130,7 @@ Best regards,
 VET-Tracker Team
     `.trim();
 
-    await sendCredentialsEmail(email, message, subject);
+    await sendGenericEmail(email, message, subject);
     
     console.log(`✉️ Activation notification sent to ${email}`);
     
@@ -179,7 +180,7 @@ Best regards,
 VET-Tracker Team
     `.trim();
 
-    await sendCredentialsEmail(email, message, subject);
+    await sendGenericEmail(email, message, subject);
     
     console.log(`✉️ Queued confirmation sent to ${email}`);
     
@@ -227,5 +228,71 @@ export async function createSubscriptionNotification(
     console.log(`📬 In-app notification created for ${email}: ${type}`);
   } catch (error) {
     console.error('Error creating subscription notification:', error);
+  }
+}
+
+/**
+ * Send tenant lock notification email
+ */
+export async function sendLockNotification(
+  email: string,
+  reason: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const subject = '🔒 VET-Tracker Account Locked';
+    const message = `
+Dear ${email.split('@')[0]},
+
+Your VET-Tracker account has been locked.
+
+Reason: ${reason}
+
+If you think this is a mistake or would like to appeal, please contact support:
+
+📧 Email: support@vettracker.com
+📞 Phone: +1 (555) 123-4567
+
+Best regards,
+VET-Tracker Team
+    `.trim();
+
+    await sendGenericEmail(email, message, subject);
+    console.log(`✉️ Lock notification sent to ${email}`);
+    return { success: true, message: 'Lock email sent' };
+  } catch (error) {
+    console.error('Error sending lock notification:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * Send tenant unlock notification email
+ */
+export async function sendUnlockNotification(
+  email: string,
+  note?: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const subject = '✅ VET-Tracker Account Unlocked';
+    const message = `
+Dear ${email.split('@')[0]},
+
+Your VET-Tracker account has been unlocked.${note ? `\n\nNote: ${note}` : ''}
+
+You now have full access to VET-Tracker. If you have any questions, please contact support.
+
+📧 Email: support@vettracker.com
+📞 Phone: +1 (555) 123-4567
+
+Best regards,
+VET-Tracker Team
+    `.trim();
+
+    await sendGenericEmail(email, message, subject);
+    console.log(`✉️ Unlock notification sent to ${email}`);
+    return { success: true, message: 'Unlock email sent' };
+  } catch (error) {
+    console.error('Error sending unlock notification:', error);
+    return { success: false, message: error.message };
   }
 }

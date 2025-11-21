@@ -914,11 +914,11 @@ export default function RecordsScreen() {
                       };
                       
                       if (newField.inputType === 'Dropdown') {
-                        fieldData.options = newField.dropdownOptions.filter(opt => opt.trim());
+                        (fieldData as any).options = newField.dropdownOptions.filter(opt => opt.trim());
                       }
                       
                       if (newField.inputType === 'Date') {
-                        fieldData.dateFormat = newField.dateFormat;
+                        (fieldData as any).dateFormat = newField.dateFormat;
                       }
                       
                       if (editingFieldId) {
@@ -941,11 +941,11 @@ export default function RecordsScreen() {
                         };
                         
                         if (newField.inputType === 'Dropdown') {
-                          newFieldObj.options = newField.dropdownOptions.filter(opt => opt.trim());
+                          (newFieldObj as any).options = newField.dropdownOptions.filter(opt => opt.trim());
                         }
                         
                         if (newField.inputType === 'Date') {
-                          newFieldObj.dateFormat = newField.dateFormat;
+                          (newFieldObj as any).dateFormat = newField.dateFormat;
                         }
                         
                         setFormDetails(prevDetails => ({
@@ -1540,7 +1540,7 @@ const styles = StyleSheet.create({
   recordSearchInput: {
     width: 150,
     fontSize: 12,
-    outlineStyle: 'none',
+    // web-only outlineStyle removed
   },
   content: {
     padding: 20,
@@ -1593,8 +1593,7 @@ const styles = StyleSheet.create({
     color: '#555',
     paddingRight: 10,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   cellName: {
     flex: 2,
@@ -1603,8 +1602,7 @@ const styles = StyleSheet.create({
     color: '#555',
     paddingRight: 10,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   pagination: {
     backgroundColor: '#f8f9fa',
@@ -1628,7 +1626,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 2001,
   },
-
   dropdown: {
     position: 'relative',
     zIndex: 1001,
@@ -1860,7 +1857,7 @@ const styles = StyleSheet.create({
   formSearchInput: {
     width: 150,
     fontSize: 12,
-    outlineStyle: 'none',
+    // web-only outlineStyle removed
   },
   medicalFormsContent: {
     flex: 1,
@@ -1912,8 +1909,7 @@ const styles = StyleSheet.create({
     color: '#555',
     paddingRight: 10,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   medicalFormsCellName: {
     flex: 2,
@@ -1922,8 +1918,7 @@ const styles = StyleSheet.create({
     color: '#555',
     paddingRight: 10,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   medicalFormsTableBody: {
     flex: 1,
@@ -1957,6 +1952,26 @@ const styles = StyleSheet.create({
   formsDropdownContainer: {
     position: 'relative',
     zIndex: 1001,
+  },
+  formsDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 2,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    minWidth: 35,
+  },
+  formsDropdownText: {
+    fontSize: 10,
+    marginRight: 2,
+  },
+  formsDropdownArrow: {
+    fontSize: 8,
+    color: '#666',
+    fontWeight: 'bold',
   },
   formsDropdownMenu: {
     position: 'absolute',
@@ -2039,7 +2054,7 @@ const styles = StyleSheet.create({
   formDetailSearchInput: {
     width: 150,
     fontSize: 12,
-    outlineStyle: 'none',
+    // outlineStyle removed for React Native
   },
 
   detailHeader: {
@@ -2116,8 +2131,6 @@ const styles = StyleSheet.create({
     color: '#555',
     paddingRight: 10,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
   },
   detailHeaderCellName: {
     flex: 2,
@@ -2134,8 +2147,6 @@ const styles = StyleSheet.create({
     color: '#555',
     paddingRight: 10,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
   },
   detailTableBody: {
     flex: 1,
@@ -2285,15 +2296,6 @@ const styles = StyleSheet.create({
   drawerForm: {
     flex: 1,
     padding: 20,
-  },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 15,
-    fontSize: 12,
-    backgroundColor: '#fafafa',
   },
   inputTypeDropdownContainer: {
     position: 'relative',

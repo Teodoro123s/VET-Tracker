@@ -9,8 +9,8 @@ const firebaseConfig = {
   authDomain: "vet-management-b322c.firebaseapp.com",
   projectId: "vet-management-b322c",
   messagingSenderId: "775446851492",
-  appId: "1:775446851492:android:511fbfc253e1e385399b31"
-  // storageBucket: REMOVED - Using AWS S3 instead
+  appId: "1:775446851492:android:511fbfc253e1e385399b31",
+  storageBucket: "vet-management-b322c.appspot.com" // Re-enabled Firebase storage
 };
 
 const app = initializeApp(firebaseConfig);

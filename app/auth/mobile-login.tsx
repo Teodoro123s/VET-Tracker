@@ -16,6 +16,7 @@ export default function MobileLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   const handleLogin = async () => {
     setErrorMessage('');
@@ -29,18 +30,22 @@ export default function MobileLogin() {
     try {
       // Test veterinarian credentials
       if (email.trim() === 'edzhel.teodoro25@gmail.com' && password === 'vet123') {
-        await AsyncStorage.setItem('currentUser', JSON.stringify({
-          email: 'edzhel.teodoro25@gmail.com',
-          role: 'veterinarian',
-          tenantId: 'edmo.teodoro.swu',
-          name: 'Dr. Edzhel Teodoro'
-        }));
+        if (rememberMe) {
+          try {
+            await AsyncStorage.setItem('currentUser', JSON.stringify({
+              email: 'edzhel.teodoro25@gmail.com',
+              role: 'veterinarian',
+              tenantId: 'edmo.teodoro.swu',
+              name: 'Dr. Edzhel Teodoro'
+            }));
+          } catch (e) {}
+        }
         
         router.replace('/veterinarian/vet-mobile');
         return;
       }
       
-      const result = await login(email.trim(), password);
+      const result = await login(email.trim(), password, rememberMe);
       
       if (result.success) {
         const userRole = result.user?.role;
@@ -130,11 +135,15 @@ export default function MobileLogin() {
             onPress={handleLogin}
             disabled={loading}
             activeOpacity={0.9}
-            underlayColor="#5A1F1F"
           >
             <Text style={styles.loginButtonText}>
               {loading ? 'Signing in...' : 'Sign In'}
             </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.rememberRow} onPress={() => setRememberMe(!rememberMe)}>
+            <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]} />
+            <Text style={styles.rememberText}>{rememberMe ? 'Keep me signed in' : 'Sign me out on close'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -235,7 +244,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 14,
     color: Colors.text.primary,
-    outlineStyle: 'none',
   },
   passwordInput: {
     paddingRight: 40,
@@ -268,5 +276,26 @@ const styles = StyleSheet.create({
     color: '#7B2C2C',
     fontSize: 14,
     fontWeight: '500',
+  },
+  rememberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginRight: 8,
+    backgroundColor: 'transparent',
+  },
+  checkboxChecked: {
+    backgroundColor: '#7B2C2C',
+  },
+  rememberText: {
+    color: '#7B2C2C',
+    fontSize: 14,
   },
 });

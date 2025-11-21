@@ -16,6 +16,40 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useCustomer } from '../_layout';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/config/firebaseConfig';
+interface Customer {
+  id: string;
+  name?: string;
+  firstname?: string;
+  surname?: string;
+  email?: string;
+  contact?: string;
+  address?: string;
+}
+interface Pet {
+  id: string;
+  name: string;
+  species?: string;
+  breed?: string;
+  owner?: string;
+  ownerId?: string;
+}
+interface MedicalRecord {
+  id: string;
+  petId?: string;
+  petName?: string;
+  formType?: string;
+  formTemplate?: string;
+  diagnosis?: string;
+  notes?: string;
+  date?: string;
+  category?: string;
+  createdAt?: { seconds: number };
+}
+interface Breed {
+  id: string;
+  name: string;
+  animalType: string;
+}
 
 export default function VetCustomers() {
   const { user } = useAuth();
@@ -29,7 +63,7 @@ export default function VetCustomers() {
     showMedicalView, setShowMedicalView,
     selectedMedicalRecord, setSelectedMedicalRecord
   } = useCustomer();
-  const [customers, setCustomers] = useState([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -43,10 +77,10 @@ export default function VetCustomers() {
   const [customBreed, setCustomBreed] = useState('');
   const [detailSearchTerm, setDetailSearchTerm] = useState('');
   const [petsSearchTerm, setPetsSearchTerm] = useState('');
-  const [customerPets, setCustomerPets] = useState([]);
+  const [customerPets, setCustomerPets] = useState<Pet[]>([]);
   const [medicalSearchTerm, setMedicalSearchTerm] = useState('');
-  const [medicalRecords, setMedicalRecords] = useState([]);
-  const [formFields, setFormFields] = useState([]);
+  const [medicalRecords, setMedicalRecords] = useState<MedicalRecord[]>([]);
+  const [formFields, setFormFields] = useState<{ label: string }[]>([]);
   const [newCustomer, setNewCustomer] = useState({
     firstname: '',
     surname: '',
@@ -66,12 +100,12 @@ export default function VetCustomers() {
   });
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
-  const [categories, setCategories] = useState([]);
-  const [formTemplates, setFormTemplates] = useState([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [formTemplates, setFormTemplates] = useState<{ id: string; formName: string; category: string }[]>([]);
 
   
-  const [animalTypes, setAnimalTypes] = useState([]);
-  const [breedsByType, setBreedsByType] = useState({});
+  const [animalTypes, setAnimalTypes] = useState<{ id: string; name?: string }[]>([]);
+  const [breedsByType, setBreedsByType] = useState<Record<string, string[]>>({});
   
   const getBreedsByType = (type) => {
     return breedsByType[type] || [];
@@ -134,16 +168,16 @@ export default function VetCustomers() {
   
   const loadCustomerPets = async () => {
     try {
-      const allPets = await getPets(tenantEmail);
+      const allPets = await getPets(tenantEmail) as Pet[];
       console.log('VET MOBILE - All pets:', allPets);
       console.log('VET MOBILE - Selected customer:', selectedCustomer);
       
       const customerName = selectedCustomer.name || `${selectedCustomer.firstname || ''} ${selectedCustomer.surname || ''}`.trim();
-      const customerPetsList = allPets.filter(pet => 
+      const customerPetsList = allPets.filter((pet: Pet) => 
         pet.owner === customerName || 
-        pet.owner === selectedCustomer.name ||
-        pet.owner === selectedCustomer.id ||
-        pet.ownerId === selectedCustomer.id
+        pet.owner === selectedCustomer?.name ||
+        pet.owner === selectedCustomer?.id ||
+        pet.ownerId === selectedCustomer?.id
       );
       
       console.log('VET MOBILE - Customer pets found:', customerPetsList);
@@ -169,8 +203,8 @@ export default function VetCustomers() {
   const loadFormFields = async () => {
     try {
       const formName = selectedMedicalRecord.formType || selectedMedicalRecord.formTemplate;
-      if (formName) {
-        const fields = await getFormFields(formName, tenantEmail);
+        if (formName) {
+        const fields = await getFormFields(formName, tenantEmail) as any;
         setFormFields(fields);
       }
     } catch (error) {
@@ -183,11 +217,11 @@ export default function VetCustomers() {
     try {
       console.log('VET MOBILE - Loading medical records for pet:', selectedPet);
       console.log('VET MOBILE - Using tenantEmail:', tenantEmail);
-      const allRecords = await getMedicalRecords(tenantEmail);
+      const allRecords = await getMedicalRecords(tenantEmail) as MedicalRecord[];
       console.log('VET MOBILE - All medical records found:', allRecords.length, allRecords);
       
       // Filter records for this pet (show all records, not just from current vet)
-      const petRecords = allRecords.filter(record => {
+      const petRecords = allRecords.filter((record: MedicalRecord) => {
         const matchesId = record.petId === selectedPet.id;
         const matchesName = record.petName === selectedPet.name;
         console.log('VET MOBILE - Checking record:', record);
@@ -208,23 +242,21 @@ export default function VetCustomers() {
     console.log('VET MOBILE - Loading customers with tenantEmail:', tenantEmail);
     console.log('VET MOBILE - User email:', user?.email);
     try {
-      const [customersData, animalTypesData, breedsData, allPets, categoriesData, formsData] = await Promise.all([
-        getCustomers(tenantEmail),
-        getAnimalTypes(tenantEmail),
-        getBreeds(tenantEmail),
-        getPets(tenantEmail),
-        getMedicalCategories(tenantEmail),
-        getMedicalForms(tenantEmail)
-      ]);
+      const customersData = await getCustomers(tenantEmail) as Customer[];
+      const animalTypesData = await getAnimalTypes(tenantEmail) as { id: string; name?: string }[];
+      const breedsData = await getBreeds(tenantEmail) as Breed[];
+      const allPets = await getPets(tenantEmail) as Pet[];
+      const categoriesData = await getMedicalCategories(tenantEmail) as { id: string; name?: string; category?: string }[];
+      const formsData = await getMedicalForms(tenantEmail) as any[];
       
       // Load categories and form templates
-      const mappedCategories = categoriesData.map(cat => ({ id: cat.id, name: cat.name || cat.category }));
+      const mappedCategories = categoriesData.map((cat: { id: string; name?: string; category?: string }) => ({ id: cat.id, name: cat.name || cat.category }));
       if (!mappedCategories.find(cat => cat.name === 'No Category')) {
         mappedCategories.unshift({ id: 'no-category', name: 'No Category' });
       }
       setCategories(mappedCategories);
       
-      const formTemplatesList = formsData.map(form => ({
+      const formTemplatesList = formsData.map((form: { id: string; formName?: string; type?: string; name?: string; category?: string }) => ({
         id: form.id,
         formName: form.formName || form.type || form.name,
         category: form.category || 'No Category'
@@ -232,7 +264,7 @@ export default function VetCustomers() {
       setFormTemplates(formTemplatesList);
       
       // Update customer pet counts
-      const customersWithPetCounts = customersData.map(customer => {
+        const customersWithPetCounts = customersData.map((customer: Customer) => {
         const customerName = customer.name || `${customer.firstname || ''} ${customer.surname || ''}`.trim();
         const petCount = allPets.filter(pet => 
           pet.owner === customerName || 
@@ -293,9 +325,9 @@ export default function VetCustomers() {
         for (const breed of defaultBreeds) {
           await addBreed(breed, tenantEmail);
         }
-        const updatedBreeds = await getBreeds(tenantEmail);
-        const breedsByTypeObj = {};
-        updatedBreeds.forEach(breed => {
+        const updatedBreeds = await getBreeds(tenantEmail) as Breed[];
+        const breedsByTypeObj: Record<string, string[]> = {};
+        updatedBreeds.forEach((breed: Breed) => {
           if (!breedsByTypeObj[breed.animalType]) {
             breedsByTypeObj[breed.animalType] = [];
           }
@@ -303,8 +335,8 @@ export default function VetCustomers() {
         });
         setBreedsByType(breedsByTypeObj);
       } else {
-        const breedsByTypeObj = {};
-        breedsData.forEach(breed => {
+        const breedsByTypeObj: Record<string, string[]> = {};
+        breedsData.forEach((breed: Breed) => {
           if (!breedsByTypeObj[breed.animalType]) {
             breedsByTypeObj[breed.animalType] = [];
           }
@@ -481,8 +513,8 @@ export default function VetCustomers() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const breedsData = await getBreeds(tenantEmail);
-              const breedToDelete = breedsData.find(breed => breed.name === breedName && breed.animalType === animalType);
+              const breedsData = await getBreeds(tenantEmail) as Breed[];
+              const breedToDelete = breedsData.find((breed: Breed) => breed.name === breedName && breed.animalType === animalType);
               
               if (breedToDelete) {
                 await deleteBreed(breedToDelete.id, tenantEmail);
@@ -556,12 +588,11 @@ export default function VetCustomers() {
           </View>
         ) : selectedPet && !showMedicalView && !selectedMedicalRecord ? (
           <View style={styles.petDetailsView}>
-            {console.log('SHOWING PET DETAILS VIEW - selectedPet:', selectedPet, 'showMedicalView:', showMedicalView)}
             <ScrollView style={styles.scrollableList} showsVerticalScrollIndicator={false}>
               <View style={styles.detailTable}>
                 {[
                   { label: 'Name', value: selectedPet.name || 'N/A' },
-                  { label: 'Species', value: selectedPet.species || selectedPet.type || 'N/A' },
+                  { label: 'Species', value: selectedPet.species || 'N/A' },
                   { label: 'Breed', value: selectedPet.breed || 'N/A' },
                   { label: 'See Medical History', value: 'View Records', isAction: true }
                 ].map((item, index) => (
@@ -590,7 +621,7 @@ export default function VetCustomers() {
                   setShowPetsView(false);
                 }}>
                   <Text style={styles.petName}>{pet.name}</Text>
-                  <Text style={styles.petDetails}>{pet.species || pet.type} - {pet.breed}</Text>
+                  <Text style={styles.petDetails}>{pet.species || 'N/A'} - {pet.breed}</Text>
                 </TouchableOpacity>
               ))}
               {customerPets.length === 0 && (
@@ -603,7 +634,6 @@ export default function VetCustomers() {
         ) : showMedicalView ? (
           <View style={styles.medicalView}>
             <ScrollView style={styles.scrollableList} showsVerticalScrollIndicator={false}>
-              {console.log('VET MOBILE - Rendering medical view with records:', medicalRecords)}
               {medicalRecords && medicalRecords.length > 0 ? (
                 medicalRecords.filter(record => {
                   const searchTerm = medicalSearchTerm.toLowerCase();
@@ -831,7 +861,6 @@ export default function VetCustomers() {
                 style={styles.saveButton}
                 onPress={handleAddCustomer}
                 activeOpacity={1}
-                underlayColor="#28a745"
               >
                 <Text style={styles.saveButtonText}>Add Customer</Text>
               </TouchableOpacity>
@@ -1697,7 +1726,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   disabledText: {
-    color: '#999',
+    color: '#ccc',
   },
   dropdownList: {
     borderWidth: 1,
@@ -1713,8 +1742,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   dropdownScroll: {
-    maxHeight: 150,
-  },
+    maxHeight: 200,
+    flexGrow: 0,
+  }, // Removed duplicate property
   addNewItem: {
     backgroundColor: '#f8f9fa',
   },
@@ -1862,10 +1892,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     marginTop: 4,
   },
-  dropdownScroll: {
-    maxHeight: 200,
-    flexGrow: 0,
-  },
   dropdownOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1908,9 +1934,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     borderColor: 'rgba(123, 44, 44, 0.1)',
     opacity: 0.6,
-  },
-  disabledText: {
-    color: '#ccc',
   },
   formPreviewModalOverlay: {
     flex: 1,
@@ -2000,3 +2023,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#fafafa',
   },
 });
+

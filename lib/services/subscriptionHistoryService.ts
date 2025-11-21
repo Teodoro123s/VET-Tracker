@@ -5,7 +5,7 @@ export interface SubscriptionHistoryRecord {
   id: string;
   tenantId: string;
   email: string;
-  action: 'created' | 'activated' | 'expired' | 'renewed' | 'cancelled';
+  action: 'created' | 'activated' | 'expired' | 'renewed' | 'cancelled' | 'locked' | 'unlocked';
   period: string;
   amount: string;
   metadata?: Record<string, any>;
@@ -18,7 +18,7 @@ export interface SubscriptionHistoryRecord {
 export async function addSubscriptionHistory(
   tenantId: string,
   email: string,
-  action: 'created' | 'activated' | 'expired' | 'renewed' | 'cancelled',
+  action: 'created' | 'activated' | 'expired' | 'renewed' | 'cancelled' | 'locked' | 'unlocked',
   period: string,
   amount: string,
   metadata?: Record<string, any>

@@ -81,7 +81,7 @@ export class FirebaseHealthCheck {
 
   static async checkTenantAccess(userEmail: string): Promise<HealthCheckResult> {
     try {
-      const { getTenantId } = await import('../services/firebaseService');
+      const { getTenantId } = await import('../services/firebaseService.js');
       const tenantId = await getTenantId(userEmail);
       
       if (!tenantId) {

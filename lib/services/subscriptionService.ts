@@ -1,7 +1,7 @@
 import { collection, doc, setDoc, getDocs, query, orderBy, where, updateDoc, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebaseConfig';
 import { addSubscriptionHistory } from './subscriptionHistoryService';
-import { sendActivationNotification, sendExpirationNotification, createSubscriptionNotification } from './subscriptionNotificationService';
+import { sendActivationNotification, sendExpirationNotification, createSubscriptionNotification, sendLockNotification, sendUnlockNotification } from './subscriptionNotificationService';
 
 export interface SubscriptionPeriod {
   id: string;
@@ -347,5 +347,87 @@ export async function getTenantSubscriptionStatus(tenantId: string): Promise<{
       hasQueued: false,
       queuedPeriods: []
     };
+  }
+}
+
+/**
+ * Lock a tenant by email (records history, notification)
+ */
+export async function lockTenantByEmail(
+  email: string,
+  reason = 'administrative',
+  actor = 'system'
+): Promise<void> {
+  try {
+    const tenantsQuery = query(
+      collection(db, 'tenants'),
+      where('email', '==', email)
+    );
+    const snapshot = await getDocs(tenantsQuery);
+    for (const docSnap of snapshot.docs) {
+      const tenantId = docSnap.id;
+      await updateDoc(doc(db, 'tenants', tenantId), {
+        status: 'locked',
+        lockedAt: Timestamp.now(),
+        lockedReason: reason
+      });
+
+      await addSubscriptionHistory(
+        tenantId,
+        email,
+        'locked',
+        '',
+        '',
+        { reason, actor }
+      );
+
+      await createSubscriptionNotification(tenantId, email, 'expired', `Your account has been locked: ${reason}`);
+      await sendLockNotification(email, reason);
+    }
+
+    console.log(`🔒 Tenant locked: ${email} (${reason})`);
+  } catch (error) {
+    console.error('Error locking tenant:', error);
+  }
+}
+
+/**
+ * Unlock a tenant by email (records history, notification)
+ */
+export async function unlockTenantByEmail(
+  email: string,
+  note = '',
+  actor = 'system'
+): Promise<void> {
+  try {
+    const tenantsQuery = query(
+      collection(db, 'tenants'),
+      where('email', '==', email)
+    );
+    const snapshot = await getDocs(tenantsQuery);
+    for (const docSnap of snapshot.docs) {
+      const tenantId = docSnap.id;
+      await updateDoc(doc(db, 'tenants', tenantId), {
+        status: 'active',
+        unlockedAt: Timestamp.now(),
+        unlockedNote: note
+      });
+
+      await addSubscriptionHistory(
+        tenantId,
+        email,
+        'unlocked',
+        '',
+        '',
+        { note, actor }
+      );
+
+      await createSubscriptionNotification(tenantId, email, 'activated', `Your account has been unlocked.`);
+      await sendUnlockNotification(email, note);
+    }
+
+    console.log(`🔓 Tenant unlocked: ${email}`);
+  } catch (error) {
+    console.error('Error unlocking tenant:', error);
   }
 }

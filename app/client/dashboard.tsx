@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions, Alert , Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCustomers, getAppointments, getVeterinarians, getPets, getMedicalForms } from '../../lib/services/firebaseService';
 import { useTenant } from '../../contexts/TenantContext';
@@ -38,6 +38,14 @@ export default function Dashboard() {
       );
     }
   }, [subscriptionLoading, hasActiveSubscription, user?.role]);
+
+  // Ensure authenticated access — redirect to login when not signed in
+  useEffect(() => {
+    if (!user) {
+      if (Platform.OS === 'web') router.replace('/auth/admin-login');
+      else router.replace('/veterinarian/mobile-login');
+    }
+  }, [user]);
 
   useEffect(() => {
     if (userEmail) {

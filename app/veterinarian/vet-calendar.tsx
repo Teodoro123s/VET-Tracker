@@ -939,8 +939,7 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 2,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   mobilePatientName: {
     fontSize: 18,
@@ -948,22 +947,19 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 2,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   petInfo: {
     fontSize: 15,
     color: '#666',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   mobilePetInfo: {
     fontSize: 15,
     color: '#666',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   appointmentHeader: {
     flexDirection: 'row',
@@ -976,16 +972,14 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   mobileAppointmentTime: {
     fontSize: 12,
     color: '#666',
     marginTop: 4,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   appointmentName: {
     fontSize: 14,

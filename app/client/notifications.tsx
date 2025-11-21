@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   searchInput: {
     width: 150,
     fontSize: 12,
-    outlineStyle: 'none',
+    // web-only outlineStyle removed
   },
   content: {
     flex: 1,

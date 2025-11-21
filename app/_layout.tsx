@@ -4,25 +4,57 @@ import { Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState , createContext, useContext } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
 import 'react-native-reanimated';
+
+import { NotificationProvider } from '@/contexts/NotificationContext';
+import { AuthProvider , useAuth } from '@/contexts/AuthContext';
+import { TenantProvider } from '@/contexts/TenantContext';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
+
+import Sidebar from '@/components/Sidebar';
+import VetBottomMenu from '@/components/VetBottomMenu';
+import VetMobileHeader from '@/components/VetMobileHeader';
+// import ChatBot from '../components/ChatBot'; // Commented out - component not available
+
+
+import { subscriptionScheduler } from '@/lib/utils/subscriptionScheduler';
+
+import { useProtectedRoute } from '@/lib/utils/subscriptionGuard';
+import { useAuthGuard } from '@/lib/utils/authGuard';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
-import { NotificationProvider } from '@/contexts/NotificationContext';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { TenantProvider } from '@/contexts/TenantContext';
-import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
-import React, { createContext, useContext } from 'react';
-
-const CustomerContext = createContext();
+const CustomerContext = createContext({
+  selectedCustomer: null,
+  setSelectedCustomer: (_value: any) => {},
+  showPetsView: false,
+  setShowPetsView: (_value: boolean) => {},
+  selectedPet: null,
+  setSelectedPet: (_value: any) => {},
+  showMedicalView: false,
+  setShowMedicalView: (_value: boolean) => {},
+  selectedMedicalRecord: null,
+  setSelectedMedicalRecord: (_value: any) => {},
+});
 
 export const useCustomer = () => {
   const context = useContext(CustomerContext);
   if (!context) {
-    return { selectedCustomer: null, setSelectedCustomer: () => {} };
+    return {
+      selectedCustomer: null,
+      setSelectedCustomer: () => {},
+      showPetsView: false,
+      setShowPetsView: () => {},
+      selectedPet: null,
+      setSelectedPet: () => {},
+      showMedicalView: false,
+      setShowMedicalView: () => {},
+      selectedMedicalRecord: null,
+      setSelectedMedicalRecord: () => {},
+    };
   }
   return context;
 };
@@ -45,15 +77,6 @@ function CustomerProvider({ children }) {
     </CustomerContext.Provider>
   );
 }
-import Sidebar from '@/components/Sidebar';
-import VetBottomMenu from '@/components/VetBottomMenu';
-import VetMobileHeader from '@/components/VetMobileHeader';
-// import ChatBot from '../components/ChatBot'; // Commented out - component not available
-
-
-import { subscriptionScheduler } from '@/lib/utils/subscriptionScheduler';
-import { useAuth } from '@/contexts/AuthContext';
-import { useProtectedRoute } from '@/lib/utils/subscriptionGuard';
 
 function AppContent() {
   const pathname = usePathname();
@@ -61,6 +84,8 @@ function AppContent() {
   
   // Apply route protection for subscription
   useProtectedRoute();
+  // Apply global auth guard - redirect to login if not authenticated
+  useAuthGuard();
   
   // Check for veterinarian routes
   const isVetRoute = pathname.startsWith('/veterinarian/') && pathname !== '/veterinarian/mobile-login';

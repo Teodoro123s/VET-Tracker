@@ -3,10 +3,10 @@ import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import Tesseract from 'tesseract.js';
 import SearchableDropdown from '@/components/SearchableDropdown';
-import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian } from '@/lib/services/firebaseService';
+import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian , registerUser } from '@/lib/services/firebaseService';
 import { generateSecurePassword } from '@/lib/utils/emailService';
 import { sendCredentialsEmail } from '@/lib/services/emailjsService';
-import { registerUser } from '@/lib/services/firebaseService';
+
 import { useTenant } from '@/contexts/TenantContext';
 // import { uploadImage } from '@/lib/services/storageService';
 
@@ -43,7 +43,7 @@ export default function VeterinariansScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [addSlideAnim] = useState(new Animated.Value(-350));
-  const [newVeterinarian, setNewVeterinarian] = useState({
+  const [newVeterinarian, setNewVeterinarian] = useState<any>({
     surname: '',
     firstname: '',
     middlename: '',
@@ -60,13 +60,13 @@ export default function VeterinariansScreen() {
   useEffect(() => {
     setVeterinarianList(veterinarians);
   }, [veterinarians]);
-  const [selectedVeterinarian, setSelectedVeterinarian] = useState(null);
+  const [selectedVeterinarian, setSelectedVeterinarian] = useState<any>(null);
   const [showEditVetDrawer, setShowEditVetDrawer] = useState(false);
   const [editSlideAnim] = useState(new Animated.Value(-350));
-  const [editVetData, setEditVetData] = useState({});
+  const [editVetData, setEditVetData] = useState<any>({});
   const [showSpecialtyDropdown, setShowSpecialtyDropdown] = useState(false);
   const [showAdminDetails, setShowAdminDetails] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState(null);
+  const [selectedAdmin, setSelectedAdmin] = useState<any>(null);
   const [isGeneratingPassword, setIsGeneratingPassword] = useState(false);
   const [lastPasswordGenerated, setLastPasswordGenerated] = useState(null);
   const [isVerifyingLicense, setIsVerifyingLicense] = useState(false);
@@ -622,8 +622,8 @@ export default function VeterinariansScreen() {
                       const input = document.createElement('input');
                       input.type = 'file';
                       input.accept = 'image/*';
-                      input.onchange = (e) => {
-                        const file = e.target.files[0];
+                      input.onchange = (e: any) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
                         if (file) {
                           setNewVeterinarian({...newVeterinarian, licenseImage: file});
                           setLicenseVerified(null);
@@ -785,8 +785,8 @@ export default function VeterinariansScreen() {
                     const input = document.createElement('input');
                     input.type = 'file';
                     input.accept = 'image/*';
-                    input.onchange = (e) => {
-                      const file = e.target.files[0];
+                    input.onchange = (e: any) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
                       if (file) {
                         setEditVetData({...editVetData, licenseImage: file});
                       }
@@ -962,7 +962,7 @@ const styles = StyleSheet.create({
   vetSearchInput: {
     width: 150,
     fontSize: 12,
-    outlineStyle: 'none',
+    // web-only outlineStyle removed
   },
   content: {
     flex: 1,
@@ -1014,8 +1014,7 @@ const styles = StyleSheet.create({
     color: '#555',
     paddingRight: 10,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   cellName: {
     flex: 2,
@@ -1024,8 +1023,7 @@ const styles = StyleSheet.create({
     color: '#555',
     paddingRight: 10,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   pagination: {
     backgroundColor: '#f8f9fa',
@@ -1049,7 +1047,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 1001,
   },
-
   dropdown: {
     position: 'relative',
     zIndex: 1001,
@@ -1323,8 +1320,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   drawerOverlay: {
     position: 'absolute',
@@ -1334,6 +1330,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.3)',
     zIndex: 10000,
+  },
+  detailModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   drawer: {
     position: 'absolute',
@@ -1652,26 +1654,6 @@ const styles = StyleSheet.create({
   passwordSection: {
     marginTop: 10,
   },
-  passwordRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10,
-  },
-  passwordInputContainer: {
-    flex: 1,
-  },
-  generatePasswordButton: {
-    backgroundColor: '#28a745',
-    borderRadius: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 0,
-  },
-  generatePasswordText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
   accountNote: {
     fontSize: 12,
     color: '#666',
@@ -1683,20 +1665,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     gap: 10,
-  },
-  generatePasswordButton: {
-    backgroundColor: '#007BFF',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    minWidth: 150,
-  },
-  generatePasswordText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
   },
   disabledButton: {
     backgroundColor: '#6c757d',

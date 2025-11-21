@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
   searchInput: {
     width: 150,
     fontSize: 12,
-    outlineStyle: 'none',
+    // web-only outlineStyle removed
   },
   scrollContent: {
     flexGrow: 1,
@@ -733,8 +733,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   tableBody: {
     flex: 1,

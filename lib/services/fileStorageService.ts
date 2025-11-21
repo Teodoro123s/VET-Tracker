@@ -1,16 +1,15 @@
-import { awsStorageService } from './awsStorageService';
-
-// Centralized file storage service - AWS S3 only
+// Removed AWS-specific file storage service implementation
+// Placeholder for future file storage service integration
 export const fileStorageService = {
   async uploadFile(file: File | Blob, fileName: string, fileType: string): Promise<string> {
-    return await awsStorageService.uploadFile(file, fileName, fileType);
+    throw new Error('File storage service not implemented.');
   },
 
   async deleteFile(fileUrl: string): Promise<void> {
-    return await awsStorageService.deleteFile(fileUrl);
+    throw new Error('File storage service not implemented.');
   },
 
   getFileUrl(fileName: string): string {
-    return `https://${process.env.S3_BUCKET_NAME || 'vet-app-storage'}.s3.amazonaws.com/uploads/${fileName}`;
+    throw new Error('File storage service not implemented.');
   }
 };

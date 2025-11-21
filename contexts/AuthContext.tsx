@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/config/firebaseConfig';
 import { loginWithCredentialOverlap, getVeterinarianByEmail, getTenantId } from '../lib/services/firebaseService';
@@ -31,7 +32,31 @@ export const AuthProvider = ({ children }) => {
   const checkAuthState = async () => {
     try {
       // Check for stored user data
-      const userData = await AsyncStorage.getItem('currentUser');
+      let userData = null;
+      try {
+        userData = await AsyncStorage.getItem('currentUser');
+      } catch (e) {
+        userData = null;
+      }
+
+      // If running on web, prefer sessionStorage (for refresh persistence) then localStorage
+      if (!userData && typeof window !== 'undefined') {
+        try {
+          const ss = sessionStorage.getItem('currentUser');
+          if (ss) {
+            userData = ss;
+          } else {
+            const ls = localStorage.getItem('currentUser');
+            if (ls) userData = ls;
+          }
+        } catch (e) {
+          try {
+            const ls = localStorage.getItem('currentUser');
+            if (ls) userData = ls;
+          } catch (e2) {}
+        }
+      }
+
       if (userData) {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
@@ -46,7 +71,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password) => {
+  const login = async (email, password, rememberMe = (Platform.OS === 'web' ? true : true)) => {
     try {
       // Check superadmin in users collection first
       const userQuery = query(collection(db, 'users'), where('email', '==', email.trim()));
@@ -62,7 +87,20 @@ export const AuthProvider = ({ children }) => {
             name: userData.displayName
           };
           
-          await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+          // Persist according to rememberMe and platform
+          try {
+            if (!Platform || Platform.OS !== 'web') {
+              // mobile/native: persist only if rememberMe
+              if (rememberMe) await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+            } else {
+              // web: sessionStorage for session-only, localStorage for persistent
+              if (rememberMe) {
+                try { localStorage.setItem('currentUser', JSON.stringify(user)); } catch (e) {}
+              } else {
+                try { sessionStorage.setItem('currentUser', JSON.stringify(user)); } catch (e) {}
+              }
+            }
+          } catch (e) {}
           setUser(user);
           
           return { success: true, user };
@@ -86,7 +124,17 @@ export const AuthProvider = ({ children }) => {
           name: superAdminData.name
         };
         
-        await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+        try {
+          if (!Platform || Platform.OS !== 'web') {
+            if (rememberMe) await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+          } else {
+            if (rememberMe) {
+              try { localStorage.setItem('currentUser', JSON.stringify(user)); } catch (e) {}
+            } else {
+              try { sessionStorage.setItem('currentUser', JSON.stringify(user)); } catch (e) {}
+            }
+          }
+        } catch (e) {}
         setUser(user);
         
         return { success: true, user };
@@ -113,7 +161,17 @@ export const AuthProvider = ({ children }) => {
               name: vetData.name
             };
             
-            await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+            try {
+              if (!Platform || Platform.OS !== 'web') {
+                if (rememberMe) await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+              } else {
+                if (rememberMe) {
+                  try { localStorage.setItem('currentUser', JSON.stringify(user)); } catch (e) {}
+                } else {
+                  try { sessionStorage.setItem('currentUser', JSON.stringify(user)); } catch (e) {}
+                }
+              }
+            } catch (e) {}
             setUser(user);
             
             return { success: true, user };
@@ -150,7 +208,17 @@ export const AuthProvider = ({ children }) => {
         name: userData.name || userData.clinicName
       };
       
-      await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+      try {
+        if (!Platform || Platform.OS !== 'web') {
+          if (rememberMe) await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+        } else {
+          if (rememberMe) {
+            try { localStorage.setItem('currentUser', JSON.stringify(user)); } catch (e) {}
+          } else {
+            try { sessionStorage.setItem('currentUser', JSON.stringify(user)); } catch (e) {}
+          }
+        }
+      } catch (e) {}
       setUser(user);
       
       return { success: true, user };
@@ -166,34 +234,27 @@ export const AuthProvider = ({ children }) => {
       await AsyncStorage.clear(); // Clear all stored data
       setUser(null);
       
-      // Clear browser history and cache (web only)
-      if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
+      // Clear browser history, cache and force navigation to login (web only)
+      if (typeof window !== 'undefined') {
         try {
-          // Clear browser cache
-          if ('caches' in window) {
-            caches.keys().then(names => {
-              names.forEach(name => caches.delete(name));
-            });
+          if (typeof caches !== 'undefined' && 'keys' in caches) {
+            caches.keys().then(names => names.forEach(name => caches.delete(name))).catch(() => {});
           }
-          
-          // Replace current history entry to prevent back navigation
+
+          // Clear storages
+          try { sessionStorage && sessionStorage.clear(); } catch (e) {}
+          try { localStorage && localStorage.clear(); } catch (e) {}
+
+          // Replace history entry and navigate to login to prevent back/URL access
           window.history.replaceState(null, '', '/auth/admin-login');
-          
-          // Clear session storage
-          sessionStorage.clear();
-          localStorage.clear();
+          // Use replace to ensure no back navigation to protected routes
+          window.location.replace('/auth/admin-login');
         } catch (e) {
-          // Ignore storage errors
+          // Ignore storage/navigation errors
         }
       }
-      
-      // Return the appropriate login path
-      const { Platform } = await import('react-native');
-      return Platform.OS === 'web' ? '/auth/admin-login' : '/veterinarian/mobile-login';
     } catch (error) {
       console.error('Error during logout:', error);
-      const { Platform } = await import('react-native');
-      return Platform.OS === 'web' ? '/auth/admin-login' : '/veterinarian/mobile-login';
     }
   };
 

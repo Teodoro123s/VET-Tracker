@@ -17,7 +17,7 @@ export default function SpeciesBreedsScreen() {
   const [showSpeciesDropdown, setShowSpeciesDropdown] = useState(false);
   const [showFloatingModal, setShowFloatingModal] = useState(false);
   const [floatingModalPosition, setFloatingModalPosition] = useState({ x: 0, y: 0 });
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
   const [editMode, setEditMode] = useState(false);
   const [editItem, setEditItem] = useState({ name: '', speciesId: '' });
 
@@ -73,7 +73,7 @@ export default function SpeciesBreedsScreen() {
       
       if (editMode) {
         // Update existing item
-        const updateData = { name: itemName };
+        const updateData: any = { name: itemName };
         if (activeTab === 'breeds') {
           updateData.speciesId = selectedSpecies;
           updateData.speciesName = species.find(s => s.id === selectedSpecies)?.name;
@@ -470,8 +470,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#555',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   actionsCell: {
     flex: 0.3,

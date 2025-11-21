@@ -522,8 +522,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   appointmentDate: {
     fontSize: 12,
@@ -549,15 +548,13 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 2,
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   petInfo: {
     fontSize: 15,
     color: '#666',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    // web-only properties removed for React Native
   },
   statusIcon: {
     marginRight: 16,
@@ -591,8 +588,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 10,
     fontWeight: 'bold',
-    writingMode: 'vertical-rl',
-    textOrientation: 'mixed',
+    // vertical text properties removed (web-only)
   },
   actionButton: {
     flex: 1,

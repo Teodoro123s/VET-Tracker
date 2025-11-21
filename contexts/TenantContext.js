@@ -22,3 +22,8 @@ export const TenantProvider = ({ children }) => {
     
   );
 };
+
+// Re-export the TypeScript TenantContext implementation
+// This file keeps JS imports working while the primary implementation
+// lives in `TenantContext.tsx`.
+module.exports = require('./TenantContext');
