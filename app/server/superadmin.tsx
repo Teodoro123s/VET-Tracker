@@ -6,9 +6,11 @@ import SuperAdminSidebar from '@/components/SuperAdminSidebar';
 import SearchableDropdown from '@/components/SearchableDropdown';
 import { createTenant, registerUser } from '../../lib/services/firebaseService';
 import { fetchAllTenants, deleteTenant, subscribeToTenants, updateSubscriber, createSubscriber, Subscriber } from '../../lib/services/superAdminService';
-import { sendCredentialsEmail, generateSecurePassword } from '../../lib/utils/emailService';
+import { sendCredentialsEmail, sendAdminCredentialsEmail } from '../../lib/services/emailjsService';
+import { generateSecurePassword } from '../../lib/utils/emailService';
 import { deleteUserCompletely } from '../../lib/utils/completeUserDeletion';
 import { addSubscriptionPeriod , lockTenantByEmail, unlockTenantByEmail } from '../../lib/services/subscriptionService';
+import { hashPassword } from '../../lib/utils/passwordUtils';
 
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/config/firebaseConfig';
@@ -789,16 +791,35 @@ export default function SuperAdminScreen() {
                     const tempPassword = generateSecurePassword();
                     const tenantId = newSubscriber.email.split('@')[0];
                     
+                    console.log('=== CREATING SUBSCRIBER ===');
+                    console.log('Email:', newSubscriber.email);
+                    console.log('Password:', tempPassword);
+                    console.log('Tenant ID:', tenantId);
+                    
                     try {
-                      // Send credentials via email FIRST
-                      const emailResult = await sendCredentialsEmail(newSubscriber.email, tempPassword);
+                      // Send credentials via email FIRST (using admin credentials template)
+                      console.log('Step 1: Sending email...');
+                      const emailResult = await sendAdminCredentialsEmail(
+                        newSubscriber.email,
+                        tenantId,
+                        newSubscriber.email,
+                        tempPassword
+                      );
+                      
+                      console.log('Email result:', emailResult);
+                      
+                      if (!emailResult.success) {
+                        throw new Error('Email sending failed: ' + (emailResult.error || 'Unknown error'));
+                      }
                       
                       // Hash password before storing
-                      const { hashPassword } = await import('../../lib/utils/passwordUtils.js');
+                      console.log('Step 2: Hashing password...');
                       const { passwordHash, salt } = hashPassword(tempPassword);
+                      console.log('Password hashed successfully');
                       
-                      // Only create database records if email was sent successfully
-                      const subscriberId = await createSubscriber({
+                      // Create database records
+                      console.log('Step 3: Creating subscriber in database...');
+                      const subscriberData = {
                         email: newSubscriber.email,
                         passwordHash,
                         salt,
@@ -806,17 +827,22 @@ export default function SuperAdminScreen() {
                         clinicName: tenantId.replace(/[^a-zA-Z0-9]/g, ' '),
                         role: 'admin',
                         status: 'active'
-                      });
+                      };
+                      console.log('Subscriber data:', subscriberData);
+                      
+                      const subscriberId = await createSubscriber(subscriberData);
+                      
+                      console.log('Subscriber ID returned:', subscriberId);
                       
                       if (!subscriberId) {
-                        throw new Error('Failed to create subscriber in database');
+                        throw new Error('Failed to create subscriber in database - createSubscriber returned null');
                       }
                       
-
+                      console.log('✅ SUCCESS! Subscriber created with ID:', subscriberId);
                       
                       Alert.alert(
                         'Success',
-                        `✅ Subscriber created successfully!\n\n📧 Email: ${newSubscriber.email}\n🔑 Password: ${tempPassword}\n\n${emailResult.message}\n\n💡 Credentials sent to user's email.`
+                        `✅ Subscriber created successfully!\n\n📧 Email: ${newSubscriber.email}\n🔑 Password: ${tempPassword}\n\n💡 Credentials sent to user's email.\n\nSubscriber ID: ${subscriberId}`
                       );
                       
                       setNewSubscriber({ email: '', period: '1 month' });
@@ -827,7 +853,9 @@ export default function SuperAdminScreen() {
                       }).start(() => setShowAddDrawer(false));
                       
                     } catch (error) {
-                      Alert.alert('Error', `❌ Failed to create subscriber: ${error.message}`);
+                      console.error('❌ ERROR creating subscriber:', error);
+                      console.error('Error details:', error.message, error.stack);
+                      Alert.alert('Error', `❌ Failed to create subscriber:\n\n${error.message}\n\nCheck console for details.`);
                     }
                   } else {
                     Alert.alert('Error', 'Please fill in all required fields');
