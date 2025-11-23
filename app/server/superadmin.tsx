@@ -681,7 +681,7 @@ export default function SuperAdminScreen() {
                       }
                       
                       // Send new credentials via email
-                      const emailResult = await sendCredentialsEmail(selectedTenant?.email, newTempPassword);
+                      const emailResult = await sendCredentialsEmail(selectedTenant?.email, selectedTenant?.clinicName || 'Admin', selectedTenant?.email, newTempPassword);
                       
                       // Hash new password before storing
                       const { hashPassword } = await import('../../lib/utils/passwordUtils.js');

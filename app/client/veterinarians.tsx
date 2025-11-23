@@ -156,7 +156,7 @@ export default function VeterinariansScreen() {
   }, [showAddDrawer]);
   
   const handleAddVeterinarian = async () => {
-    if (!newVeterinarian.surname || !newVeterinarian.firstname || !newVeterinarian.specialty || !newVeterinarian.contact || !newVeterinarian.email || !newVeterinarian.license) {
+    if (!newVeterinarian.surname || !newVeterinarian.firstname || !newVeterinarian.specialty || !newVeterinarian.contact || !newVeterinarian.email) {
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
@@ -467,12 +467,12 @@ export default function VeterinariansScreen() {
                 <Text style={styles.detailHeaderCell}>Value</Text>
               </View>
               <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Specialty</Text>
-                <Text style={styles.detailCell}>{selectedVeterinarian.specialization || 'Not Available'}</Text>
+                <Text style={styles.detailCell}>Full Name</Text>
+                <Text style={styles.detailCell}>{selectedVeterinarian.name || 'Not Available'}</Text>
               </View>
               <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>License Number</Text>
-                <Text style={styles.detailCell}>{selectedVeterinarian.license || 'Not Available'}</Text>
+                <Text style={styles.detailCell}>Specialty</Text>
+                <Text style={styles.detailCell}>{selectedVeterinarian.specialization || 'Not Available'}</Text>
               </View>
               <View style={styles.detailTableRow}>
                 <Text style={styles.detailCell}>Contact Number</Text>
@@ -482,6 +482,32 @@ export default function VeterinariansScreen() {
                 <Text style={styles.detailCell}>Email Address</Text>
                 <Text style={styles.detailCell}>{selectedVeterinarian.email || 'Not Available'}</Text>
               </View>
+              <View style={styles.detailTableRow}>
+                <Text style={styles.detailCell}>License Number</Text>
+                <Text style={styles.detailCell}>{selectedVeterinarian.license || 'No license provided (Practitioner)'}</Text>
+              </View>
+              {selectedVeterinarian.licenseImageUrl && (
+                <View style={styles.detailTableRow}>
+                  <Text style={styles.detailCell}>License Image</Text>
+                  <View style={styles.detailCell}>
+                    <Image 
+                      source={{ uri: selectedVeterinarian.licenseImageUrl }} 
+                      style={styles.licenseImagePreview} 
+                      resizeMode="contain"
+                    />
+                    <TouchableOpacity 
+                      style={styles.viewFullImageButton}
+                      onPress={() => {
+                        if (typeof window !== 'undefined') {
+                          window.open(selectedVeterinarian.licenseImageUrl, '_blank');
+                        }
+                      }}
+                    >
+                      <Text style={styles.viewFullImageText}>View Full Image</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
               <View style={styles.detailTableRow}>
                 <Text style={styles.detailCell}>Date Created</Text>
                 <Text style={styles.detailCell}>{selectedVeterinarian.createdAt ? new Date(selectedVeterinarian.createdAt.seconds * 1000).toLocaleDateString() : 'Not Available'}</Text>
@@ -808,7 +834,16 @@ export default function VeterinariansScreen() {
                   onChangeText={(text) => setEditVetData({...editVetData, license: text})}
                 />
                 
-                <Text style={styles.fieldLabel}>License Image</Text>
+                <Text style={styles.fieldLabel}>License Image (Optional)</Text>
+                {selectedVeterinarian?.licenseImageUrl && !editVetData.licenseImage && (
+                  <View>
+                    <Image 
+                      source={{ uri: selectedVeterinarian.licenseImageUrl }} 
+                      style={styles.previewImage} 
+                    />
+                    <Text style={styles.currentImageLabel}>Current License Image</Text>
+                  </View>
+                )}
                 <TouchableOpacity 
                   style={styles.imageImportButton}
                   onPress={() => {
@@ -825,14 +860,17 @@ export default function VeterinariansScreen() {
                   }}
                 >
                   <Text style={styles.imageImportText}>
-                    {editVetData.licenseImage ? 'Change License Image' : 'Import License Image'}
+                    {editVetData.licenseImage ? 'Change License Image' : (selectedVeterinarian?.licenseImageUrl ? 'Replace License Image' : 'Import License Image')}
                   </Text>
                 </TouchableOpacity>
                 {editVetData.licenseImage && (
-                  <Image 
-                    source={{ uri: URL.createObjectURL(editVetData.licenseImage) }} 
-                    style={styles.previewImage} 
-                  />
+                  <View>
+                    <Image 
+                      source={{ uri: URL.createObjectURL(editVetData.licenseImage) }} 
+                      style={styles.previewImage} 
+                    />
+                    <Text style={styles.newImageLabel}>New License Image</Text>
+                  </View>
                 )}
                 
 
@@ -850,12 +888,27 @@ export default function VeterinariansScreen() {
                 <TouchableOpacity style={styles.drawerSaveButton} onPress={async () => {
                   if (editVetData.name && editVetData.specialty && editVetData.contact && editVetData.email) {
                     try {
+                      let licenseImageUrl = selectedVeterinarian.licenseImageUrl || '';
+                      
+                      // Upload new license image if provided
+                      if (editVetData.licenseImage) {
+                        try {
+                          console.log('Uploading new license image...');
+                          licenseImageUrl = await uploadVetLicense(editVetData.licenseImage, editVetData.email);
+                          console.log('New license image uploaded successfully:', licenseImageUrl);
+                        } catch (imageError) {
+                          console.error('Image upload failed:', imageError);
+                          Alert.alert('Warning', 'License image upload failed, but other changes will be saved.');
+                        }
+                      }
+                      
                       const updateData = {
                         name: editVetData.name,
                         specialization: editVetData.specialty,
                         phone: editVetData.contact,
                         email: editVetData.email,
-                        license: editVetData.license
+                        license: editVetData.license || '',
+                        licenseImageUrl: licenseImageUrl
                       };
                       
                       await updateVeterinarian(selectedVeterinarian.id, updateData, userEmail);
@@ -1736,5 +1789,40 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  licenseImagePreview: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  viewFullImageButton: {
+    backgroundColor: '#007BFF',
+    borderRadius: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+  },
+  viewFullImageText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  currentImageLabel: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 5,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  newImageLabel: {
+    fontSize: 12,
+    color: '#28a745',
+    fontWeight: 'bold',
+    marginTop: 5,
+    textAlign: 'center',
   },
 });
