@@ -79,14 +79,17 @@ export const getTenantId = async (userEmail: string): Promise<string | null> => 
       }
     }
 
+    // No tenant found in database, use email prefix as fallback
     const emailPrefix = userEmail.split('@')[0];
+    console.log('Using email prefix as tenant ID fallback:', emailPrefix);
     return emailPrefix;
   } catch (error) {
     console.error('Error getting tenant ID:', error);
+    // Even on error, use email prefix as fallback
+    const emailPrefix = userEmail.split('@')[0];
+    console.log('Error occurred, using email prefix as tenant ID fallback:', emailPrefix);
+    return emailPrefix;
   }
-
-  console.log('No tenant ID found, returning null');
-  return null;
 };
 
 // Get tenant-aware collection
