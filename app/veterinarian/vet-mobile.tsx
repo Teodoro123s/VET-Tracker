@@ -5,7 +5,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { addCustomer } from '../../lib/services/firebaseService';
+import { addCustomer, getVeterinarians, getAppointments, getCustomers, getPets } from '../../lib/services/firebaseService';
 import { Colors } from '@/constants/Colors';
 import { LineChart } from 'react-native-chart-kit';
 
@@ -102,7 +102,6 @@ export default function VetMobile() {
     if (!user?.email) return;
     
     try {
-      const { getVeterinarians } = await import('../../lib/services/firebaseService.js');
       const vets = await getVeterinarians(user.email);
       const currentVet = vets.find(vet => vet.email === user.email);
       
@@ -155,7 +154,6 @@ export default function VetMobile() {
     }
     
     try {
-      const { getAppointments, getCustomers, getPets } = await import('../../lib/services/firebaseService.js');
       console.log('=== 📊 MOBILE DASHBOARD DATA FETCH START ===');
       console.log('👤 User email:', user.email);
       console.log('🔄 Retry count:', retryCount);
