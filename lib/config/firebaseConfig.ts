@@ -18,7 +18,7 @@ const firebaseConfig = {
   projectId: extra.FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || 'vet-management-b322c',
   messagingSenderId: extra.FIREBASE_MESSAGING_SENDER_ID || process.env.FIREBASE_MESSAGING_SENDER_ID || '775446851492',
   appId: extra.FIREBASE_APP_ID || process.env.FIREBASE_APP_ID || '1:775446851492:android:511fbfc253e1e385399b31',
-  storageBucket: extra.FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET || 'vet-management-b322c.appspot.com',
+  storageBucket: extra.FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET || 'vet-management-b322c.firebasestorage.app',
 };
 
 const app = initializeApp(firebaseConfig);

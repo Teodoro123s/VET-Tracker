@@ -5,10 +5,11 @@ import Tesseract from 'tesseract.js';
 import SearchableDropdown from '@/components/SearchableDropdown';
 import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian , registerUser } from '@/lib/services/firebaseService';
 import { generateSecurePassword } from '@/lib/utils/emailService';
-import { sendCredentialsEmail } from '@/lib/services/emailjsService';
+import { sendVeterinarianCredentialsEmail } from '@/lib/services/emailjsService';
+import { hashPassword } from '@/lib/utils/passwordUtils';
 
 import { useTenant } from '@/contexts/TenantContext';
-// import { uploadImage } from '@/lib/services/storageService';
+import { uploadVetLicense } from '@/lib/services/storageService';
 
 import { addDoc, collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/config/firebaseConfig';
@@ -19,10 +20,16 @@ export default function VeterinariansScreen() {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    loadVeterinarians();
-  }, []);
+    if (userEmail) {
+      loadVeterinarians();
+    }
+  }, [userEmail]);
   
   const loadVeterinarians = async () => {
+    if (!userEmail) {
+      console.log('No userEmail available yet');
+      return;
+    }
     try {
       console.log('=== LOADING VETERINARIANS ===');
       console.log('Loading veterinarians for userEmail:', userEmail);
@@ -161,9 +168,10 @@ export default function VeterinariansScreen() {
       let licenseImageUrl = '';
       if (newVeterinarian.licenseImage) {
         try {
-          // Image upload functionality disabled - storageService not available
-          console.log('Image upload skipped - service not available');
-          Alert.alert('Info', 'Image upload is currently disabled.');
+          console.log('Uploading license image...');
+          // licenseImage is already a File object from the input
+          licenseImageUrl = await uploadVetLicense(newVeterinarian.licenseImage, newVeterinarian.email);
+          console.log('License image uploaded successfully:', licenseImageUrl);
         } catch (imageError) {
           console.error('Image upload failed:', imageError);
           Alert.alert('Warning', 'License image upload failed, but veterinarian will be added without image.');
@@ -176,15 +184,18 @@ export default function VeterinariansScreen() {
         phone: newVeterinarian.contact,
         email: newVeterinarian.email,
         license: newVeterinarian.license,
-        licenseImageUrl: licenseImageUrl,
+        licenseImageUrl: licenseImageUrl || '',
         role: 'veterinarian',
         hasAccount: true,
         createdBy: userEmail,
         createdAt: new Date()
       };
       
+      console.log('Veterinarian data to save:', { ...veterinarian, licenseImageUrl });
+      
       // Save to database first
       const savedVeterinarian = await addVeterinarian(veterinarian, userEmail);
+      console.log('Saved veterinarian:', savedVeterinarian);
       
       // Create Firebase Auth account
       try {
@@ -198,21 +209,35 @@ export default function VeterinariansScreen() {
         // Continue even if auth fails
       }
       
-      // Create tenant entry for login authentication
+      // Create tenant entry for login authentication (only if it doesn't exist)
       try {
-        // Using imported modules
+        // Check if tenant entry already exists
+        const tenantQuery = query(
+          collection(db, 'tenants'),
+          where('email', '==', newVeterinarian.email)
+        );
+        const tenantSnapshot = await getDocs(tenantQuery);
         
-        await addDoc(collection(db, 'tenants'), {
-          email: newVeterinarian.email,
-          password: generatedPassword,
-          role: 'veterinarian',
-          status: 'active',
-          tenantId: userEmail?.match(/^([^@]+)@/)?.[1] || 'default',
-          clinicName: 'Veterinary Clinic',
-          createdAt: new Date(),
-          createdBy: userEmail
-        });
-        console.log('Tenant entry created for veterinarian login');
+        if (tenantSnapshot.empty) {
+          // Hash the password before storing
+          const { passwordHash, salt } = hashPassword(generatedPassword);
+          console.log('Hashed password for tenant entry');
+          
+          await addDoc(collection(db, 'tenants'), {
+            email: newVeterinarian.email,
+            password: passwordHash,
+            salt: salt,
+            role: 'veterinarian',
+            status: 'active',
+            tenantId: userEmail?.match(/^([^@]+)@/)?.[1] || 'default',
+            clinicName: 'Veterinary Clinic',
+            createdAt: new Date(),
+            createdBy: userEmail
+          });
+          console.log('Tenant entry created for veterinarian login with hashed password');
+        } else {
+          console.log('Tenant entry already exists, skipping creation');
+        }
       } catch (tenantError) {
         console.error('Error creating tenant entry:', tenantError);
         // Continue even if tenant creation fails
@@ -220,7 +245,7 @@ export default function VeterinariansScreen() {
       
       // Send credentials via EmailJS
       try {
-        const emailResult = await sendCredentialsEmail(
+        const emailResult = await sendVeterinarianCredentialsEmail(
           newVeterinarian.email,
           fullName,
           newVeterinarian.email,
@@ -479,6 +504,10 @@ export default function VeterinariansScreen() {
                       const newPassword = generateSecurePassword();
                       
                       try {
+                        // Hash the new password
+                        const { passwordHash, salt } = hashPassword(newPassword);
+                        console.log('Hashed new password for password reset');
+                        
                         // Update tenant password in database
                         // Using imported modules
                         
@@ -491,14 +520,15 @@ export default function VeterinariansScreen() {
                         if (!tenantSnapshot.empty) {
                           const tenantDoc = tenantSnapshot.docs[0];
                           await updateDoc(doc(db, 'tenants', tenantDoc.id), {
-                            password: newPassword,
+                            password: passwordHash,
+                            salt: salt,
                             updatedAt: new Date()
                           });
-                          console.log('Tenant password updated successfully');
+                          console.log('Tenant password updated successfully with hashed password');
                         }
                         
                         // Send new credentials via EmailJS
-                        const emailResult = await sendCredentialsEmail(
+                        const emailResult = await sendVeterinarianCredentialsEmail(
                           selectedVeterinarian.email,
                           selectedVeterinarian.name,
                           selectedVeterinarian.email,

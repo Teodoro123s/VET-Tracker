@@ -72,10 +72,11 @@ export const getTenantId = async (userEmail: string): Promise<string | null> => 
     const q = query(collection(db, 'tenants'), where('email', '==', userEmail));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
+      const docId = querySnapshot.docs[0].id;
       const userData = docData(querySnapshot.docs[0]);
-      const tenantId = userData.tenantId || userData.id || null;
-      console.log('Found tenant ID from direct lookup:', tenantId);
-      return tenantId;
+      // Return the actual Firestore document ID, not the tenantId field
+      console.log('Found tenant ID from direct lookup:', docId, '(tenantId field:', userData.tenantId, ')');
+      return docId;
     }
 
     const allTenants = await getDocs(collection(db, 'tenants'));
@@ -85,11 +86,11 @@ export const getTenantId = async (userEmail: string): Promise<string | null> => 
       const tenantData = docData(tenantDoc);
 
       if (tenantData.createdBy === userEmail) {
-        return tenantData.tenantId || tenantData.id || null;
+        return tenantDoc.id;
       }
 
       if (tenantData.email === userEmail) {
-        return tenantData.tenantId || tenantData.id || null;
+        return tenantDoc.id;
       }
     }
 

@@ -14,9 +14,19 @@ export interface AccessOptions {
 export async function ensureTenantHasAccess(tenantId: string, opts: AccessOptions = {}) {
   const required = opts.required || 'write';
 
+  console.log('=== ENSURE TENANT HAS ACCESS ===');
+  console.log('Checking access for tenantId:', tenantId);
+  console.log('Required access level:', required);
+
   // Check tenant document for explicit locks
   const tenantRef = doc(db, 'tenants', tenantId);
   const tenantSnap = await getDoc(tenantRef);
+  
+  console.log('Tenant document exists?', tenantSnap.exists());
+  if (tenantSnap.exists()) {
+    console.log('Tenant data:', tenantSnap.data());
+  }
+  
   if (!tenantSnap.exists()) {
     throw new Error('Tenant not found');
   }
