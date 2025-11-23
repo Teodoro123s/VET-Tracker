@@ -99,22 +99,31 @@ export default function VetMobile() {
   };
 
   const fetchVetDetails = async () => {
-    if (!user?.email) return;
+    if (!user?.email) {
+      console.log('❌ fetchVetDetails: No user email');
+      return;
+    }
     
     try {
+      console.log('🔍 Fetching vet details for:', user.email);
       const vets = await getVeterinarians(user.email);
+      console.log('📋 Found vets:', vets.length, vets);
       const currentVet = vets.find(vet => vet.email === user.email);
+      console.log('👤 Current vet match:', currentVet);
       
       if (currentVet) {
-        setVetDetails({
+        const details = {
           name: currentVet.name || 'Dr. Veterinarian',
           email: currentVet.email || user.email,
           license: currentVet.license || 'Not Available',
           specialization: currentVet.specialization || 'General Practice',
           phone: currentVet.phone || 'Not Available',
           experience: 'Not Available'
-        });
+        };
+        console.log('✅ Setting vet details:', details);
+        setVetDetails(details);
       } else {
+        console.log('⚠️ No matching vet found, using fallback');
         // Fallback if veterinarian not found in database
         setVetDetails({
           name: 'Dr. Veterinarian',
@@ -126,7 +135,7 @@ export default function VetMobile() {
         });
       }
     } catch (error) {
-      console.error('Error fetching vet details:', error);
+      console.error('❌ Error fetching vet details:', error);
       // Fallback to basic data on error
       setVetDetails({
         name: 'Dr. Veterinarian',

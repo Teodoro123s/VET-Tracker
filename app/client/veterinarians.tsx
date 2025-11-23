@@ -219,16 +219,19 @@ export default function VeterinariansScreen() {
         const tenantSnapshot = await getDocs(tenantQuery);
         
         if (tenantSnapshot.empty) {
+          // Get the clinic's tenant ID
+          const clinicTenantId = await getTenantId(userEmail);
+          
           // Store plain password to match Firebase Auth
           // Firebase Auth uses SCRYPT which we can't replicate client-side
-          console.log('Creating tenant entry with plain password');
+          console.log('Creating tenant entry with plain password for vet, clinic tenantId:', clinicTenantId);
           
           await addDoc(collection(db, 'tenants'), {
             email: newVeterinarian.email,
             password: generatedPassword, // Plain password to match Firebase Auth
             role: 'veterinarian',
             status: 'active',
-            tenantId: userEmail?.match(/^([^@]+)@/)?.[1] || 'default',
+            tenantId: clinicTenantId, // Clinic's tenant ID
             clinicName: 'Veterinary Clinic',
             createdAt: new Date(),
             createdBy: userEmail

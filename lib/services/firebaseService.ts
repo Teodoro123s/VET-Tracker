@@ -69,32 +69,53 @@ export const getTenantId = async (userEmail: string): Promise<string | null> => 
   }
 
   try {
+    // First, check if user is an admin with their own tenant
     const q = query(collection(db, 'tenants'), where('email', '==', userEmail));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
-      const docId = querySnapshot.docs[0].id;
-      const userData = docData(querySnapshot.docs[0]);
-      // Return the actual Firestore document ID, not the tenantId field
-      console.log('Found tenant ID from direct lookup:', docId, '(tenantId field:', userData.tenantId, ')');
-      return docId;
+      const doc = querySnapshot.docs[0];
+      const userData = docData(doc);
+      // Return the tenantId field if it exists, otherwise the document ID
+      const tenantId = userData.tenantId || doc.id;
+      console.log('Found tenant ID from direct lookup:', tenantId, '(from field:', userData.tenantId, ', docId:', doc.id, ')');
+      return tenantId;
     }
 
+    // If not found, check if user is a veterinarian in any tenant
+    console.log('User not found as admin, checking if veterinarian...');
     const allTenants = await getDocs(collection(db, 'tenants'));
-    console.log('Checking all tenants, count:', allTenants.docs.length);
-
     for (const tenantDoc of allTenants.docs) {
       const tenantData = docData(tenantDoc);
+      try {
+        const vetCollection = collection(db, `tenants/${tenantData.tenantId || tenantDoc.id}/veterinarians`);
+        const vetQuery = query(vetCollection, where('email', '==', userEmail));
+        const vetSnapshot = await getDocs(vetQuery);
+        if (!vetSnapshot.empty) {
+          console.log('Found veterinarian in tenant:', tenantData.tenantId || tenantDoc.id);
+          return tenantData.tenantId || tenantDoc.id;
+        }
+      } catch (error) {
+        // Skip tenants that don't have veterinarians collection or other errors
+        console.log('Skipping tenant', tenantDoc.id, 'error:', error.message);
+      }
+    }
 
+    // Fallback to createdBy check (for legacy data)
+    console.log('Not found as vet, checking createdBy...');
+    for (const tenantDoc of allTenants.docs) {
+      const tenantData = docData(tenantDoc);
       if (tenantData.createdBy === userEmail) {
-        return tenantDoc.id;
+        return tenantData.tenantId || tenantDoc.id;
       }
 
       if (tenantData.email === userEmail) {
-        return tenantDoc.id;
+        return tenantData.tenantId || tenantDoc.id;
       }
     }
 
+    // Final fallback to email prefix
     const emailPrefix = userEmail.split('@')[0];
+    console.log('Using email prefix fallback:', emailPrefix);
     return emailPrefix;
   } catch (error) {
     console.error('Error getting tenant ID:', error);
