@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/config/firebaseConfig';
 import { loginWithCredentialOverlap, getVeterinarianByEmail, getTenantId } from '../lib/services/firebaseService';
+import { verifyPassword } from '../lib/utils/passwordUtils';
 
 interface User {
   email: string;
@@ -152,8 +153,27 @@ export const AuthProvider = ({ children }) => {
         if (!vetSnapshot.empty) {
           const vetData = vetSnapshot.docs[0].data();
           
-          // Check if vet has account and password matches (add password field to vet document)
-          if (vetData.hasAccount && (vetData.password === password || password === 'vet123')) {
+          // Check tenant entry for veterinarian credentials
+          const vetTenantQuery = query(collection(db, 'tenants'), where('email', '==', email.trim()), where('role', '==', 'veterinarian'));
+          const vetTenantSnapshot = await getDocs(vetTenantQuery);
+          
+          let isAuthenticated = false;
+          
+          if (!vetTenantSnapshot.empty) {
+            const tenantData = vetTenantSnapshot.docs[0].data();
+            
+            // Check plain password (Firebase Auth uses SCRYPT, we can't replicate it)
+            isAuthenticated = tenantData.password === password;
+            console.log('Veterinarian authentication via password check:', isAuthenticated);
+          }
+          
+          // Also check dev password
+          if (!isAuthenticated && password === 'vet123') {
+            isAuthenticated = true;
+            console.log('Veterinarian authentication via dev password');
+          }
+          
+          if (isAuthenticated && vetData.hasAccount) {
             const user = {
               email: vetData.email,
               role: 'veterinarian',
@@ -175,7 +195,7 @@ export const AuthProvider = ({ children }) => {
             setUser(user);
             
             return { success: true, user };
-          } else {
+          } else if (vetData.hasAccount) {
             return { success: false, error: 'Incorrect password. Please try again.' };
           }
         }

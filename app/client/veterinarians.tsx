@@ -219,14 +219,13 @@ export default function VeterinariansScreen() {
         const tenantSnapshot = await getDocs(tenantQuery);
         
         if (tenantSnapshot.empty) {
-          // Hash the password before storing
-          const { passwordHash, salt } = hashPassword(generatedPassword);
-          console.log('Hashed password for tenant entry');
+          // Store plain password to match Firebase Auth
+          // Firebase Auth uses SCRYPT which we can't replicate client-side
+          console.log('Creating tenant entry with plain password');
           
           await addDoc(collection(db, 'tenants'), {
             email: newVeterinarian.email,
-            password: passwordHash,
-            salt: salt,
+            password: generatedPassword, // Plain password to match Firebase Auth
             role: 'veterinarian',
             status: 'active',
             tenantId: userEmail?.match(/^([^@]+)@/)?.[1] || 'default',
@@ -234,7 +233,7 @@ export default function VeterinariansScreen() {
             createdAt: new Date(),
             createdBy: userEmail
           });
-          console.log('Tenant entry created for veterinarian login with hashed password');
+          console.log('Tenant entry created for veterinarian login');
         } else {
           console.log('Tenant entry already exists, skipping creation');
         }
@@ -433,7 +432,7 @@ export default function VeterinariansScreen() {
         )}
         
         {selectedVeterinarian && (
-          <View style={styles.tableContainer}>
+          <ScrollView style={styles.tableContainer} showsVerticalScrollIndicator={false}>
             <View style={styles.tableTopRow}>
               <TouchableOpacity style={styles.returnButton} onPress={() => setSelectedVeterinarian(null)}>
                 <Text style={styles.returnButtonText}>←</Text>
@@ -461,7 +460,7 @@ export default function VeterinariansScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-            <ScrollView style={styles.detailTable} showsVerticalScrollIndicator={false}>
+            <View style={styles.detailTable}>
               <View style={styles.detailTableHeader}>
                 <Text style={styles.detailHeaderCell}>Field</Text>
                 <Text style={styles.detailHeaderCell}>Value</Text>
@@ -530,13 +529,11 @@ export default function VeterinariansScreen() {
                       const newPassword = generateSecurePassword();
                       
                       try {
-                        // Hash the new password
-                        const { passwordHash, salt } = hashPassword(newPassword);
-                        console.log('Hashed new password for password reset');
+                        // Update Firebase Auth password (cannot be done from client without Admin SDK)
+                        // Password will remain as the original one in Firebase Auth
+                        console.log('Note: Firebase Auth password update requires Admin SDK');
                         
-                        // Update tenant password in database
-                        // Using imported modules
-                        
+                        // Update tenant password in database (plain text to match Firebase Auth)
                         const tenantQuery = query(
                           collection(db, 'tenants'),
                           where('email', '==', selectedVeterinarian.email)
@@ -546,11 +543,10 @@ export default function VeterinariansScreen() {
                         if (!tenantSnapshot.empty) {
                           const tenantDoc = tenantSnapshot.docs[0];
                           await updateDoc(doc(db, 'tenants', tenantDoc.id), {
-                            password: passwordHash,
-                            salt: salt,
+                            password: newPassword, // Store plain password to match Firebase Auth
                             updatedAt: new Date()
                           });
-                          console.log('Tenant password updated successfully with hashed password');
+                          console.log('Tenant password updated successfully');
                         }
                         
                         // Send new credentials via EmailJS
@@ -581,8 +577,8 @@ export default function VeterinariansScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
-            </ScrollView>
-          </View>
+            </View>
+          </ScrollView>
         )}
       </View>
       

@@ -16,7 +16,7 @@ export const Colors = {
     primary: '#800020',    // Primary maroon (Client)
     light: '#A0002A',      // Light maroon (Veterinarian)
     lighter: '#D4002F',    // Lighter maroon
-    pale: '#F5E6EA',       // Very light maroon
+    pale: '#FFFFFF',       // White
   },
   
   // Text colors
@@ -30,7 +30,7 @@ export const Colors = {
   
   // Border colors
   border: {
-    light: '#F5E6EA',     // Light maroon border
+    light: '#FFFFFF',     // White border
     medium: '#D4002F',    // Medium maroon border
     dark: '#800020',      // Dark maroon border
   },
@@ -45,7 +45,7 @@ export const Colors = {
   
   // Interactive states
   interactive: {
-    hover: '#F5E6EA',     // Light maroon hover
+    hover: '#FFFFFF',     // White hover
     pressed: '#D4002F',   // Maroon pressed
     disabled: '#E5E7EB',  // Gray disabled
   },

@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Colors } from '../constants/Colors';
 import { loginUser } from '../lib/services/firebaseService';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../lib/config/firebaseConfig';
+import { verifyPassword } from '../lib/utils/passwordUtils';
 
 
 export default function LoginMobile() {
@@ -20,18 +23,119 @@ export default function LoginMobile() {
     }
 
     setIsLoading(true);
+    let authSuccess = false;
+    let userRole = '';
+    
     try {
-      const result = await loginUser(username, password);
-      console.log('Login successful:', result);
+      console.log('=== LOGIN DEBUG START ===');
+      console.log('Attempting login for:', username);
       
-      // Mobile component should only allow admin/superadmin (same as web)
-      if (username.includes('superadmin')) {
-        router.replace('/superadmin');
-      } else {
-        router.replace('/dashboard');
+      // Try Firebase Auth login first
+      try {
+        const result = await loginUser(username, password);
+        console.log('✅ Firebase Auth login successful:', result.email);
+        authSuccess = true;
+      } catch (firebaseError: any) {
+        console.log('❌ Firebase Auth failed:', firebaseError.code, firebaseError.message);
+        console.log('Trying Firestore password check as fallback...');
+        
+        // If Firebase Auth fails, try checking hashed password in Firestore
+        const tenantQuery = query(
+          collection(db, 'tenants'),
+          where('email', '==', username)
+        );
+        const tenantSnapshot = await getDocs(tenantQuery);
+        
+        console.log('Tenant snapshot empty?', tenantSnapshot.empty);
+        console.log('Number of tenant documents found:', tenantSnapshot.size);
+        
+        if (!tenantSnapshot.empty) {
+          const tenantData = tenantSnapshot.docs[0].data();
+          console.log('Tenant data found:', {
+            email: tenantData.email,
+            role: tenantData.role,
+            hasPassword: !!tenantData.password,
+            hasSalt: !!tenantData.salt,
+            status: tenantData.status
+          });
+          
+          if (tenantData.password && tenantData.salt) {
+            // Check hashed password
+            console.log('Verifying hashed password...');
+            const isValidPassword = verifyPassword(password, tenantData.password, tenantData.salt);
+            console.log('Password verification result:', isValidPassword);
+            
+            if (isValidPassword) {
+              console.log('✅ Firestore password verification successful');
+              authSuccess = true;
+              userRole = tenantData.role || '';
+            } else {
+              console.log('❌ Firestore password verification failed - password mismatch');
+            }
+          } else {
+            console.log('❌ Tenant has no password or salt stored');
+          }
+        } else {
+          console.log('❌ No tenant document found for email:', username);
+        }
+        
+        if (!authSuccess) {
+          console.log('❌ All authentication methods failed');
+          throw firebaseError; // Re-throw original error if Firestore check also failed
+        }
       }
-    } catch (error) {
-      Alert.alert('Error', 'Invalid email or password');
+      
+      // If auth succeeded, check user role from tenants collection
+      if (!userRole) {
+        const tenantQuery = query(
+          collection(db, 'tenants'),
+          where('email', '==', username)
+        );
+        const tenantSnapshot = await getDocs(tenantQuery);
+        
+        if (!tenantSnapshot.empty) {
+          const tenantData = tenantSnapshot.docs[0].data();
+          userRole = tenantData.role || '';
+          
+          console.log('User role from Firestore:', userRole);
+          console.log('Tenant data:', tenantData);
+        }
+      }
+      
+      // Route based on role
+      console.log('Authentication successful, routing based on role:', userRole);
+      if (userRole === 'veterinarian') {
+        console.log('✅ Routing to veterinarian mobile: /veterinarian/vet-mobile');
+        router.replace('/veterinarian/vet-mobile');
+      } else if (username.includes('superadmin')) {
+        console.log('✅ Routing to superadmin: /server/superadmin');
+        router.replace('/server/superadmin');
+      } else {
+        console.log('✅ Routing to client dashboard: /client/dashboard');
+        router.replace('/client/dashboard');
+      }
+      console.log('=== LOGIN DEBUG END ===');
+      
+    } catch (error: any) {
+      console.log('=== LOGIN ERROR ===');
+      console.error('Login error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.log('=== LOGIN DEBUG END ===');
+      
+      // Provide more specific error messages
+      let errorMessage = 'Invalid email or password';
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email';
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email format';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed attempts. Please try again later';
+      }
+      
+      Alert.alert('Login Failed', errorMessage);
     } finally {
       setIsLoading(false);
     }
