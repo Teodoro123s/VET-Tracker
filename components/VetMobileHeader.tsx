@@ -6,6 +6,7 @@ import { getVeterinarians, getAppointments } from '@/lib/services/firebaseServic
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/Colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface VetMobileHeaderProps {
   showBackButton?: boolean;
@@ -28,6 +29,13 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
   useEffect(() => {
     loadVetData();
     loadNotificationCount();
+    
+    // Refresh notification count periodically
+    const interval = setInterval(() => {
+      loadNotificationCount();
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(interval);
   }, [userEmail, user]);
 
   const getDisplayName = (email) => {
@@ -58,6 +66,17 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
       
       const appointments = await getAppointments(currentUserEmail);
       
+      // Load read notifications from storage
+      let readNotifications = new Set();
+      try {
+        const readData = await AsyncStorage.getItem(`readNotifications_${currentUserEmail}`);
+        if (readData) {
+          readNotifications = new Set(JSON.parse(readData));
+        }
+      } catch (error) {
+        console.error('Error loading read notifications:', error);
+      }
+      
       // Count notifications: pending appointments + due appointments + upcoming appointments
       const today = new Date();
       const tomorrow = new Date(today);
@@ -68,23 +87,47 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
       appointments.forEach(apt => {
         // Check if appointment is assigned to this vet
         if (apt.veterinarian === currentUserEmail || apt.assignedVet === currentUserEmail || apt.veterinarianEmail === currentUserEmail) {
-          // Pending appointments
-          if (apt.status === 'Pending') {
-            count++;
-          }
+          let notificationId = '';
           
-          // Due appointments (today)
+          // Generate notification IDs similar to vet-notifications.tsx
           const aptDate = new Date(apt.dateTime || apt.appointmentDate?.seconds * 1000 || apt.date);
-          if (aptDate.toDateString() === today.toDateString() && apt.status !== 'Completed') {
-            count++;
+          
+          if (apt.status === 'Pending') {
+            notificationId = `pending-${apt.id}`;
+          } else if (aptDate.toDateString() === today.toDateString() && apt.status !== 'Completed') {
+            notificationId = `due-${apt.id}`;
+          } else if (aptDate.toDateString() === tomorrow.toDateString() && apt.status !== 'Completed') {
+            notificationId = `upcoming-${apt.id}`;
+          } else if (apt.status === 'Completed') {
+            const completedHours = (today.getTime() - aptDate.getTime()) / (1000 * 60 * 60);
+            if (completedHours <= 24) {
+              notificationId = `completed-${apt.id}`;
+            }
           }
           
-          // Upcoming appointments (tomorrow)
-          if (aptDate.toDateString() === tomorrow.toDateString() && apt.status !== 'Completed') {
+          // Only count if not read
+          if (notificationId && !readNotifications.has(notificationId)) {
             count++;
           }
         }
       });
+      
+      // Add AI notifications and admin notice if not read
+      const aiNotifications = ['ai-schedule', 'ai-records', 'ai-chatbot'];
+      const adminNotice = 'admin-notice';
+      
+      aiNotifications.forEach(id => {
+        if (!readNotifications.has(id)) {
+          // Check if AI notification should be shown based on appointment count
+          if (id === 'ai-schedule' && appointments.length > 3) count++;
+          else if (id === 'ai-records' && appointments.filter(apt => apt.status === 'Completed' && !apt.medicalRecordAdded).length > 0) count++;
+          else if (id === 'ai-chatbot' && appointments.length > 2) count++;
+        }
+      });
+      
+      if (!readNotifications.has(adminNotice)) {
+        count++;
+      }
       
       setNotificationCount(count);
     } catch (error) {

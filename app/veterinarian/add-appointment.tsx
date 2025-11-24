@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { addAppointment, getVeterinarians, getCustomers, getPets } from '@/lib/services/firebaseService';
+import { addAppointment, getVeterinarians, getCustomers, getPets, getReasonOptions, addReasonOption, updateReasonOption, deleteReasonOption } from '@/lib/services/firebaseService';
 
 export default function AddAppointment() {
   const router = useRouter();
@@ -27,6 +27,12 @@ export default function AddAppointment() {
   // Dropdown states
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const [showPetDropdown, setShowPetDropdown] = useState(false);
+  const [showReasonDropdown, setShowReasonDropdown] = useState(false);
+  const [showAddReasonModal, setShowAddReasonModal] = useState(false);
+  const [showEditReasonModal, setShowEditReasonModal] = useState(false);
+  const [reasonOptions, setReasonOptions] = useState<any[]>([]);
+  const [newReasonText, setNewReasonText] = useState('');
+  const [editingReason, setEditingReason] = useState<any>(null);
   
   // Date and time picker states
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -74,6 +80,24 @@ export default function AddAppointment() {
     };
 
     loadData();
+  }, [user]);
+
+  const loadReasonOptions = async () => {
+    if (!user?.email) return;
+    
+    try {
+      const reasonsList = await getReasonOptions(user.email);
+      setReasonOptions(reasonsList);
+    } catch (error) {
+      console.error('Failed to load reason options:', error);
+    }
+  };
+
+  // Load reason options on component mount
+  useEffect(() => {
+    if (user?.email) {
+      loadReasonOptions();
+    }
   }, [user]);
 
   // Customer selection handler
@@ -134,9 +158,70 @@ export default function AddAppointment() {
     return `${hour24.toString().padStart(2, '0')}:${selectedMinute.toString().padStart(2, '0')}`;
   };
 
+  const handleAddReason = async () => {
+    if (!newReasonText.trim()) {
+      Alert.alert('Error', 'Please enter a reason');
+      return;
+    }
+
+    try {
+      await addReasonOption(user?.email, { text: newReasonText.trim() });
+      setNewReasonText('');
+      setShowAddReasonModal(false);
+      await loadReasonOptions();
+      Alert.alert('Success', 'Reason added successfully');
+    } catch (error) {
+      console.error('Failed to add reason:', error);
+      Alert.alert('Error', 'Failed to add reason');
+    }
+  };
+
+  const handleEditReason = async () => {
+    if (!newReasonText.trim()) {
+      Alert.alert('Error', 'Please enter a reason');
+      return;
+    }
+
+    try {
+      await updateReasonOption(user?.email, editingReason.id, { text: newReasonText.trim() });
+      setNewReasonText('');
+      setEditingReason(null);
+      setShowEditReasonModal(false);
+      await loadReasonOptions();
+      Alert.alert('Success', 'Reason updated successfully');
+    } catch (error) {
+      console.error('Failed to edit reason:', error);
+      Alert.alert('Error', 'Failed to update reason');
+    }
+  };
+
+  const handleDeleteReason = async (reasonId: string) => {
+    Alert.alert(
+      'Delete Reason',
+      'Are you sure you want to delete this reason?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteReasonOption(user?.email, reasonId);
+              await loadReasonOptions();
+              Alert.alert('Success', 'Reason deleted successfully');
+            } catch (error) {
+              console.error('Failed to delete reason:', error);
+              Alert.alert('Error', 'Failed to delete reason');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleSubmit = async () => {
-    if (!customerName || !petName || !appointmentDate || !appointmentTime) {
-      Alert.alert('Validation', 'Please fill in all required fields (Customer, Pet, Date, Time)');
+    if (!customerName || !petName || !appointmentDate || !appointmentTime || !reason) {
+      Alert.alert('Validation', 'Please fill in all required fields (Customer, Pet, Date, Time, Reason)');
       return;
     }
 
@@ -199,6 +284,7 @@ export default function AddAppointment() {
           // Close dropdowns when scrolling
           setShowCustomerDropdown(false);
           setShowPetDropdown(false);
+          setShowReasonDropdown(false);
         }}
         scrollEventThrottle={16}
       >
@@ -356,8 +442,93 @@ export default function AddAppointment() {
           placeholder="Loading..."
         />
 
-        <Text style={styles.label}>Reason</Text>
-        <TextInput style={styles.input} value={reason} onChangeText={setReason} placeholder="Reason" />
+        <Text style={styles.label}>Reason *</Text>
+        <View style={styles.reasonSelector}>
+          <TouchableOpacity 
+            style={styles.dropdownButton}
+            onPress={() => {
+              setShowReasonDropdown(!showReasonDropdown);
+              setShowCustomerDropdown(false);
+              setShowPetDropdown(false);
+            }}
+          >
+            <Text style={styles.selectedCustomer}>
+              {reason || 'Select Reason'}
+            </Text>
+            <Text style={styles.dropdownArrow}>▼</Text>
+          </TouchableOpacity>
+          {showReasonDropdown && (
+            <>
+              <TouchableOpacity 
+                style={styles.dropdownOverlay}
+                onPress={() => setShowReasonDropdown(false)}
+                activeOpacity={1}
+              />
+              <View style={styles.dropdownMenu}>
+                <ScrollView 
+                  style={styles.dropdownScroll} 
+                  showsVerticalScrollIndicator={true} 
+                  nestedScrollEnabled={true}
+                  bounces={false}
+                  contentContainerStyle={styles.dropdownContent}
+                >
+                  {reasonOptions.length === 0 ? (
+                    <View style={styles.dropdownOption}>
+                      <Text style={[styles.dropdownOptionText, {fontStyle: 'italic', color: '#999'}]}>
+                        No reasons available
+                      </Text>
+                    </View>
+                  ) : (
+                    reasonOptions.map((reasonOption) => (
+                      <View key={reasonOption.id} style={styles.reasonOptionRow}>
+                        <TouchableOpacity
+                          style={styles.reasonOption}
+                          onPress={() => {
+                            setReason(reasonOption.text);
+                            setShowReasonDropdown(false);
+                          }}
+                        >
+                          <Text style={styles.dropdownOptionText}>{reasonOption.text}</Text>
+                        </TouchableOpacity>
+                        <View style={styles.reasonActions}>
+                          <TouchableOpacity
+                            style={styles.editIcon}
+                            onPress={() => {
+                              setEditingReason(reasonOption);
+                              setNewReasonText(reasonOption.text);
+                              setShowEditReasonModal(true);
+                              setShowReasonDropdown(false);
+                            }}
+                          >
+                            <Text style={styles.iconText}>✏️</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.deleteIcon}
+                            onPress={() => {
+                              setShowReasonDropdown(false);
+                              handleDeleteReason(reasonOption.id);
+                            }}
+                          >
+                            <Text style={styles.iconText}>🗑️</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                  <TouchableOpacity
+                    style={styles.addReasonOption}
+                    onPress={() => {
+                      setShowAddReasonModal(true);
+                      setShowReasonDropdown(false);
+                    }}
+                  >
+                    <Text style={styles.addReasonText}>+ Add Custom Reason</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
+            </>
+          )}
+        </View>
 
         <Text style={styles.label}>Notes</Text>
         <TextInput style={[styles.input, styles.notes]} value={notes} onChangeText={setNotes} placeholder="Notes" multiline />
@@ -577,15 +748,114 @@ export default function AddAppointment() {
                   <Text style={styles.confirmText}>Set</Text>
                 </TouchableOpacity>
               </View>
+          </View>
+        </View>
+      </Modal>
+      )}
+
+      {/* Add Reason Modal */}
+      {showAddReasonModal && (
+        <Modal transparent={true} visible={showAddReasonModal} animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.reasonModal}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add New Reason</Text>
+                <TouchableOpacity 
+                  style={styles.exitButton}
+                  onPress={() => {
+                    setShowAddReasonModal(false);
+                    setNewReasonText('');
+                  }}
+                >
+                  <Text style={styles.exitText}>×</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.reasonInputContainer}>
+                <TextInput
+                  style={styles.reasonTextInput}
+                  value={newReasonText}
+                  onChangeText={setNewReasonText}
+                  placeholder="Enter custom reason"
+                  placeholderTextColor="#999"
+                  autoFocus={true}
+                  editable={true}
+                  selectTextOnFocus={true}
+                />
+              </View>
+              <View style={styles.buttonRow}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setShowAddReasonModal(false);
+                    setNewReasonText('');
+                  }}
+                >
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.confirmButton}
+                  onPress={handleAddReason}
+                >
+                  <Text style={styles.confirmText}>Add</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Edit Reason Modal */}
+      {showEditReasonModal && (
+        <Modal transparent={true} visible={showEditReasonModal} animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.reasonModal}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Edit Reason</Text>
+                <TouchableOpacity 
+                  style={styles.exitButton}
+                  onPress={() => {
+                    setShowEditReasonModal(false);
+                    setNewReasonText('');
+                    setEditingReason(null);
+                  }}
+                >
+                  <Text style={styles.exitText}>×</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.reasonInputContainer}>
+                <TextInput
+                  style={styles.reasonTextInput}
+                  value={newReasonText}
+                  onChangeText={setNewReasonText}
+                  placeholder="Enter reason"
+                  autoFocus
+                />
+              </View>
+              <View style={styles.buttonRow}>
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setShowEditReasonModal(false);
+                    setNewReasonText('');
+                    setEditingReason(null);
+                  }}
+                >
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.confirmButton}
+                  onPress={handleEditReason}
+                >
+                  <Text style={styles.confirmText}>Save</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
       )}
     </View>
   );
-}
-
-const styles = StyleSheet.create({
+}const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: '#f5f7fa', 
@@ -658,6 +928,11 @@ const styles = StyleSheet.create({
     zIndex: 2000,
     marginTop: 6,
   },
+  reasonSelector: {
+    position: 'relative',
+    zIndex: 1000,
+    marginTop: 6,
+  },
   dropdownButton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -716,6 +991,70 @@ const styles = StyleSheet.create({
     bottom: 0,
     backgroundColor: 'transparent',
     zIndex: 1000,
+  },
+  reasonOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  reasonOption: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  reasonActions: {
+    flexDirection: 'row',
+    paddingRight: 8,
+  },
+  editIcon: {
+    padding: 4,
+    marginRight: 4,
+  },
+  deleteIcon: {
+    padding: 4,
+  },
+  iconText: {
+    fontSize: 12,
+  },
+  addReasonOption: {
+    padding: 12,
+    backgroundColor: '#f8f9fa',
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+    alignItems: 'center',
+  },
+  addReasonText: {
+    color: '#7B2C2C',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  reasonInputContainer: {
+    padding: 20,
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  reasonModal: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    width: '80%',
+    maxHeight: '40%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  reasonTextInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    width: '100%',
+    backgroundColor: '#fff',
+    color: '#333',
   },
   dropdownOption: {
     paddingHorizontal: 16,

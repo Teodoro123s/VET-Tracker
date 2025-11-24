@@ -70,8 +70,9 @@ export default function VetCalendarScreen() {
     // Smart status assignment
     const now = new Date();
     filtered = filtered.map(apt => {
+      // Keep completed appointments as is
       if (apt.status === 'Completed' || apt.status === 'completed' || apt.status === 'cancelled') {
-        return apt;
+        return { ...apt, status: 'Completed' }; // Normalize to 'Completed'
       }
       
       let appointmentTime;
@@ -97,11 +98,16 @@ export default function VetCalendarScreen() {
       
       return { ...apt, status: newStatus };
     });
-    console.log('getVetAppointments -> filtered count after status assignment:', filtered.length);
+    
     // Filter by status
     if (statusFilter !== 'All') {
-      const filterStatus = statusFilter === 'Done' ? 'Completed' : statusFilter;
-      filtered = filtered.filter(apt => apt.status === filterStatus);
+      if (statusFilter === 'Done') {
+        // Filter for completed appointments
+        filtered = filtered.filter(apt => apt.status === 'Completed');
+      } else {
+        // Filter by exact status (Pending, Due)
+        filtered = filtered.filter(apt => apt.status === statusFilter);
+      }
     }
     
     // Sort appointments
@@ -183,30 +189,36 @@ export default function VetCalendarScreen() {
               
               const now = new Date();
               return vetAppts.filter(apt => {
-                let currentStatus = apt.status;
-                
-                if (apt.status !== 'Completed' && apt.status !== 'completed' && apt.status !== 'cancelled') {
-                  let appointmentTime;
-                  if (apt.appointmentDate?.seconds) {
-                    appointmentTime = new Date(apt.appointmentDate.seconds * 1000);
-                  } else {
-                    appointmentTime = new Date(apt.appointmentDate || apt.dateTime);
-                  }
-                  
-                  if (!isNaN(appointmentTime.getTime())) {
-                    const timeDiff = appointmentTime.getTime() - now.getTime();
-                    const hoursDiff = timeDiff / (1000 * 60 * 60);
-                    
-                    if (hoursDiff <= 0) {
-                      currentStatus = 'Due';
-                    } else {
-                      currentStatus = 'Pending';
-                    }
-                  }
+                // Check if already completed
+                if (apt.status === 'Completed' || apt.status === 'completed') {
+                  return status === 'Done';
                 }
                 
-                const filterStatus = status === 'Done' ? 'Completed' : status;
-                return currentStatus === filterStatus;
+                // For cancelled appointments
+                if (apt.status === 'cancelled') {
+                  return status === 'Done'; // Count cancelled as done
+                }
+                
+                // Calculate current status based on time
+                let appointmentTime;
+                if (apt.appointmentDate?.seconds) {
+                  appointmentTime = new Date(apt.appointmentDate.seconds * 1000);
+                } else {
+                  appointmentTime = new Date(apt.appointmentDate || apt.dateTime);
+                }
+                
+                if (isNaN(appointmentTime.getTime())) {
+                  return status === 'Pending'; // Default to pending if date is invalid
+                }
+                
+                const timeDiff = appointmentTime.getTime() - now.getTime();
+                const hoursDiff = timeDiff / (1000 * 60 * 60);
+                
+                if (hoursDiff <= 0) {
+                  return status === 'Due'; // Past appointments
+                } else {
+                  return status === 'Pending'; // Future appointments
+                }
               }).length;
             })();
             

@@ -1,17 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getVeterinarianAppointments } from '../../lib/services/firebaseService';
 import { useAuth } from '../../contexts/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function VetNotificationsScreen() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [readNotifications, setReadNotifications] = useState(new Set());
 
   useEffect(() => {
     loadNotifications();
+    loadReadNotifications();
   }, []);
+
+  const loadReadNotifications = async () => {
+    try {
+      const readData = await AsyncStorage.getItem(`readNotifications_${user?.email}`);
+      if (readData) {
+        const readIds = JSON.parse(readData);
+        setReadNotifications(new Set(readIds));
+      }
+    } catch (error) {
+      console.error('Error loading read notifications:', error);
+    }
+  };
+
+  const saveReadNotifications = async (readSet) => {
+    try {
+      const readIds = Array.from(readSet);
+      await AsyncStorage.setItem(`readNotifications_${user?.email}`, JSON.stringify(readIds));
+    } catch (error) {
+      console.error('Error saving read notifications:', error);
+    }
+  };
+
+  const markNotificationAsRead = async (notificationId) => {
+    const newReadSet = new Set(readNotifications);
+    newReadSet.add(notificationId);
+    setReadNotifications(newReadSet);
+    await saveReadNotifications(newReadSet);
+  };
 
   const generateAINotifications = (appointments, currentTime) => {
     const aiNotifs = [];
@@ -169,16 +200,27 @@ export default function VetNotificationsScreen() {
             <Text style={styles.emptyText}>No notifications</Text>
           </View>
         ) : (
-          notifications.map((notification) => (
-            <View key={notification.id} style={styles.notificationItem}>
-              <Ionicons name={notification.icon} size={20} color={notification.color} />
-              <View style={styles.notificationContent}>
-                <Text style={styles.notificationTitle}>{notification.title}</Text>
-                <Text style={styles.notificationText}>{notification.text}</Text>
-                <Text style={styles.notificationTime}>{notification.time}</Text>
-              </View>
-            </View>
-          ))
+          notifications.map((notification) => {
+            const isRead = readNotifications.has(notification.id);
+            return (
+              <TouchableOpacity 
+                key={notification.id} 
+                style={[
+                  styles.notificationItem,
+                  !isRead && styles.unreadNotification
+                ]}
+                onPress={() => markNotificationAsRead(notification.id)}
+              >
+                <Ionicons name={notification.icon} size={20} color={notification.color} />
+                <View style={styles.notificationContent}>
+                  <Text style={styles.notificationTitle}>{notification.title}</Text>
+                  <Text style={styles.notificationText}>{notification.text}</Text>
+                  <Text style={styles.notificationTime}>{notification.time}</Text>
+                  {!isRead && <View style={styles.unreadIndicator} />}
+                </View>
+              </TouchableOpacity>
+            );
+          })
         )}
       </ScrollView>
     </View>
@@ -209,9 +251,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
+  unreadNotification: {
+    backgroundColor: '#f8f9ff',
+    borderLeftColor: '#007bff',
+  },
   notificationContent: {
     flex: 1,
     marginLeft: 12,
+    position: 'relative',
   },
   notificationTitle: {
     fontSize: 16,
@@ -228,6 +275,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     fontStyle: 'italic',
+  },
+  unreadIndicator: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#007bff',
   },
   emptyContainer: {
     padding: 40,
