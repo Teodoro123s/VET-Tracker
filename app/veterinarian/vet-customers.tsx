@@ -588,25 +588,49 @@ export default function VetCustomers() {
           </View>
         ) : selectedPet && !showMedicalView && !selectedMedicalRecord ? (
           <View style={styles.petDetailsView}>
-            <ScrollView style={styles.scrollableList} showsVerticalScrollIndicator={false}>
-              <View style={styles.detailTable}>
-                {[
-                  { label: 'Name', value: selectedPet.name || 'N/A' },
-                  { label: 'Species', value: selectedPet.species || 'N/A' },
-                  { label: 'Breed', value: selectedPet.breed || 'N/A' },
-                  { label: 'See Medical History', value: 'View Records', isAction: true }
-                ].map((item, index) => (
-                  <View key={index} style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>{item.label}</Text>
-                    {item.isAction ? (
-                      <TouchableOpacity onPress={() => setShowMedicalView(true)}>
-                        <Text style={styles.detailActionValue}>{item.value}</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <Text style={styles.detailValue}>{item.value}</Text>
-                    )}
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
+              <View style={{ paddingTop: 20, paddingBottom: 5, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#800020' }}>Pet Details</Text>
+              </View>
+              <View style={{ padding: 20 }}>
+                <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(123, 44, 44, 0.1)', marginBottom: 20, elevation: 8, shadowColor: '#7B2C2C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}>
+                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#eee', paddingVertical: 8 }}>
+                    <Text style={{ flex: 1, fontWeight: 'bold', color: '#800020' }}>Field</Text>
+                    <Text style={{ flex: 2, fontWeight: 'bold', color: '#800020' }}>Value</Text>
                   </View>
-                ))}
+                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
+                    <Text style={{ flex: 1, color: '#333' }}>Name</Text>
+                    <Text style={{ flex: 2, color: '#333' }}>{selectedPet.name || 'N/A'}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
+                    <Text style={{ flex: 1, color: '#333' }}>Species</Text>
+                    <Text style={{ flex: 2, color: '#333' }}>{selectedPet.species || 'N/A'}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
+                    <Text style={{ flex: 1, color: '#333' }}>Breed</Text>
+                    <Text style={{ flex: 2, color: '#333' }}>{selectedPet.breed || 'N/A'}</Text>
+                  </View>
+                </View>
+
+                {/* Medical Records Section */}
+                <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(123, 44, 44, 0.1)', marginBottom: 20, elevation: 8, shadowColor: '#7B2C2C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}>
+                  <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#800020' }}>Medical Records</Text>
+                      <TouchableOpacity
+                        style={{ backgroundColor: '#7B2C2C', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center' }}
+                        onPress={() => setShowMedicalView(true)}
+                      >
+                        <Ionicons name="document-text" size={16} color="#fff" style={{ marginRight: 8 }} />
+                        <Text style={{ color: '#fff', fontWeight: '600' }}>View Records</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={{ padding: 16, alignItems: 'center' }}>
+                    <Text style={{ color: '#666', fontStyle: 'italic' }}>Tap "View Records" to see medical history</Text>
+                  </View>
+                </View>
               </View>
             </ScrollView>
           </View>
@@ -679,12 +703,87 @@ export default function VetCustomers() {
                     <Text style={{ flex: 1, fontWeight: 'bold', color: '#800020' }}>Field</Text>
                     <Text style={{ flex: 2, fontWeight: 'bold', color: '#800020' }}>Value</Text>
                   </View>
-                  {Object.entries(selectedCustomer || {}).map(([key, value]) => (
-                    <View key={key} style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
-                      <Text style={{ flex: 1, color: '#333' }}>{key}</Text>
-                      <Text style={{ flex: 2, color: '#333' }}>{String(value)}</Text>
+                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
+                    <Text style={{ flex: 1, color: '#333' }}>Name</Text>
+                    <Text style={{ flex: 2, color: '#333' }}>{selectedCustomer?.name || `${selectedCustomer?.firstname || ''} ${selectedCustomer?.surname || ''}`.trim() || 'N/A'}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
+                    <Text style={{ flex: 1, color: '#333' }}>Contact</Text>
+                    <Text style={{ flex: 2, color: '#333' }}>{selectedCustomer?.contact || 'N/A'}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
+                    <Text style={{ flex: 1, color: '#333' }}>Email</Text>
+                    <Text style={{ flex: 2, color: '#333' }}>{selectedCustomer?.email || 'N/A'}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
+                    <Text style={{ flex: 1, color: '#333' }}>Address</Text>
+                    <Text style={{ flex: 2, color: '#333' }}>{selectedCustomer?.address || 'N/A'}</Text>
+                  </View>
+                </View>
+                
+                {/* Pets Summary Section */}
+                <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(123, 44, 44, 0.1)', marginBottom: 20, elevation: 8, shadowColor: '#7B2C2C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}>
+                  <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#800020' }}>Pets ({customerPets.length})</Text>
+                      <TouchableOpacity 
+                        style={{ backgroundColor: '#7B2C2C', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center' }}
+                        onPress={() => {
+                          setShowPetsView(true);
+                          loadCustomerPets();
+                        }}
+                      >
+                        <Ionicons name="paw" size={16} color="#fff" style={{ marginRight: 8 }} />
+                        <Text style={{ color: '#fff', fontWeight: '600' }}>View All Pets</Text>
+                      </TouchableOpacity>
                     </View>
-                  ))}
+                  </View>
+                  
+                  {customerPets.length > 0 ? (
+                    <View style={{ padding: 16 }}>
+                      {customerPets.slice(0, 3).map((pet, index) => (
+                        <TouchableOpacity 
+                          key={pet.id || index} 
+                          style={{ 
+                            flexDirection: 'row', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            paddingVertical: 12,
+                            borderBottomWidth: index < customerPets.slice(0, 3).length - 1 ? 1 : 0,
+                            borderBottomColor: '#f0f0f0'
+                          }}
+                          onPress={() => {
+                            setSelectedPet(pet);
+                            setShowPetsView(false);
+                          }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 16, fontWeight: '600', color: '#333' }}>{pet.name}</Text>
+                            <Text style={{ fontSize: 14, color: '#666', marginTop: 2 }}>{pet.species || 'N/A'} - {pet.breed || 'N/A'}</Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={{ fontSize: 12, color: '#7B2C2C', marginRight: 8 }}>View Details</Text>
+                            <Ionicons name="chevron-forward" size={16} color="#7B2C2C" />
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                      {customerPets.length > 3 && (
+                        <TouchableOpacity 
+                          style={{ paddingVertical: 12, alignItems: 'center' }}
+                          onPress={() => {
+                            setShowPetsView(true);
+                            loadCustomerPets();
+                          }}
+                        >
+                          <Text style={{ color: '#7B2C2C', fontWeight: '600' }}>View {customerPets.length - 3} more pets...</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : (
+                    <View style={{ padding: 16, alignItems: 'center' }}>
+                      <Text style={{ color: '#666', fontStyle: 'italic' }}>No pets found for this customer</Text>
+                    </View>
+                  )}
                 </View>
               </View>
             </ScrollView>
@@ -1299,7 +1398,7 @@ export default function VetCustomers() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f7fa',
+    backgroundColor: '#F9FAFB',
   },
 
   title: {
@@ -1309,48 +1408,52 @@ const styles = StyleSheet.create({
   },
   addButton: {
     position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#7B2C2C',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 6,
+    elevation: 8,
     shadowColor: '#7B2C2C',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   addPetButton: {
     position: 'absolute',
-    bottom: 35,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#7B2C2C',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 6,
+    elevation: 8,
     shadowColor: '#7B2C2C',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    paddingTop: 12,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingTop: 14,
+    paddingHorizontal: 18,
+    paddingBottom: 14,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 2,
   },
@@ -1362,7 +1465,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     flex: 1,
-    backgroundColor: '#f5f7fa',
+    backgroundColor: '#F9FAFB',
   },
   scrollableList: {
     flex: 1,
@@ -1370,23 +1473,23 @@ const styles = StyleSheet.create({
   },
   customerRow: {
     backgroundColor: '#fff',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
     marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 8,
+    marginBottom: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(123, 44, 44, 0.1)',
-    elevation: 2,
+    borderColor: '#e5e7eb',
+    elevation: 3,
     shadowColor: '#7B2C2C',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 3,
   },
   customerName: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
+    fontSize: 17,
+    color: '#374151',
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
@@ -1402,8 +1505,9 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
+    color: '#9CA3AF',
     marginTop: 16,
+    fontWeight: '500',
   },
 
   modalOverlay: {
@@ -1412,10 +1516,15 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: '80%',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    height: '85%',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1423,7 +1532,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#e5e7eb',
   },
   modalForm: {
     padding: 20,
@@ -1440,15 +1549,16 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-    backgroundColor: '#fff',
-    elevation: 2,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    backgroundColor: '#F9FAFB',
+    color: '#374151',
+    elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 2,
   },
   textArea: {
@@ -1474,33 +1584,33 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F3F4F6',
     borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 14,
-    borderRadius: 20,
+    borderColor: '#e5e7eb',
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
   },
   cancelButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#666',
+    color: '#6B7280',
   },
   saveButton: {
     flex: 1,
     backgroundColor: '#7B2C2C',
-    padding: 14,
-    borderRadius: 20,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    elevation: 4,
     shadowColor: '#7B2C2C',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 4,
   },
   saveButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: 'bold',
     color: '#fff',
   },
   customerDetailsView: {
@@ -1606,28 +1716,28 @@ const styles = StyleSheet.create({
   },
   petRow: {
     backgroundColor: '#fff',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
     marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 8,
+    marginBottom: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(123, 44, 44, 0.1)',
-    elevation: 2,
+    borderColor: '#e5e7eb',
+    elevation: 3,
     shadowColor: '#7B2C2C',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 3,
   },
   petName: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 17,
+    color: '#374151',
     fontWeight: '600',
   },
   petDetails: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+    color: '#6B7280',
+    marginTop: 6,
   },
   petDetailsView: {
     flex: 1,
@@ -1644,28 +1754,28 @@ const styles = StyleSheet.create({
   },
   medicalRow: {
     backgroundColor: '#fff',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
     marginHorizontal: 16,
-    marginTop: 8,
-    borderRadius: 8,
+    marginBottom: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(123, 44, 44, 0.1)',
-    elevation: 2,
+    borderColor: '#e5e7eb',
+    elevation: 3,
     shadowColor: '#7B2C2C',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 3,
   },
   medicalType: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 17,
+    color: '#374151',
     fontWeight: '600',
   },
   medicalDate: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+    color: '#6B7280',
+    marginTop: 6,
   },
   medicalNotes: {
     fontSize: 12,
@@ -1690,55 +1800,55 @@ const styles = StyleSheet.create({
   },
   addRecordButton: {
     position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#7B2C2C',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 6,
+    elevation: 8,
     shadowColor: '#7B2C2C',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   dropdownButton: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: '#fff',
-    elevation: 2,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 14,
+    backgroundColor: '#F9FAFB',
+    elevation: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 2,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    minHeight: 48,
+    minHeight: 52,
   },
   dropdownText: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 15,
+    color: '#374151',
     flex: 1,
   },
   disabledText: {
-    color: '#ccc',
+    color: '#D1D5DB',
   },
   dropdownList: {
     borderWidth: 1,
-    borderColor: 'rgba(123, 44, 44, 0.1)',
-    borderRadius: 8,
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
     backgroundColor: '#fff',
     marginTop: 4,
-    maxHeight: 150,
-    elevation: 4,
+    maxHeight: 200,
+    elevation: 5,
     shadowColor: '#7B2C2C',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
   },
   dropdownScroll: {
@@ -1761,24 +1871,29 @@ const styles = StyleSheet.create({
   },
   customModalContent: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
-    width: '80%',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
     alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
   },
   customModalTitle: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
+    color: '#374151',
+    marginBottom: 18,
   },
   customInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fafafa',
+    borderColor: '#e5e7eb',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    backgroundColor: '#F9FAFB',
     width: '100%',
     marginBottom: 20,
   },
@@ -1789,29 +1904,29 @@ const styles = StyleSheet.create({
   },
   customCancelButton: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 14,
-    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#e5e7eb',
   },
   customCancelText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#666',
+    color: '#6B7280',
   },
   customSaveButton: {
     flex: 1,
     backgroundColor: '#7B2C2C',
-    padding: 14,
-    borderRadius: 20,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    elevation: 4,
     shadowColor: '#7B2C2C',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-    elevation: 4,
   },
   modalTitle: {
     fontSize: 18,

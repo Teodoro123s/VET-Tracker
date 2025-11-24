@@ -19,6 +19,12 @@ export default function IndexScreen() {
 
   useEffect(() => {
     if (!loading && isReady) {
+      // For mobile platforms, always redirect to login page
+      if (Platform.OS !== 'web') {
+        router.replace('/veterinarian/mobile-login');
+        return;
+      }
+
       if (user) {
         // User is logged in, redirect based on role
         if (user.role === 'superadmin' || user.email === 'edzhelteodoro@gmail.com') {

@@ -465,6 +465,7 @@ export const getVeterinarianAppointments = async (userEmail?: string, vetEmail?:
     
     // Filter appointments for the specific veterinarian
     const vetAppointments = allAppointments.filter(appointment => 
+      appointment.veterinarian === vetEmail || 
       appointment.veterinarianEmail === vetEmail || 
       appointment.assignedVet === vetEmail ||
       appointment.vetEmail === vetEmail

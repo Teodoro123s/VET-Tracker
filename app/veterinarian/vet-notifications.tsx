@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getAppointments } from '../../lib/services/firebaseService';
+import { getVeterinarianAppointments } from '../../lib/services/firebaseService';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function VetNotificationsScreen() {
@@ -68,12 +68,8 @@ export default function VetNotificationsScreen() {
 
   const loadNotifications = async () => {
     try {
-      const appointments = await getAppointments(user?.email);
-      const vetAppointments = appointments.filter(apt => 
-        apt.veterinarian === user?.email || 
-        apt.assignedVet === user?.email || 
-        (apt.veterinarian && apt.veterinarian.includes('Dr.'))
-      );
+      const appointments = await getVeterinarianAppointments(user?.email, user?.email);
+      const vetAppointments = appointments; // Already filtered by the function
 
       const now = new Date();
       const notificationList = [];

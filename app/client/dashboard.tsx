@@ -29,21 +29,29 @@ export default function Dashboard() {
   // Check subscription on mount
   useEffect(() => {
     if (!subscriptionLoading && user?.role === 'admin' && !hasActiveSubscription) {
-      Alert.alert(
-        '⚠️ Subscription Expired',
-        'Your subscription has expired. Access to most features is restricted. Please contact support to renew your subscription.',
-        [
-          { text: 'OK', onPress: () => router.replace('/client/settings') }
-        ]
-      );
+      // Add a small delay to ensure navigation is ready
+      const timer = setTimeout(() => {
+        Alert.alert(
+          '⚠️ Subscription Expired',
+          'Your subscription has expired. Access to most features is restricted. Please contact support to renew your subscription.',
+          [
+            { text: 'OK', onPress: () => router.replace('/client/settings') }
+          ]
+        );
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [subscriptionLoading, hasActiveSubscription, user?.role]);
 
   // Ensure authenticated access — redirect to login when not signed in
   useEffect(() => {
     if (!user) {
-      if (Platform.OS === 'web') router.replace('/auth/admin-login');
-      else router.replace('/veterinarian/mobile-login');
+      // Add a small delay to ensure navigation is ready
+      const timer = setTimeout(() => {
+        if (Platform.OS === 'web') router.replace('/auth/admin-login');
+        else router.replace('/veterinarian/mobile-login');
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [user]);
 

@@ -5,7 +5,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { addCustomer, getVeterinarians, getAppointments, getCustomers, getPets } from '../../lib/services/firebaseService';
+import { addCustomer, getVeterinarians, getCustomers, getPets, getVeterinarianAppointments } from '../../lib/services/firebaseService';
 import { Colors } from '@/constants/Colors';
 import { LineChart } from 'react-native-chart-kit';
 
@@ -167,9 +167,9 @@ export default function VetMobile() {
       console.log('👤 User email:', user.email);
       console.log('🔄 Retry count:', retryCount);
       
-      // Use getAppointments (same as appointments page) to get ALL appointments
+      // Use getVeterinarianAppointments to get only appointments assigned to this vet
       const [allAppointments, customers, pets] = await Promise.all([
-        getAppointments(user.email),
+        getVeterinarianAppointments(user.email, user.email),
         getCustomers(user.email).catch(() => []),
         getPets(user.email).catch(() => [])
       ]);

@@ -19,6 +19,7 @@ export default function AddAppointment() {
   const [customerId, setCustomerId] = useState('');
   const [petName, setPetName] = useState('');
   const [veterinarian, setVeterinarian] = useState('');
+  const [veterinarianEmail, setVeterinarianEmail] = useState('');
   const [reason, setReason] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -53,19 +54,22 @@ export default function AddAppointment() {
         const petsList = await getPets(user.email);
         setPets(petsList);
 
-        // Load veterinarian name
+        // Load veterinarian name and email
         const vets = await getVeterinarians(user.email);
         const currentVet = vets.find(v => v.email === user.email);
         
         if (currentVet) {
           const vetName = `${currentVet.firstname || ''} ${currentVet.surname || ''}`.trim() || currentVet.name || user.email;
           setVeterinarian(vetName);
+          setVeterinarianEmail(user.email); // Store the email for filtering
         } else {
           setVeterinarian(user.name || user.email);
+          setVeterinarianEmail(user.email);
         }
       } catch (error) {
         console.error('Failed to load data:', error);
         setVeterinarian(user.name || user.email);
+        setVeterinarianEmail(user.email);
       }
     };
 
@@ -158,6 +162,7 @@ export default function AddAppointment() {
       appointmentDate: new Date(`${appointmentDate}T${appointmentTime}`),
       appointmentTime,
       veterinarian,
+      veterinarianEmail,
       reason,
       status: 'scheduled',
       notes,

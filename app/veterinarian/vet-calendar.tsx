@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Animated, 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { getAppointments, getVeterinarianAppointments, updateAppointment, deleteAppointment } from '@/lib/services/firebaseService';
+import { getVeterinarianAppointments, updateAppointment, deleteAppointment } from '@/lib/services/firebaseService';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function VetCalendarScreen() {
@@ -26,6 +26,7 @@ export default function VetCalendarScreen() {
       fetchAppointments();
     } else {
       console.log('No user email, skipping fetch');
+      setLoading(false);
     }
   }, [user?.email]);
   
@@ -42,9 +43,8 @@ export default function VetCalendarScreen() {
         return;
       }
       
-      // Use getAppointments (same as vet-appointments page) to get ALL appointments
-      // Veterinarians can see all appointments in their clinic
-      const appointmentData = await getAppointments(user?.email);
+      // Get only appointments assigned to this veterinarian
+      const appointmentData = await getVeterinarianAppointments(user?.email, user?.email);
       console.log('Fetched all appointments:', appointmentData?.length || 0);
       
       if (appointmentData && appointmentData.length > 0) {

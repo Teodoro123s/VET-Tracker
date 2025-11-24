@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
-import { deleteAppointment, getAppointments, getVeterinarianAppointments, getVeterinarians, updateAppointment } from '../../lib/services/firebaseService';
+import { deleteAppointment, getVeterinarianAppointments, updateAppointment } from '../../lib/services/firebaseService';
 
 export default function VetAppointments() {
   const router = useRouter();
@@ -18,9 +18,11 @@ export default function VetAppointments() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    loadAppointments();
-    testFirebaseConnection();
-  }, []);
+    if (user?.email) {
+      loadAppointments();
+      testFirebaseConnection();
+    }
+  }, [user?.email]);
   
   const testFirebaseConnection = async () => {
     try {
@@ -28,8 +30,8 @@ export default function VetAppointments() {
       console.log('Testing Firebase connection with user:', user?.email);
       
       // Test basic Firebase connection
-      const testAppointments = await getAppointments(user?.email);
-      console.log('Direct Firebase test - appointments found:', testAppointments.length);
+      const testAppointments = await getVeterinarianAppointments(user?.email, user?.email);
+      console.log('Direct Firebase test - vet appointments found:', testAppointments.length);
       
       if (testAppointments.length === 0) {
         console.log('NO APPOINTMENTS FOUND IN FIREBASE!');
@@ -61,21 +63,18 @@ export default function VetAppointments() {
         return;
       }
       
-      // First try to get all appointments to see if there are any
-      const allAppointments = await getAppointments(user.email);
-      console.log('Total appointments in system:', allAppointments.length);
+      // Get only appointments assigned to this veterinarian
+      const allAppointments = await getVeterinarianAppointments(user.email, user.email);
+      console.log('Appointments assigned to this vet:', allAppointments.length);
       
-      // Show ALL appointments (veterinarians can manage all appointments)
-      const debugAppointments = allAppointments;
-      
-      console.log('Setting appointments to:', debugAppointments.length, 'appointments');
-      if (debugAppointments.length > 0) {
-        console.log('First appointment sample:', debugAppointments[0]);
+      console.log('Setting appointments to:', allAppointments.length, 'appointments');
+      if (allAppointments.length > 0) {
+        console.log('First appointment sample:', allAppointments[0]);
       }
       
       // Smart status assignment
       const now = new Date();
-      const smartAppointments = debugAppointments.map(appointment => {
+      const smartAppointments = allAppointments.map(appointment => {
         console.log('Processing appointment:', appointment.id, 'Status:', appointment.status, 'Vet field:', appointment.veterinarian);
         // Keep completed/cancelled status unchanged - normalize all to 'Done'
         if (appointment.status === 'completed' || appointment.status === 'Completed' || 
