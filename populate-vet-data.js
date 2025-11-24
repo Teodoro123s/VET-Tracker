@@ -17,7 +17,8 @@ const db = getFirestore(app);
 
 async function populateVetData() {
   try {
-    const tenantId = 'azEhpY9h2n062ll7Fsx2';
+    // Use the tenantId FIELD value, not the document ID
+    const tenantId = 'edmo.teodoro.swu'; // This is the tenantId field value from the tenant document
     
     // Get all veterinarians from tenants collection
     const tenantsSnapshot = await getDocs(collection(db, 'tenants'));
@@ -32,24 +33,29 @@ async function populateVetData() {
     
     console.log(`Found ${vets.length} veterinarians in tenants collection`);
     
-    // Create veterinarian profile for Dr. ed ed (edanel.teodoro@gmail.com)
+    // Create veterinarian profile for Dr. bb bb (edanel.teodoro@gmail.com)
     console.log('\n=== Creating veterinarian profile ===');
+    console.log('Using tenant ID:', tenantId);
+    
     const vetData = {
       name: 'Dr. bb bb',
       email: 'edanel.teodoro@gmail.com',
       firstname: 'bb',
       surname: 'bb',
       license: 'VET-2025-001',
+      licenseImageUrl: '',
       specialization: 'General Practice',
-      phone: '+1234567890',
+      phone: '+63 123 456 7890',
+      role: 'veterinarian',
       hasAccount: true,
       status: 'active',
       createdAt: new Date(),
-      createdBy: 'edanel.teodoro@gmail.com'
+      createdBy: 'edmo.teodoro.swu@phinmaed.com'
     };
     
     const vetRef = await addDoc(collection(db, `tenants/${tenantId}/veterinarians`), vetData);
     console.log('✅ Created veterinarian profile with ID:', vetRef.id);
+    console.log('Path: tenants/' + tenantId + '/veterinarians/' + vetRef.id);
     console.log('Data:', vetData);
     
     // Verify it was created
