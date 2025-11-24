@@ -191,12 +191,25 @@ export default function AddAppointment() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.form} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView 
+        style={styles.form} 
+        contentContainerStyle={{ paddingBottom: 40 }}
+        keyboardShouldPersistTaps="handled"
+        onScroll={() => {
+          // Close dropdowns when scrolling
+          setShowCustomerDropdown(false);
+          setShowPetDropdown(false);
+        }}
+        scrollEventThrottle={16}
+      >
         <Text style={styles.label}>Customer *</Text>
         <View style={styles.customerSelector}>
           <TouchableOpacity 
             style={styles.dropdownButton}
-            onPress={() => setShowCustomerDropdown(!showCustomerDropdown)}
+            onPress={() => {
+              setShowCustomerDropdown(!showCustomerDropdown);
+              setShowPetDropdown(false); // Close pet dropdown
+            }}
           >
             <Text style={styles.selectedCustomer}>
               {customerName || 'Select Customer'}
@@ -204,29 +217,42 @@ export default function AddAppointment() {
             <Text style={styles.dropdownArrow}>▼</Text>
           </TouchableOpacity>
           {showCustomerDropdown && (
-            <View style={styles.dropdownMenu}>
-              <ScrollView style={styles.dropdownScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
-                {customers.length === 0 ? (
-                  <View style={styles.dropdownOption}>
-                    <Text style={[styles.dropdownOptionText, {fontStyle: 'italic', color: '#999'}]}>
-                      No customers found
-                    </Text>
-                  </View>
-                ) : (
-                  customers.map((customer) => (
-                    <TouchableOpacity
-                      key={customer.id}
-                      style={styles.dropdownOption}
-                      onPress={() => selectCustomer(customer)}
-                    >
-                      <Text style={styles.dropdownOptionText}>
-                        {`${customer.firstname || ''} ${customer.surname || ''}`.trim() || customer.email || 'Unknown'}
+            <>
+              <TouchableOpacity 
+                style={styles.dropdownOverlay}
+                onPress={() => setShowCustomerDropdown(false)}
+                activeOpacity={1}
+              />
+              <View style={styles.dropdownMenu}>
+                <ScrollView 
+                  style={styles.dropdownScroll} 
+                  showsVerticalScrollIndicator={true} 
+                  nestedScrollEnabled={true}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={styles.dropdownContent}
+                >
+                  {customers.length === 0 ? (
+                    <View style={styles.dropdownOption}>
+                      <Text style={[styles.dropdownOptionText, {fontStyle: 'italic', color: '#999'}]}>
+                        No customers found
                       </Text>
-                    </TouchableOpacity>
-                  ))
-                )}
-              </ScrollView>
-            </View>
+                    </View>
+                  ) : (
+                    customers.map((customer) => (
+                      <TouchableOpacity
+                        key={customer.id}
+                        style={styles.dropdownOption}
+                        onPress={() => selectCustomer(customer)}
+                      >
+                        <Text style={styles.dropdownOptionText}>
+                          {`${customer.firstname || ''} ${customer.surname || ''}`.trim() || customer.email || 'Unknown'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </ScrollView>
+              </View>
+            </>
           )}
         </View>
 
@@ -234,7 +260,12 @@ export default function AddAppointment() {
         <View style={styles.petSelector}>
           <TouchableOpacity 
             style={[styles.dropdownButton, !selectedCustomer && styles.disabledDropdown]}
-            onPress={() => selectedCustomer && setShowPetDropdown(!showPetDropdown)}
+            onPress={() => {
+              if (selectedCustomer) {
+                setShowPetDropdown(!showPetDropdown);
+                setShowCustomerDropdown(false); // Close customer dropdown
+              }
+            }}
             disabled={!selectedCustomer}
           >
             <Text style={[styles.selectedCustomer, !selectedCustomer && styles.disabledText]}>
@@ -243,28 +274,41 @@ export default function AddAppointment() {
             <Text style={styles.dropdownArrow}>▼</Text>
           </TouchableOpacity>
           {showPetDropdown && selectedCustomer && (
-            <View style={styles.dropdownMenu}>
-              <ScrollView style={styles.dropdownScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
-                {getCustomerPets().map((pet) => (
-                  <TouchableOpacity
-                    key={pet.id}
-                    style={styles.dropdownOption}
-                    onPress={() => selectPet(pet)}
-                  >
-                    <Text style={styles.dropdownOptionText}>
-                      {pet.name} ({pet.species || 'Unknown'})
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-                {getCustomerPets().length === 0 && (
-                  <View style={styles.dropdownOption}>
-                    <Text style={[styles.dropdownOptionText, {fontStyle: 'italic', color: '#999'}]}>
-                      No pets found for this customer
-                    </Text>
-                  </View>
-                )}
-              </ScrollView>
-            </View>
+            <>
+              <TouchableOpacity 
+                style={styles.dropdownOverlay}
+                onPress={() => setShowPetDropdown(false)}
+                activeOpacity={1}
+              />
+              <View style={styles.dropdownMenu}>
+                <ScrollView 
+                  style={styles.dropdownScroll} 
+                  showsVerticalScrollIndicator={true} 
+                  nestedScrollEnabled={true}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={styles.dropdownContent}
+                >
+                  {getCustomerPets().map((pet) => (
+                    <TouchableOpacity
+                      key={pet.id}
+                      style={styles.dropdownOption}
+                      onPress={() => selectPet(pet)}
+                    >
+                      <Text style={styles.dropdownOptionText}>
+                        {pet.name} ({pet.species || 'Unknown'})
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                  {getCustomerPets().length === 0 && (
+                    <View style={styles.dropdownOption}>
+                      <Text style={[styles.dropdownOptionText, {fontStyle: 'italic', color: '#999'}]}>
+                        No pets found for this customer
+                      </Text>
+                    </View>
+                  )}
+                </ScrollView>
+              </View>
+            </>
           )}
         </View>
 
@@ -650,7 +694,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
-    maxHeight: 150,
+    maxHeight: 250,
     zIndex: 1001,
     elevation: 5,
     shadowColor: '#000',
@@ -659,16 +703,30 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   dropdownScroll: {
-    maxHeight: 140,
+    maxHeight: 240,
+  },
+  dropdownContent: {
+    paddingVertical: 4,
+  },
+  dropdownOverlay: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 1000,
   },
   dropdownOption: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
+    minHeight: 48,
+    justifyContent: 'center',
   },
   dropdownOptionText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#333',
   },
   dateTimeButton: {
