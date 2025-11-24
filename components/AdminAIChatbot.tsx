@@ -154,20 +154,17 @@ export default function AdminAIChatbot() {
       {/* Chat Modal */}
       <Modal
         visible={isOpen}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={() => setIsOpen(false)}
       >
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.modalContainer}
-        >
+        <View style={styles.modalContainer}>
           <View style={styles.chatContainer}>
             {/* Header */}
             <View style={styles.chatHeader}>
               <View style={styles.headerLeft}>
                 <View style={styles.botAvatar}>
-                  <Ionicons name="sparkles" size={20} color="#fff" />
+                  <Ionicons name="sparkles" size={16} color="#fff" />
                 </View>
                 <View>
                   <Text style={styles.headerTitle}>VET Assistant</Text>
@@ -175,7 +172,7 @@ export default function AdminAIChatbot() {
                 </View>
               </View>
               <TouchableOpacity onPress={() => setIsOpen(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color="#666" />
+                <Ionicons name="close" size={18} color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -190,7 +187,7 @@ export default function AdminAIChatbot() {
                       style={styles.quickActionButton}
                       onPress={() => handleQuickAction(action.query)}
                     >
-                      <Ionicons name={action.icon as any} size={24} color="#7B2C2C" />
+                      <Ionicons name={action.icon as any} size={20} color="#7B2C2C" />
                       <Text style={styles.quickActionText}>{action.text}</Text>
                     </TouchableOpacity>
                   ))}
@@ -216,7 +213,7 @@ export default function AdminAIChatbot() {
                 >
                   {message.sender === 'bot' && (
                     <View style={styles.botAvatarSmall}>
-                      <Ionicons name="sparkles" size={12} color="#fff" />
+                      <Ionicons name="sparkles" size={10} color="#fff" />
                     </View>
                   )}
                   <View
@@ -240,7 +237,7 @@ export default function AdminAIChatbot() {
                   </View>
                   {message.sender === 'user' && (
                     <View style={styles.userAvatarSmall}>
-                      <Ionicons name="person" size={12} color="#fff" />
+                      <Ionicons name="person" size={10} color="#fff" />
                     </View>
                   )}
                 </View>
@@ -249,7 +246,7 @@ export default function AdminAIChatbot() {
               {isTyping && (
                 <View style={styles.typingIndicator}>
                   <View style={styles.botAvatarSmall}>
-                    <Ionicons name="sparkles" size={12} color="#fff" />
+                    <Ionicons name="sparkles" size={10} color="#fff" />
                   </View>
                   <View style={styles.typingBubble}>
                     <View style={styles.typingDots}>
@@ -279,11 +276,11 @@ export default function AdminAIChatbot() {
                 onPress={handleSend}
                 disabled={!inputText.trim()}
               >
-                <Ionicons name="send" size={20} color="#fff" />
+                <Ionicons name="send" size={16} color="#fff" />
               </TouchableOpacity>
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
     </>
   );
@@ -327,82 +324,89 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+    padding: 20,
   },
   chatContainer: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    height: '85%',
+    borderRadius: 12,
+    width: 320,
+    height: 480,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 10,
+    marginBottom: 10,
   },
   chatHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+    backgroundColor: '#7B2C2C',
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
   },
   botAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#7B2C2C',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#fff',
   },
   headerSubtitle: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   closeButton: {
     padding: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
   },
   quickActionsContainer: {
-    padding: 20,
+    padding: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
   quickActionsTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
     color: '#666',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 6,
   },
   quickActionButton: {
     flex: 1,
     minWidth: '45%',
     backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 6,
+    padding: 8,
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
   quickActionText: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#333',
     fontWeight: '500',
     textAlign: 'center',
@@ -411,13 +415,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   messagesContent: {
-    padding: 20,
-    paddingBottom: 10,
+    padding: 8,
+    paddingBottom: 6,
   },
   messageWrapper: {
     flexDirection: 'row',
-    marginBottom: 16,
-    gap: 8,
+    marginBottom: 8,
+    gap: 4,
   },
   userMessageWrapper: {
     justifyContent: 'flex-end',
@@ -426,18 +430,18 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   botAvatarSmall: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: '#7B2C2C',
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 4,
   },
   userAvatarSmall: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: '#10B981',
     justifyContent: 'center',
     alignItems: 'center',
@@ -445,8 +449,8 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: '75%',
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 12,
+    padding: 8,
   },
   userMessage: {
     backgroundColor: '#7B2C2C',
@@ -457,8 +461,8 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
   },
   messageText: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 16,
   },
   userMessageText: {
     color: '#fff',
@@ -467,8 +471,8 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   messageTime: {
-    fontSize: 10,
-    marginTop: 4,
+    fontSize: 9,
+    marginTop: 2,
   },
   userMessageTime: {
     color: 'rgba(255, 255, 255, 0.7)',
@@ -501,26 +505,26 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: 16,
+    padding: 10,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
-    gap: 12,
+    gap: 8,
   },
   input: {
     flex: 1,
     backgroundColor: '#f8f9fa',
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 14,
-    maxHeight: 100,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 12,
+    maxHeight: 80,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#7B2C2C',
     justifyContent: 'center',
     alignItems: 'center',

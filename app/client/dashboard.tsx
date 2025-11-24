@@ -6,7 +6,6 @@ import { useTenant } from '../../contexts/TenantContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
 import { useRouter } from 'expo-router';
-import AdminAIChatbot from '../../components/AdminAIChatbot';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -398,9 +397,6 @@ export default function Dashboard() {
           </View>
         </View>
       </ScrollView>
-
-      {/* AI Chatbot */}
-      <AdminAIChatbot />
     </View>
   );
 }

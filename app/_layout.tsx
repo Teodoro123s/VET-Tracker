@@ -16,6 +16,7 @@ import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
 import Sidebar from '@/components/Sidebar';
 import VetBottomMenu from '@/components/VetBottomMenu';
 import VetMobileHeader from '@/components/VetMobileHeader';
+import AdminAIChatbot from '@/components/AdminAIChatbot';
 // import ChatBot from '../components/ChatBot'; // Commented out - component not available
 
 
@@ -208,8 +209,7 @@ function AppContent() {
         </View>
         
         {/* AI Chatbot - Show on client routes */}
-        {/* {isClientRoute && <ChatBot tenantId="default" />} */}
-        
+        {isClientRoute && <AdminAIChatbot />}
 
       </View>
       <StatusBar style="dark" translucent backgroundColor="transparent" />
