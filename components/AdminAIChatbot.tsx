@@ -164,7 +164,7 @@ export default function AdminAIChatbot() {
             <View style={styles.chatHeader}>
               <View style={styles.headerLeft}>
                 <View style={styles.botAvatar}>
-                  <Ionicons name="sparkles" size={16} color="#fff" />
+                  <Ionicons name="sparkles" size={12} color="#fff" />
                 </View>
                 <View>
                   <Text style={styles.headerTitle}>VET Assistant</Text>
@@ -172,7 +172,7 @@ export default function AdminAIChatbot() {
                 </View>
               </View>
               <TouchableOpacity onPress={() => setIsOpen(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={18} color="#fff" />
+                <Ionicons name="close" size={14} color="#fff" />
               </TouchableOpacity>
             </View>
 
@@ -187,7 +187,7 @@ export default function AdminAIChatbot() {
                       style={styles.quickActionButton}
                       onPress={() => handleQuickAction(action.query)}
                     >
-                      <Ionicons name={action.icon as any} size={20} color="#7B2C2C" />
+                      <Ionicons name={action.icon as any} size={16} color="#7B2C2C" />
                       <Text style={styles.quickActionText}>{action.text}</Text>
                     </TouchableOpacity>
                   ))}
@@ -213,7 +213,7 @@ export default function AdminAIChatbot() {
                 >
                   {message.sender === 'bot' && (
                     <View style={styles.botAvatarSmall}>
-                      <Ionicons name="sparkles" size={10} color="#fff" />
+                      <Ionicons name="sparkles" size={7} color="#fff" />
                     </View>
                   )}
                   <View
@@ -237,7 +237,7 @@ export default function AdminAIChatbot() {
                   </View>
                   {message.sender === 'user' && (
                     <View style={styles.userAvatarSmall}>
-                      <Ionicons name="person" size={10} color="#fff" />
+                      <Ionicons name="person" size={7} color="#fff" />
                     </View>
                   )}
                 </View>
@@ -246,7 +246,7 @@ export default function AdminAIChatbot() {
               {isTyping && (
                 <View style={styles.typingIndicator}>
                   <View style={styles.botAvatarSmall}>
-                    <Ionicons name="sparkles" size={10} color="#fff" />
+                    <Ionicons name="sparkles" size={7} color="#fff" />
                   </View>
                   <View style={styles.typingBubble}>
                     <View style={styles.typingDots}>
@@ -276,7 +276,7 @@ export default function AdminAIChatbot() {
                 onPress={handleSend}
                 disabled={!inputText.trim()}
               >
-                <Ionicons name="send" size={16} color="#fff" />
+                <Ionicons name="send" size={12} color="#fff" />
               </TouchableOpacity>
             </View>
           </View>
@@ -331,8 +331,8 @@ const styles = StyleSheet.create({
   chatContainer: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    width: 320,
-    height: 480,
+    width: 240,
+    height: 360,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 12,
+    padding: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
     backgroundColor: '#7B2C2C',
@@ -354,23 +354,23 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 5,
   },
   botAvatar: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
     color: '#fff',
   },
   headerSubtitle: {
-    fontSize: 10,
+    fontSize: 8,
     color: 'rgba(255, 255, 255, 0.8)',
   },
   closeButton: {
@@ -379,34 +379,34 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   quickActionsContainer: {
-    padding: 8,
+    padding: 5,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
   quickActionsTitle: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
     color: '#666',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 4,
   },
   quickActionButton: {
     flex: 1,
     minWidth: '45%',
     backgroundColor: '#f8f9fa',
-    borderRadius: 6,
-    padding: 8,
+    borderRadius: 5,
+    padding: 5,
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
   quickActionText: {
-    fontSize: 10,
+    fontSize: 8,
     color: '#333',
     fontWeight: '500',
     textAlign: 'center',
@@ -415,13 +415,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   messagesContent: {
-    padding: 8,
-    paddingBottom: 6,
+    padding: 5,
+    paddingBottom: 3,
   },
   messageWrapper: {
     flexDirection: 'row',
-    marginBottom: 8,
-    gap: 4,
+    marginBottom: 5,
+    gap: 3,
   },
   userMessageWrapper: {
     justifyContent: 'flex-end',
@@ -430,27 +430,27 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
   },
   botAvatarSmall: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#7B2C2C',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
   userAvatarSmall: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#10B981',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
   messageBubble: {
     maxWidth: '75%',
-    borderRadius: 12,
-    padding: 8,
+    borderRadius: 8,
+    padding: 5,
   },
   userMessage: {
     backgroundColor: '#7B2C2C',
@@ -461,8 +461,8 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
   },
   messageText: {
-    fontSize: 12,
-    lineHeight: 16,
+    fontSize: 10,
+    lineHeight: 13,
   },
   userMessageText: {
     color: '#fff',
@@ -471,8 +471,8 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   messageTime: {
-    fontSize: 9,
-    marginTop: 2,
+    fontSize: 7,
+    marginTop: 1,
   },
   userMessageTime: {
     color: 'rgba(255, 255, 255, 0.7)',
@@ -505,26 +505,26 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: 10,
+    padding: 6,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
-    gap: 8,
+    gap: 5,
   },
   input: {
     flex: 1,
     backgroundColor: '#f8f9fa',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 12,
-    maxHeight: 80,
+    borderRadius: 14,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    fontSize: 10,
+    maxHeight: 60,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
   sendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: '#7B2C2C',
     justifyContent: 'center',
     alignItems: 'center',
