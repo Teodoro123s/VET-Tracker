@@ -1,16 +1,13 @@
-import { Colors } from '@/constants/Colors';
-import { Spacing, Typography } from '@/constants/Typography';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, usePathname } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function Sidebar() {
   const router = useRouter();
-  const pathname = usePathname();
   const { logout, user } = useAuth();
   const { unreadCount } = useNotifications();
   const { userEmail } = useTenant();
@@ -55,11 +52,11 @@ export default function Sidebar() {
         {menuItems.slice(0, 5).map((item) => (
           <TouchableOpacity
             key={item.name}
-            style={[styles['sidebar-menu-item'], pathname === item.route && styles['sidebar-menu-item-active']]}
+            style={[styles['sidebar-menu-item'], item.name === 'Dashboard' && styles['sidebar-menu-item-active']]}
             onPress={() => item.name === 'Logout' ? setShowLogoutModal(true) : handleNavigation(item.route)}
           >
-            <Image source={item.icon} style={[styles['sidebar-menu-icon'], pathname === item.route && styles['sidebar-menu-icon-active']]} />
-            <Text style={[styles['sidebar-menu-text'], pathname === item.route && styles['sidebar-menu-text-active']]}>{item.name}</Text>
+            <Image source={item.icon} style={[styles['sidebar-menu-icon'], item.name === 'Dashboard' && styles['sidebar-menu-icon-active']]} />
+            <Text style={[styles['sidebar-menu-text'], item.name === 'Dashboard' && styles['sidebar-menu-text-active']]}>{item.name}</Text>
             {item.name === 'Notifications' && unreadCount > 0 && (
               <View style={styles['sidebar-notification-badge']}>
                 <Text style={styles['sidebar-badge-text']}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
@@ -74,11 +71,16 @@ export default function Sidebar() {
         {menuItems.slice(6, 8).map((item) => (
           <TouchableOpacity
             key={item.name}
-            style={[styles['sidebar-menu-item'], pathname === item.route && styles['sidebar-menu-item-active']]}
+            style={styles['sidebar-menu-item']}
             onPress={() => item.name === 'Logout' ? setShowLogoutModal(true) : handleNavigation(item.route)}
           >
-            <Image source={item.icon} style={[styles['sidebar-menu-icon'], pathname === item.route && styles['sidebar-menu-icon-active']]} />
-            <Text style={[styles['sidebar-menu-text'], pathname === item.route && styles['sidebar-menu-text-active']]}>{item.name}</Text>
+            <Image source={item.icon} style={styles['sidebar-menu-icon']} />
+            <Text style={styles['sidebar-menu-text']}>{item.name}</Text>
+            {item.name === 'Logout' && (
+              <View style={styles['sidebar-logout-badge']}>
+                <Text style={styles['sidebar-badge-text']}>316</Text>
+              </View>
+            )}
           </TouchableOpacity>
         ))}
       </View>
@@ -136,7 +138,7 @@ const styles = StyleSheet.create({
     height: '100%',
     paddingTop: 30,
     paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFAFF',
   },
   'sidebar-section': {
     marginBottom: 24,
