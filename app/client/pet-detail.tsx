@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert,
 import { useLocalSearchParams, router } from 'expo-router';
 import { getPetById, getCustomerById, updatePet, deletePet, getMedicalHistory, getMedicalRecords, addMedicalRecord, getAnimalTypes, getBreeds, getMedicalCategories, getMedicalForms, getFormFields } from '@/lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
+import AdminLayout from '../../components/AdminLayout';
 
 export default function PetDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -349,7 +350,8 @@ export default function PetDetailScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <AdminLayout>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
         <Text style={styles.headerText}>Pet Details</Text>
       </View>
@@ -361,7 +363,7 @@ export default function PetDetailScreen() {
               <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.push('/client/customers')} style={styles.returnButton}>
                 <Text style={styles.returnIcon}>←</Text>
               </TouchableOpacity>
-              <View style={styles.returnText} />
+              <Text style={styles.clientName}>{owner?.name || `${owner?.firstname || ''} ${owner?.surname || ''}` || 'Unknown Owner'}</Text>
               <View style={styles.returnText} />
               <View style={styles.actionButtons}>
                 <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
@@ -372,28 +374,35 @@ export default function PetDetailScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-            <View style={styles.tableHeader}>
-              <Text style={styles.headerCell}>Field</Text>
-              <Text style={styles.headerCell}>Value</Text>
-            </View>
-            
-            <View style={styles.tableBody}>
-              <View style={styles.tableRow}>
-                <Text style={styles.cell}>Name</Text>
-                <Text style={styles.cell}>{pet.name}</Text>
+            <View style={styles.formContainer}>
+              <View style={styles.formRow}>
+                <View style={styles.formColumn}>
+                  <Text style={styles.formLabel}>Name</Text>
+                  <View style={styles.formValue}>
+                    <Text style={styles.formValueText}>{pet.name}</Text>
+                  </View>
+                </View>
+                <View style={styles.formColumn}>
+                  <Text style={styles.formLabel}>Species</Text>
+                  <View style={styles.formValue}>
+                    <Text style={styles.formValueText}>{pet.species || 'N/A'}</Text>
+                  </View>
+                </View>
               </View>
-              <View style={styles.tableRow}>
-                <Text style={styles.cell}>Species</Text>
-                <Text style={styles.cell}>{pet.species || 'N/A'}</Text>
-              </View>
-              <View style={styles.tableRow}>
-                <Text style={styles.cell}>Breed</Text>
-                <Text style={styles.cell}>{pet.breed || 'N/A'}</Text>
-              </View>
-
-              <View style={styles.tableRow}>
-                <Text style={styles.cell}>Owner</Text>
-                <Text style={styles.cell}>{owner?.name || `${owner?.firstname || ''} ${owner?.surname || ''}` || 'N/A'}</Text>
+              
+              <View style={styles.formRow}>
+                <View style={styles.formColumn}>
+                  <Text style={styles.formLabel}>Breed</Text>
+                  <View style={styles.formValue}>
+                    <Text style={styles.formValueText}>{pet.breed || 'N/A'}</Text>
+                  </View>
+                </View>
+                <View style={styles.formColumn}>
+                  <Text style={styles.formLabel}>Owner</Text>
+                  <View style={styles.formValue}>
+                    <Text style={styles.formValueText}>{owner?.name || `${owner?.firstname || ''} ${owner?.surname || ''}` || 'N/A'}</Text>
+                  </View>
+                </View>
               </View>
             </View>
           </View>
@@ -404,18 +413,22 @@ export default function PetDetailScreen() {
             <Text style={styles.historyTitle}>Medical History</Text>
             <View style={styles.historyHeaderActions}>
               <TouchableOpacity style={styles.addRecordButton} onPress={handleAddRecord}>
-                <Text style={styles.addRecordButtonText}>+ Add Record</Text>
+                <Text style={styles.addRecordButtonText}>+</Text>
               </TouchableOpacity>
               <View style={styles.searchContainer}>
                 <TextInput 
                   style={styles.searchInput}
-                  placeholder="Search records..."
+                  placeholder="Search..."
+                  placeholderTextColor="rgba(153, 153, 153, 0.8)"
                   value={searchTerm}
                   onChangeText={(text) => {
                     setSearchTerm(text);
                     setCurrentPage(1);
                   }}
                 />
+                <View style={styles.searchIconContainer}>
+                  <Text style={styles.searchIcon}>🔍</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -423,9 +436,9 @@ export default function PetDetailScreen() {
           <View style={styles.tableContainer}>
             <View style={styles.table}>
               <View style={styles.tableHeader}>
-                <Text style={styles.headerCell}>Date</Text>
-                <Text style={styles.headerCell}>Category</Text>
-                <Text style={styles.headerCell}>Form Template</Text>
+                <Text style={[styles.headerCell, styles.dateHeader]}>Date</Text>
+                <Text style={[styles.headerCell, styles.categoryHeader]}>Category</Text>
+                <Text style={[styles.headerCell, styles.templateHeader]}>Form Template</Text>
               </View>
               {filteredHistory.length === 0 ? (
                 <View style={styles.noDataContainer}>
@@ -436,30 +449,32 @@ export default function PetDetailScreen() {
               ) : itemsPerPage >= 20 ? (
                 <ScrollView style={styles.tableBody}>
                   {currentRecords.map((record) => (
-                    <TouchableOpacity 
-                      key={record.id} 
-                      style={styles.tableRow} 
-                      activeOpacity={0.7}
-                      onPress={() => router.push(`/client/medical-record-detail?id=${record.id}`)}
-                    >
-                      <Text style={styles.cell}>{record.date}</Text>
-                      <Text style={styles.cell}>{record.category || 'N/A'}</Text>
-                      <Text style={styles.cell}>{record.formTemplate || 'N/A'}</Text>
-                    </TouchableOpacity>
+                    <View key={record.id} style={styles.tableRow}>
+                      <TouchableOpacity 
+                        style={styles.rowContent}
+                        onPress={() => router.push(`/client/medical-record-detail?id=${record.id}`)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.cell, styles.dateCell]}>{record.date}</Text>
+                        <Text style={[styles.cell, styles.categoryCell]}>{record.category || 'N/A'}</Text>
+                        <Text style={[styles.cell, styles.templateCell]}>{record.formTemplate || 'N/A'}</Text>
+                      </TouchableOpacity>
+                    </View>
                   ))}
                 </ScrollView>
               ) : (
                 currentRecords.map((record) => (
-                  <TouchableOpacity 
-                    key={record.id} 
-                    style={styles.tableRow} 
-                    activeOpacity={0.7}
-                    onPress={() => router.push(`/client/medical-record-detail?id=${record.id}`)}
-                  >
-                    <Text style={styles.cell}>{record.date}</Text>
-                    <Text style={styles.cell}>{record.category || 'N/A'}</Text>
-                    <Text style={styles.cell}>{record.formTemplate || 'N/A'}</Text>
-                  </TouchableOpacity>
+                  <View key={record.id} style={styles.tableRow}>
+                    <TouchableOpacity 
+                      style={styles.rowContent}
+                      onPress={() => router.push(`/client/medical-record-detail?id=${record.id}`)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.cell, styles.dateCell]}>{record.date}</Text>
+                      <Text style={[styles.cell, styles.categoryCell]}>{record.category || 'N/A'}</Text>
+                      <Text style={[styles.cell, styles.templateCell]}>{record.formTemplate || 'N/A'}</Text>
+                    </TouchableOpacity>
+                  </View>
                 ))
               )}
             </View>
@@ -726,106 +741,111 @@ export default function PetDetailScreen() {
               </View>
               
               <ScrollView style={styles.drawerForm}>
-                <Text style={styles.fieldLabel}>Category *</Text>
-                <View style={[styles.dropdownContainer, { zIndex: 3000 }]}>
-                  <TouchableOpacity 
-                    style={styles.petDropdown}
-                    onPress={() => {
-                      console.log('Category dropdown clicked, current state:', showCategoryDropdown);
-                      setShowCategoryDropdown(!showCategoryDropdown);
-                      setShowTemplateDropdown(false);
-                    }}
-                  >
-                    <Text style={styles.petDropdownText}>
-                      {newRecord.category || 'Select Category'}
-                    </Text>
-                    <Text style={styles.petDropdownArrow}>▼</Text>
-                  </TouchableOpacity>
-                  {showCategoryDropdown && (
-                    <View style={styles.dropdownMenu}>
-                      <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-                        {categories.length === 0 ? (
-                          <View style={styles.dropdownOption}>
-                            <Text style={styles.dropdownOptionText}>No categories available</Text>
-                          </View>
-                        ) : (
-                          categories.map((category) => (
-                            <TouchableOpacity
-                              key={category.id}
-                              style={styles.dropdownOption}
-                              onPress={() => {
-                                setNewRecord({...newRecord, category: category.name, formTemplate: ''});
-                                setShowCategoryDropdown(false);
-                              }}
-                            >
-                              <Text style={styles.dropdownOptionText}>{category.name}</Text>
-                            </TouchableOpacity>
-                          ))
-                        )}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-                
-                <Text style={styles.fieldLabel}>Form Template *</Text>
-                <View style={[styles.dropdownContainer, { zIndex: 2000 }]}>
-                  <TouchableOpacity 
-                    style={[styles.petDropdown, !newRecord.category && styles.disabledDropdown]}
-                    onPress={() => {
-                      if (newRecord.category) {
-                        setShowTemplateDropdown(!showTemplateDropdown);
-                        setShowCategoryDropdown(false);
-                      }
-                    }}
-                  >
-                    <Text style={[styles.petDropdownText, !newRecord.category && styles.disabledText]}>
-                      {!newRecord.category ? 'Select category first' : (newRecord.formTemplate || 'Select Form Template')}
-                    </Text>
-                    <Text style={styles.petDropdownArrow}>▼</Text>
-                  </TouchableOpacity>
-                  {showTemplateDropdown && (
-                    <View style={styles.dropdownMenu}>
-                      <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
-                        {(() => {
-                          const filtered = formTemplates.filter(template => {
-                            if (!newRecord.category) return true;
-                            return template.category === newRecord.category;
-                          });
-                          
-                          if (formTemplates.length === 0) {
-                            return [
-                              <View key="no-templates" style={styles.dropdownOption}>
-                                <Text style={styles.dropdownOptionText}>No form templates available</Text>
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Category *</Text>
+                    <View style={[styles.dropdownContainer, { zIndex: 3000 }]}>
+                      <TouchableOpacity 
+                        style={styles.petDropdown}
+                        onPress={() => {
+                          console.log('Category dropdown clicked, current state:', showCategoryDropdown);
+                          setShowCategoryDropdown(!showCategoryDropdown);
+                          setShowTemplateDropdown(false);
+                        }}
+                      >
+                        <Text style={styles.petDropdownText}>
+                          {newRecord.category || 'Select Category'}
+                        </Text>
+                        <Text style={styles.petDropdownArrow}>▼</Text>
+                      </TouchableOpacity>
+                      {showCategoryDropdown && (
+                        <View style={styles.dropdownMenu}>
+                          <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
+                            {categories.length === 0 ? (
+                              <View style={styles.dropdownOption}>
+                                <Text style={styles.dropdownOptionText}>No categories available</Text>
                               </View>
-                            ];
-                          }
-                          
-                          if (filtered.length === 0 && newRecord.category) {
-                            return [
-                              <View key="no-forms" style={styles.dropdownOption}>
-                                <Text style={styles.dropdownOptionText}>No forms available for this category</Text>
-                              </View>
-                            ];
-                          }
-                          
-                          return filtered
-                            .sort((a, b) => a.formName.localeCompare(b.formName))
-                            .map((template) => (
-                            <TouchableOpacity
-                              key={template.id}
-                              style={styles.dropdownOption}
-                              onPress={() => {
-                                setNewRecord({...newRecord, formTemplate: template.formName});
-                                setShowTemplateDropdown(false);
-                              }}
-                            >
-                              <Text style={styles.dropdownOptionText}>{template.formName}</Text>
-                            </TouchableOpacity>
-                          ));
-                        })()}
-                      </ScrollView>
+                            ) : (
+                              categories.map((category) => (
+                                <TouchableOpacity
+                                  key={category.id}
+                                  style={styles.dropdownOption}
+                                  onPress={() => {
+                                    setNewRecord({...newRecord, category: category.name, formTemplate: ''});
+                                    setShowCategoryDropdown(false);
+                                  }}
+                                >
+                                  <Text style={styles.dropdownOptionText}>{category.name}</Text>
+                                </TouchableOpacity>
+                              ))
+                            )}
+                          </ScrollView>
+                        </View>
+                      )}
                     </View>
-                  )}
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Form Template *</Text>
+                    <View style={[styles.dropdownContainer, { zIndex: 2000 }]}>
+                      <TouchableOpacity 
+                        style={[styles.petDropdown, !newRecord.category && styles.disabledDropdown]}
+                        onPress={() => {
+                          if (newRecord.category) {
+                            setShowTemplateDropdown(!showTemplateDropdown);
+                            setShowCategoryDropdown(false);
+                          }
+                        }}
+                      >
+                        <Text style={[styles.petDropdownText, !newRecord.category && styles.disabledText]}>
+                          {!newRecord.category ? 'Select category first' : (newRecord.formTemplate || 'Select Form Template')}
+                        </Text>
+                        <Text style={styles.petDropdownArrow}>▼</Text>
+                      </TouchableOpacity>
+                      {showTemplateDropdown && (
+                        <View style={styles.dropdownMenu}>
+                          <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
+                            {(() => {
+                              const filtered = formTemplates.filter(template => {
+                                if (!newRecord.category) return true;
+                                return template.category === newRecord.category;
+                              });
+                              
+                              if (formTemplates.length === 0) {
+                                return [
+                                  <View key="no-templates" style={styles.dropdownOption}>
+                                    <Text style={styles.dropdownOptionText}>No form templates available</Text>
+                                  </View>
+                                ];
+                              }
+                              
+                              if (filtered.length === 0 && newRecord.category) {
+                                return [
+                                  <View key="no-forms" style={styles.dropdownOption}>
+                                    <Text style={styles.dropdownOptionText}>No forms available for this category</Text>
+                                  </View>
+                                ];
+                              }
+                              
+                              return filtered
+                                .sort((a, b) => a.formName.localeCompare(b.formName))
+                                .map((template) => (
+                                <TouchableOpacity
+                                  key={template.id}
+                                  style={styles.dropdownOption}
+                                  onPress={() => {
+                                    setNewRecord({...newRecord, formTemplate: template.formName});
+                                    setShowTemplateDropdown(false);
+                                  }}
+                                >
+                                  <Text style={styles.dropdownOptionText}>{template.formName}</Text>
+                                </TouchableOpacity>
+                              ));
+                            })()}
+                          </ScrollView>
+                        </View>
+                      )}
+                    </View>
+                  </View>
                 </View>
               </ScrollView>
               
@@ -953,13 +973,15 @@ export default function PetDetailScreen() {
           </View>
         </Modal>
       )}
-    </ScrollView>
+      </ScrollView>
+    </AdminLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   scrollContent: {
     flexGrow: 1,
@@ -973,7 +995,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   headerText: {
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#800000',
   },
@@ -992,39 +1014,77 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   tableContainer: {
-    borderWidth: 2,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    backgroundColor: '#fff',
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
     marginBottom: 20,
   },
   table: {
     backgroundColor: '#fff',
-    height: 390,
+    borderRadius: 12,
+    height: 250,
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f8f9fa',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingLeft: 70,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    alignItems: 'center',
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingLeft: 70,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
+    minHeight: 60,
+  },
+  rowContent: {
+    flexDirection: 'row',
+    flex: 1,
+    marginLeft: 0,
   },
   headerCell: {
-    flex: 1,
-    fontWeight: 'bold',
+    fontWeight: '600',
     fontSize: 14,
-    color: '#333',
+    color: '#374151',
+    letterSpacing: 0.5,
+  },
+  dateHeader: {
+    flex: 1,
+    textAlign: 'left',
+  },
+  categoryHeader: {
+    flex: 1.2,
+    textAlign: 'left',
+  },
+  templateHeader: {
+    flex: 1.3,
+    textAlign: 'left',
+  },
+  dateCell: {
+    flex: 1,
+    textAlign: 'left',
+  },
+  categoryCell: {
+    flex: 1.2,
+    textAlign: 'left',
+  },
+  templateCell: {
+    flex: 1.3,
+    textAlign: 'left',
   },
   cell: {
-    flex: 1,
-    fontSize: 12,
-    color: '#555',
+    fontSize: 13,
+    color: '#6B7280',
+    paddingLeft: 0,
   },
   tableBody: {
     flex: 1,
@@ -1055,46 +1115,59 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   searchContainer: {
-    borderWidth: 2,
-    borderColor: '#800000',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(127, 29, 31, 0.3)',
+    borderRadius: 8,
+    paddingLeft: 10,
+    width: 265.798,
+    height: 32,
+    flexShrink: 0,
+    backgroundColor: 'rgba(250, 250, 250, 0.00)',
+    shadowColor: 'rgba(31, 61, 89, 0.04)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 20,
   },
   searchInput: {
-    width: 150,
-    fontSize: 12,
+    flex: 1,
+    fontSize: 15,
   },
   historyTitle: {
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#800000',
   },
   addRecordButton: {
-    backgroundColor: '#23C062',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: '#7F1D1F',
+    borderRadius: 8,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   addRecordButtonText: {
     color: '#ffffff',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 20,
   },
   returnRow: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    padding: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    alignItems: 'center',
   },
   returnButton: {
     backgroundColor: '#800000',
     borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    width: 32,
+    height: 32,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   returnIcon: {
     color: '#ffffff',
@@ -1113,14 +1186,18 @@ const styles = StyleSheet.create({
   editButton: {
     backgroundColor: '#007bff',
     borderRadius: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    height: 32,
+    width: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   deleteButton: {
     backgroundColor: '#dc3545',
     borderRadius: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    height: 32,
+    width: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   actionButtonText: {
     color: '#ffffff',
@@ -1129,40 +1206,43 @@ const styles = StyleSheet.create({
   },
   drawerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
     zIndex: 10000,
   },
   drawer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 350,
+    width: '95%',
+    maxWidth: 600,
     backgroundColor: '#fff',
+    borderRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
+    shadowRadius: 20,
+    elevation: 20,
   },
   drawerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    backgroundColor: '#f8f9fa',
+    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   drawerTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#800000',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
   },
   drawerCloseButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#f0f0f0',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1172,8 +1252,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   drawerForm: {
-    flex: 1,
-    padding: 20,
+    maxHeight: '70%',
+    padding: 24,
   },
   fieldLabel: {
     fontSize: 14,
@@ -1196,41 +1276,44 @@ const styles = StyleSheet.create({
   },
   drawerButtons: {
     flexDirection: 'row',
-    padding: 20,
+    padding: 24,
     borderTopWidth: 1,
-    borderTopColor: '#ddd',
+    borderTopColor: '#e5e7eb',
     backgroundColor: '#fff',
-    gap: 10,
+    gap: 12,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
   drawerCancelButton: {
-    backgroundColor: '#f5f5f5',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
+    backgroundColor: '#f9fafb',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#d1d5db',
     alignItems: 'center',
     flex: 1,
   },
   drawerCancelText: {
     textAlign: 'center',
-    color: '#666',
-    fontWeight: 'bold',
-    fontSize: 12,
+    color: '#6b7280',
+    fontWeight: '600',
+    fontSize: 14,
   },
   drawerSaveButton: {
-    backgroundColor: '#23C062',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
+    backgroundColor: '#800000',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
     flex: 1,
   },
   drawerSaveText: {
     textAlign: 'center',
     color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 12,
+    fontWeight: '600',
+    fontSize: 14,
   },
   dropdownContainer: {
     position: 'relative',
@@ -1523,5 +1606,55 @@ const styles = StyleSheet.create({
   pageOf: {
     fontSize: 10,
     color: '#666',
+  },
+  formContainer: {
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 20,
+  },
+  formColumn: {
+    flex: 1,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  formValue: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  formValueText: {
+    fontSize: 14,
+    color: '#555',
+  },
+  clientName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#800000',
+    marginLeft: 15,
+  },
+  searchIconContainer: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#7F1D1F',
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchIcon: {
+    color: '#fff',
+    fontSize: 14,
   },
 });

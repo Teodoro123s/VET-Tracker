@@ -1,6 +1,6 @@
 import { DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack, usePathname } from 'expo-router';
+import { Stack, usePathname, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, StyleSheet } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -12,6 +12,7 @@ import { NotificationProvider } from '@/contexts/NotificationContext';
 import { AuthProvider , useAuth } from '@/contexts/AuthContext';
 import { TenantProvider } from '@/contexts/TenantContext';
 import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
+import { AdminProfileProvider } from '@/contexts/AdminProfileContext';
 
 import Sidebar from '@/components/Sidebar';
 import VetBottomMenu from '@/components/VetBottomMenu';
@@ -145,8 +146,7 @@ function AppContent() {
   return (
     <NavigationThemeProvider value={DefaultTheme}>
       <View style={styles.container}>
-        {showMainSidebar && <Sidebar />}
-        <View style={!showMainSidebar ? styles.fullContent : styles.content}>
+        <View style={styles.fullContent}>
           {showMobileHeader && <VetMobileHeader {...getHeaderProps()} onBackPress={() => {
             if (pathname === '/veterinarian/vet-customers') {
               if (selectedMedicalRecord) {
@@ -161,7 +161,7 @@ function AppContent() {
                 setSelectedCustomer(null);
               }
             } else {
-              require('expo-router').router.back();
+              router.back();
             }
           }} onSave={() => {
             // Trigger save function from medical record form
@@ -172,7 +172,6 @@ function AppContent() {
           <View style={showBottomMenu ? styles.contentWithMenu : styles.fullHeight}>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
-
             <Stack.Screen name="client/dashboard" />
             <Stack.Screen name="client/appointments" />
             <Stack.Screen name="client/customers" />
@@ -182,8 +181,7 @@ function AppContent() {
             <Stack.Screen name="client/notifications" />
             <Stack.Screen name="client/settings" />
             <Stack.Screen name="client/admin-details" />
-
-
+            <Stack.Screen name="client/medical-record-detail" />
             <Stack.Screen name="server/superadmin" />
             <Stack.Screen name="server/subscriptions" />
             <Stack.Screen name="server/subscription-periods" />
@@ -201,7 +199,6 @@ function AppContent() {
             <Stack.Screen name="veterinarian/vet-profile" />
             <Stack.Screen name="veterinarian/mobile-login" />
             <Stack.Screen name="auth/admin-login" />
-
             <Stack.Screen name="+not-found" />
           </Stack>
           </View>
@@ -244,13 +241,15 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <TenantProvider>
-        <SubscriptionProvider>
-          <NotificationProvider>
-            <CustomerProvider>
-              <AppContent />
-            </CustomerProvider>
-          </NotificationProvider>
-        </SubscriptionProvider>
+        <AdminProfileProvider>
+          <SubscriptionProvider>
+            <NotificationProvider>
+              <CustomerProvider>
+                <AppContent />
+              </CustomerProvider>
+            </NotificationProvider>
+          </SubscriptionProvider>
+        </AdminProfileProvider>
       </TenantProvider>
     </AuthProvider>
   );

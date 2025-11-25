@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Alert, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTenant } from '@/contexts/TenantContext';
 import { getVeterinarianByEmail, generateOwnPassword } from '@/lib/services/firebaseService';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/Colors';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadImage } from '@/lib/services/storageService';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/config/firebaseConfig';
+import ProfileImageModal from '@/components/ProfileImageModal';
 
 export default function VetProfile() {
   const { userEmail } = useTenant();
@@ -13,10 +18,15 @@ export default function VetProfile() {
   const { logout } = useAuth();
   const [vetData, setVetData] = useState<any>(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
 
   useEffect(() => {
     loadVetData();
+    loadProfileImage();
   }, [userEmail]);
 
   const loadVetData = async () => {
@@ -30,6 +40,80 @@ export default function VetProfile() {
     }
   };
 
+  const loadProfileImage = async () => {
+    try {
+      if (!userEmail) return;
+      
+      const userDoc = await getDoc(doc(db, 'veterinarians', userEmail));
+      if (userDoc.exists() && userDoc.data().profileImage) {
+        setProfileImage(userDoc.data().profileImage);
+      }
+    } catch (error) {
+      console.error('Error loading profile image:', error);
+    }
+  };
+
+  const handleImageUpload = () => {
+    setShowImageModal(true);
+  };
+
+  const handleGalleryUpload = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant gallery permissions to select an image.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setPreviewImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to select image. Please try again.');
+    }
+  };
+
+  const handleSaveImage = async () => {
+    if (!previewImage) return;
+    
+    setUploading(true);
+    
+    try {
+      if (!userEmail) return;
+      
+      const response = await fetch(previewImage);
+      const blob = await response.blob();
+      const imagePath = `vet-profiles/${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.jpg`;
+      
+      const downloadURL = await uploadImage(blob, imagePath);
+      
+      const vetDocRef = doc(db, 'veterinarians', userEmail);
+      await updateDoc(vetDocRef, { profileImage: downloadURL });
+      
+      setProfileImage(downloadURL);
+      setPreviewImage(null);
+      setShowImageModal(false);
+      Alert.alert('Success', 'Profile image updated successfully!');
+    } catch (error) {
+      console.error('Error saving image:', error);
+      Alert.alert('Error', 'Failed to save image. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCancelUpload = () => {
+    setPreviewImage(null);
+    setShowImageModal(false);
+  };
+
   const getDisplayName = (email) => {
     if (!email) return 'User';
     return email.split('@')[0];
@@ -40,9 +124,18 @@ export default function VetProfile() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.profileHeader}>
-        <View style={styles.avatar}>
-          <Ionicons name="person" size={30} color="#fff" />
-        </View>
+        <TouchableOpacity style={styles.avatar} onPress={handleImageUpload}>
+          {profileImage ? (
+            <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+          ) : (
+            <Ionicons name="person" size={30} color="#fff" />
+          )}
+          {uploading && (
+            <View style={styles.uploadingOverlay}>
+              <ActivityIndicator size="small" color={Colors.primary} />
+            </View>
+          )}
+        </TouchableOpacity>
         <Text style={styles.profileName}>{vetData?.name || vetData?.clinicName || getDisplayName(userEmail)}</Text>
         <Text style={styles.profileEmail}>{vetData?.email || userEmail}</Text>
       </View>
@@ -131,8 +224,15 @@ export default function VetProfile() {
         </View>
       </Modal>
       
-
-      
+      <ProfileImageModal
+        visible={showImageModal}
+        previewImage={previewImage}
+        uploading={uploading}
+        onGalleryUpload={handleGalleryUpload}
+        onSaveImage={handleSaveImage}
+        onCancel={handleCancelUpload}
+        primaryColor={Colors.primary}
+      />
 
     </ScrollView>
   );
@@ -378,5 +478,21 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  avatarImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+  },
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

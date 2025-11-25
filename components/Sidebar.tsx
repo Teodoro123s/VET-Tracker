@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions, Modal } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/Colors';
-import { useRouter } from 'expo-router';
+import { Spacing, Typography } from '@/constants/Typography';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useTenant } from '@/contexts/TenantContext';
-import { Typography, Spacing } from '@/constants/Typography';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter, usePathname } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function Sidebar() {
   const router = useRouter();
+  const pathname = usePathname();
   const { logout, user } = useAuth();
   const { unreadCount } = useNotifications();
   const { userEmail } = useTenant();
@@ -32,32 +33,55 @@ export default function Sidebar() {
     { name: 'Logout', icon: require('@/assets/logout.png'), route: null },
   ];
 
+  const handleNavigation = async (route: string | null) => {
+    if (!route) return;
+    console.log('Navigating to:', route);
+    try {
+      if (typeof window !== 'undefined') {
+        window.location.href = route;
+      } else {
+        router.push(route as any);
+      }
+    } catch (error) {
+      console.error(`Navigation error to ${route}:`, error);
+      alert('Failed to navigate. Please try again.');
+    }
+  };
+
   return (
     <View style={styles['sidebar-container']}>
-      <View style={styles['sidebar-logo-section']}>
-        <Image source={require('@/assets/web-logo.png')} style={styles['sidebar-logo']} />
-        <TouchableOpacity 
-          style={styles['sidebar-email-clickable']}
-          onPress={() => router.push('/client/settings')}
-        >
-          <Text style={styles['sidebar-email-text']}>{clinicName}</Text>
-        </TouchableOpacity>
+      <View style={styles['sidebar-section']}>
+        <Text style={styles['sidebar-section-title']}>Main Menu</Text>
+        {menuItems.slice(0, 5).map((item) => (
+          <TouchableOpacity
+            key={item.name}
+            style={[styles['sidebar-menu-item'], pathname === item.route && styles['sidebar-menu-item-active']]}
+            onPress={() => item.name === 'Logout' ? setShowLogoutModal(true) : handleNavigation(item.route)}
+          >
+            <Image source={item.icon} style={[styles['sidebar-menu-icon'], pathname === item.route && styles['sidebar-menu-icon-active']]} />
+            <Text style={[styles['sidebar-menu-text'], pathname === item.route && styles['sidebar-menu-text-active']]}>{item.name}</Text>
+            {item.name === 'Notifications' && unreadCount > 0 && (
+              <View style={styles['sidebar-notification-badge']}>
+                <Text style={styles['sidebar-badge-text']}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        ))}
       </View>
-      {menuItems.map((item) => (
-        <TouchableOpacity
-          key={item.name}
-          style={styles['sidebar-menu-item']}
-          onPress={() => item.name === 'Logout' ? setShowLogoutModal(true) : router.push(item.route)}
-        >
-          <Image source={item.icon} style={styles['sidebar-menu-icon']} />
-          <Text style={styles['sidebar-menu-text']}>{item.name}</Text>
-          {item.name === 'Notifications' && unreadCount > 0 && (
-            <View style={styles['sidebar-notification-badge']}>
-              <Text style={styles['sidebar-badge-text']}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      ))}
+      
+      <View style={styles['sidebar-section']}>
+        <Text style={styles['sidebar-section-title']}>Settings</Text>
+        {menuItems.slice(6, 8).map((item) => (
+          <TouchableOpacity
+            key={item.name}
+            style={[styles['sidebar-menu-item'], pathname === item.route && styles['sidebar-menu-item-active']]}
+            onPress={() => item.name === 'Logout' ? setShowLogoutModal(true) : handleNavigation(item.route)}
+          >
+            <Image source={item.icon} style={[styles['sidebar-menu-icon'], pathname === item.route && styles['sidebar-menu-icon-active']]} />
+            <Text style={[styles['sidebar-menu-text'], pathname === item.route && styles['sidebar-menu-text-active']]}>{item.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       {/* Logout Confirmation Modal */}
       <Modal
@@ -84,10 +108,14 @@ export default function Sidebar() {
                   setShowLogoutModal(false);
                   try {
                     await logout();
-                    router.replace('/auth/admin-login'); // Sidebar is web-only
+                    if (typeof window !== 'undefined') {
+                      window.location.href = '/auth/admin-login';
+                    } else {
+                      router.replace('/auth/admin-login' as any);
+                    }
                   } catch (error) {
                     console.error('Error during logout:', error);
-                    router.replace('/auth/admin-login');
+                    // Don't navigate on logout failure
                   }
                 }}
               >
@@ -104,63 +132,65 @@ export default function Sidebar() {
 
 const styles = StyleSheet.create({
   'sidebar-container': {
-    width: 250,
+    width: '100%',
     height: '100%',
-    paddingTop: 10,
-    paddingHorizontal: Spacing.xlarge,
-    borderRightWidth: 1,
-    backgroundColor: '#800000',
-    borderRightColor: Colors.border.dark,
+    paddingTop: 30,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
   },
-  'sidebar-logo-section': {
-    marginTop: 0,
-    marginBottom: 25,
-    alignItems: 'center',
+  'sidebar-section': {
+    marginBottom: 24,
+  },
+  'sidebar-section-title': {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 
-  'sidebar-logo': {
-    width: 140,
-    height: 80,
-    resizeMode: 'contain',
-    marginBottom: 0,
-  },
-  'sidebar-title': {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-    color: Colors.text.inverse,
-  },
-  'sidebar-email-clickable': {
-    minHeight: 24,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 0,
-  },
-  'sidebar-email-text': {
-    color: Colors.text.inverse,
-    fontSize: Typography.sidebarEmail,
-  },
   'sidebar-menu-item': {
+    width: 236,
+    height: 43.1,
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.medium,
-    paddingHorizontal: Spacing.medium,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border.dark,
+    justifyContent: 'flex-start',
+    paddingHorizontal: 40,
+    marginBottom: 4,
+    backgroundColor: 'transparent',
+  },
+  'sidebar-menu-item-active': {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(127, 29, 31, 0.02)',
+    backgroundColor: '#7F1D1F',
+    shadowColor: 'rgba(17, 31, 61, 0.06)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 3,
   },
   'sidebar-menu-text': {
-    fontSize: Typography.sidebarItem,
-    marginLeft: Spacing.large,
-    color: Colors.text.inverse,
+    fontSize: 14,
+    marginLeft: 12,
+    color: '#800000',
+    fontWeight: '500',
+  },
+  'sidebar-menu-text-active': {
+    color: '#FFFFFF',
   },
   'sidebar-menu-icon': {
     width: 20,
     height: 20,
+    tintColor: '#800000',
+  },
+  'sidebar-menu-icon-active': {
+    tintColor: '#FFFFFF',
   },
   'sidebar-notification-badge': {
-    backgroundColor: Colors.status.error,
+    backgroundColor: '#ef4444',
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -168,8 +198,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 'auto',
   },
+  'sidebar-logout-badge': {
+    backgroundColor: '#ef4444',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 'auto',
+  },
   'sidebar-badge-text': {
-    color: Colors.text.inverse,
+    color: '#FFFFFF',
     fontSize: 10,
     fontWeight: 'bold',
   },

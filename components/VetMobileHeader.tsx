@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTenant } from '@/contexts/TenantContext';
 import { getVeterinarians, getAppointments } from '@/lib/services/firebaseService';
@@ -7,6 +7,11 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Colors } from '@/constants/Colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadImage } from '@/lib/services/storageService';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/config/firebaseConfig';
+import ProfileImageModal from '@/components/ProfileImageModal';
 
 interface VetMobileHeaderProps {
   showBackButton?: boolean;
@@ -25,10 +30,15 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
 
   const [vetData, setVetData] = useState(null);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     loadVetData();
     loadNotificationCount();
+    loadProfileImage();
     
     // Refresh notification count periodically
     const interval = setInterval(() => {
@@ -136,12 +146,88 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
     }
   };
 
+  const loadProfileImage = async () => {
+    try {
+      const currentUserEmail = user?.email || userEmail;
+      if (!currentUserEmail) return;
+      
+      const userDoc = await getDoc(doc(db, 'veterinarians', currentUserEmail));
+      if (userDoc.exists() && userDoc.data().profileImage) {
+        setProfileImage(userDoc.data().profileImage);
+      }
+    } catch (error) {
+      console.error('Error loading profile image:', error);
+    }
+  };
+
+  const handleImageUpload = () => {
+    setShowImageModal(true);
+  };
+
+  const handleGalleryUpload = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant gallery permissions to select an image.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setPreviewImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to select image. Please try again.');
+    }
+  };
+
+  const handleSaveImage = async () => {
+    if (!previewImage) return;
+    
+    setUploading(true);
+    
+    try {
+      const currentUserEmail = user?.email || userEmail;
+      if (!currentUserEmail) return;
+      
+      const response = await fetch(previewImage);
+      const blob = await response.blob();
+      const imagePath = `vet-profiles/${currentUserEmail.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.jpg`;
+      
+      const downloadURL = await uploadImage(blob, imagePath);
+      
+      const vetDocRef = doc(db, 'veterinarians', currentUserEmail);
+      await updateDoc(vetDocRef, { profileImage: downloadURL });
+      
+      setProfileImage(downloadURL);
+      setPreviewImage(null);
+      setShowImageModal(false);
+      Alert.alert('Success', 'Profile image updated successfully!');
+    } catch (error) {
+      console.error('Error saving image:', error);
+      Alert.alert('Error', 'Failed to save image. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCancelUpload = () => {
+    setPreviewImage(null);
+    setShowImageModal(false);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.leftSection}>
         {showBackButton ? (
           <>
-            <TouchableOpacity style={styles.backButton} onPress={onBackPress || (() => router.push('/veterinarian/vet-mobile'))}>
+            <TouchableOpacity style={styles.backButton} onPress={onBackPress || (() => router.push('/veterinarian/vet-mobile' as any))}>
               <Ionicons name="arrow-back" size={24} color={Colors.primary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>{title}</Text>
@@ -152,8 +238,17 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
               <Text style={styles.pageTitle}>{title}</Text>
             ) : (
               <>
-                <TouchableOpacity style={styles.avatar} onPress={() => router.push('/veterinarian/vet-profile')}>
-                  <Ionicons name="person" size={24} color={Colors.text.inverse} />
+                <TouchableOpacity style={styles.avatar} onPress={handleImageUpload}>
+                  {profileImage ? (
+                    <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+                  ) : (
+                    <Ionicons name="person" size={24} color={Colors.text.inverse} />
+                  )}
+                  {uploading && (
+                    <View style={styles.uploadingOverlay}>
+                      <ActivityIndicator size="small" color={Colors.primary} />
+                    </View>
+                  )}
                 </TouchableOpacity>
                 <View style={styles.userInfo}>
                   <Text style={styles.name}>{vetData?.name || getDisplayName(userEmail)}</Text>
@@ -177,7 +272,7 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
               </Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.notificationButton} onPress={() => router.push('/veterinarian/vet-notifications')}>
+            <TouchableOpacity style={styles.notificationButton} onPress={() => router.push('/veterinarian/vet-notifications' as any)}>
               <Ionicons name="notifications-outline" size={24} color={Colors.primary} />
               {notificationCount > 0 && (
                 <View style={styles.notificationBadge}>
@@ -189,6 +284,15 @@ export default function VetMobileHeader({ showBackButton = false, title, onBackP
         </View>
       )}
 
+      <ProfileImageModal
+        visible={showImageModal}
+        previewImage={previewImage}
+        uploading={uploading}
+        onGalleryUpload={handleGalleryUpload}
+        onSaveImage={handleSaveImage}
+        onCancel={handleCancelUpload}
+        primaryColor={Colors.primary}
+      />
     </View>
   );
 }
@@ -304,6 +408,22 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: '#ccc',
     opacity: 0.6,
+  },
+  avatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
 });

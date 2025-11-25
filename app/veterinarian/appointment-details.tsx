@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { updateAppointment, deleteAppointment } from '../../lib/services/firebaseService';
 import { useAuth } from '../../contexts/AuthContext';
 import { Colors } from '../../constants/Colors';
+import AdminLayout from '../../components/AdminLayout';
 
 export default function AppointmentDetails() {
   const router = useRouter();
@@ -131,7 +132,8 @@ export default function AppointmentDetails() {
   const { date, time } = formatDateTime(appointment);
 
   return (
-    <View style={styles.container}>
+    <AdminLayout>
+      <View style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.detailTable}>
           <View style={styles.detailTableHeader}>
@@ -198,7 +200,8 @@ export default function AppointmentDetails() {
       )}
 
 
-    </View>
+      </View>
+    </AdminLayout>
   );
 }
 

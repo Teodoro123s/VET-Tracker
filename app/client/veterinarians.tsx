@@ -1,11 +1,12 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Image, ScrollView, Modal, Animated, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import AdminLayout from '../../components/AdminLayout';
 import Tesseract from 'tesseract.js';
 import SearchableDropdown from '@/components/SearchableDropdown';
 import { getVeterinarians, addVeterinarian, deleteVeterinarian, updateVeterinarian , registerUser } from '@/lib/services/firebaseService';
 import { generateSecurePassword } from '@/lib/utils/emailService';
-import { sendVeterinarianCredentialsEmail } from '@/lib/services/emailjsService';
+import { sendAdminCredentialsEmail } from '@/lib/services/emailjsService';
 import { hashPassword } from '@/lib/utils/passwordUtils';
 
 import { useTenant } from '@/contexts/TenantContext';
@@ -220,7 +221,7 @@ export default function VeterinariansScreen() {
         
         if (tenantSnapshot.empty) {
           // Get the clinic's tenant ID
-          const clinicTenantId = await getTenantId(userEmail);
+          const clinicTenantId = userEmail; // Use userEmail as tenant identifier
           
           // Store plain password to match Firebase Auth
           // Firebase Auth uses SCRYPT which we can't replicate client-side
@@ -247,7 +248,7 @@ export default function VeterinariansScreen() {
       
       // Send credentials via EmailJS
       try {
-        const emailResult = await sendVeterinarianCredentialsEmail(
+        const emailResult = await sendAdminCredentialsEmail(
           newVeterinarian.email,
           fullName,
           newVeterinarian.email,
@@ -317,7 +318,8 @@ export default function VeterinariansScreen() {
 
 
   return (
-    <View style={styles.container}>
+    <AdminLayout>
+      <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerText}>Veterinarians</Text>
         <View style={styles.headerActions}>
@@ -325,21 +327,22 @@ export default function VeterinariansScreen() {
             style={styles.vetAddButton} 
             onPress={() => setShowAddDrawer(true)}
           >
-            <Ionicons name="add" size={14} color="#ffffff" style={styles.addIcon} />
-            <Text style={styles.vetAddButtonText}>Add Veterinarian</Text>
+            <Ionicons name="add" size={18} color="#ffffff" style={styles.addIcon} />
           </TouchableOpacity>
           <View style={styles.vetSearchContainer}>
-            <Ionicons name="search" size={14} color="#800000" style={styles.searchIcon} />
             <TextInput 
               style={styles.vetSearchInput}
-              placeholder="Search veterinarians..."
-              placeholderTextColor="#999"
+              placeholder="Search..."
+              placeholderTextColor="rgba(153, 153, 153, 0.8)"
               value={searchTerm}
               onChangeText={(text) => {
                 setSearchTerm(text);
                 setCurrentPage(1);
               }}
             />
+            <View style={styles.searchIcon}>
+              <Ionicons name="search" size={14} color="#fff" />
+            </View>
           </View>
         </View>
       </View>
@@ -435,88 +438,31 @@ export default function VeterinariansScreen() {
         )}
         
         {selectedVeterinarian && (
-          <ScrollView style={styles.tableContainer} showsVerticalScrollIndicator={false}>
-            <View style={styles.tableTopRow}>
-              <TouchableOpacity style={styles.returnButton} onPress={() => setSelectedVeterinarian(null)}>
-                <Text style={styles.returnButtonText}>←</Text>
-              </TouchableOpacity>
-              <Text style={styles.formDetailTitle}>{selectedVeterinarian.name}</Text>
-              <View style={styles.categoryActions}>
-                <TouchableOpacity style={styles.editCategoryButton} onPress={() => {
-                  setEditVetData({
-                    name: selectedVeterinarian.name,
-                    specialty: selectedVeterinarian.specialization,
-                    contact: selectedVeterinarian.phone,
-                    email: selectedVeterinarian.email,
-                    license: selectedVeterinarian.license || '',
-                    licenseImage: null
-                  });
-                  setShowEditVetDrawer(true);
-                }}>
-                  <Text style={styles.editCategoryButtonText}>Edit</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.deleteCategoryButton} onPress={() => {
-                  console.log('Delete button clicked for:', selectedVeterinarian.name, selectedVeterinarian.id);
-                  handleDeleteVeterinarian(selectedVeterinarian.id);
-                }}>
-                  <Text style={styles.deleteCategoryButtonText}>Delete</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-            <View style={styles.detailTable}>
-              <View style={styles.detailTableHeader}>
-                <Text style={styles.detailHeaderCell}>Field</Text>
-                <Text style={styles.detailHeaderCell}>Value</Text>
-              </View>
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Full Name</Text>
-                <Text style={styles.detailCell}>{selectedVeterinarian.name || 'Not Available'}</Text>
-              </View>
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Specialty</Text>
-                <Text style={styles.detailCell}>{selectedVeterinarian.specialization || 'Not Available'}</Text>
-              </View>
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Contact Number</Text>
-                <Text style={styles.detailCell}>{selectedVeterinarian.phone || 'Not Available'}</Text>
-              </View>
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Email Address</Text>
-                <Text style={styles.detailCell}>{selectedVeterinarian.email || 'Not Available'}</Text>
-              </View>
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>License Number</Text>
-                <Text style={styles.detailCell}>{selectedVeterinarian.license || 'No license provided (Practitioner)'}</Text>
-              </View>
-              {selectedVeterinarian.licenseImageUrl && (
-                <View style={styles.detailTableRow}>
-                  <Text style={styles.detailCell}>License Image</Text>
-                  <View style={styles.detailCell}>
-                    <Image 
-                      source={{ uri: selectedVeterinarian.licenseImageUrl }} 
-                      style={styles.licenseImagePreview} 
-                      resizeMode="contain"
-                    />
-                    <TouchableOpacity 
-                      style={styles.viewFullImageButton}
-                      onPress={() => {
-                        if (typeof window !== 'undefined') {
-                          window.open(selectedVeterinarian.licenseImageUrl, '_blank');
-                        }
-                      }}
-                    >
-                      <Text style={styles.viewFullImageText}>View Full Image</Text>
-                    </TouchableOpacity>
+          <View style={styles.tableContainer}>
+            <ScrollView style={styles.detailTable} showsVerticalScrollIndicator={false}>
+              <View style={[styles.subHeader, { justifyContent: 'space-between' }]}>
+                <View style={styles.filterTabs}>
+                  <TouchableOpacity onPress={() => setSelectedVeterinarian(null)} style={styles.returnButton}>
+                    <Text style={styles.returnIcon}>←</Text>
+                  </TouchableOpacity>
+                  <View style={styles.filterTab}>
+                    <Text style={styles.appointmentDetailsText}>Veterinarian Details</Text>
                   </View>
                 </View>
-              )}
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Date Created</Text>
-                <Text style={styles.detailCell}>{selectedVeterinarian.createdAt ? new Date(selectedVeterinarian.createdAt.seconds * 1000).toLocaleDateString() : 'Not Available'}</Text>
-              </View>
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Actions</Text>
-                <View style={styles.detailCell}>
+                <View style={styles.categoryActions}>
+                  <TouchableOpacity style={styles.editCategoryButton} onPress={() => {
+                    setEditVetData({
+                      name: selectedVeterinarian.name,
+                      specialty: selectedVeterinarian.specialization,
+                      contact: selectedVeterinarian.phone,
+                      email: selectedVeterinarian.email,
+                      license: selectedVeterinarian.license || '',
+                      licenseImage: null
+                    });
+                    setShowEditVetDrawer(true);
+                  }}>
+                    <Text style={styles.editCategoryButtonText}>Edit</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity 
                     style={[styles.generatePasswordButton, isGeneratingPassword && styles.disabledButton]} 
                     disabled={isGeneratingPassword}
@@ -553,7 +499,7 @@ export default function VeterinariansScreen() {
                         }
                         
                         // Send new credentials via EmailJS
-                        const emailResult = await sendVeterinarianCredentialsEmail(
+                        const emailResult = await sendAdminCredentialsEmail(
                           selectedVeterinarian.email,
                           selectedVeterinarian.name,
                           selectedVeterinarian.email,
@@ -578,10 +524,87 @@ export default function VeterinariansScreen() {
                       {isGeneratingPassword ? 'Generating...' : 'Generate New Password'}
                     </Text>
                   </TouchableOpacity>
+                  <TouchableOpacity style={styles.deleteCategoryButton} onPress={() => {
+                    console.log('Delete button clicked for:', selectedVeterinarian.name, selectedVeterinarian.id);
+                    handleDeleteVeterinarian(selectedVeterinarian.id);
+                  }}>
+                    <Text style={styles.deleteCategoryButtonText}>Delete</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-            </View>
-          </ScrollView>
+              <View style={styles.formContainer}>
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.formLabel}>Full Name</Text>
+                    <View style={styles.formValue}>
+                      <Text style={styles.formValueText}>{selectedVeterinarian.name || 'Not Available'}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.formLabel}>Specialty</Text>
+                    <View style={styles.formValue}>
+                      <Text style={styles.formValueText}>{selectedVeterinarian.specialization || 'Not Available'}</Text>
+                    </View>
+                  </View>
+                </View>
+                
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.formLabel}>Contact Number</Text>
+                    <View style={styles.formValue}>
+                      <Text style={styles.formValueText}>{selectedVeterinarian.phone || 'Not Available'}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.formLabel}>Email Address</Text>
+                    <View style={styles.formValue}>
+                      <Text style={styles.formValueText}>{selectedVeterinarian.email || 'Not Available'}</Text>
+                    </View>
+                  </View>
+                </View>
+                
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.formLabel}>License Number</Text>
+                    <View style={styles.formValue}>
+                      <Text style={styles.formValueText}>{selectedVeterinarian.license || 'No license provided (Practitioner)'}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.formLabel}>Date Created</Text>
+                    <View style={styles.formValue}>
+                      <Text style={styles.formValueText}>{selectedVeterinarian.createdAt ? new Date(selectedVeterinarian.createdAt.seconds * 1000).toLocaleDateString() : 'Not Available'}</Text>
+                    </View>
+                  </View>
+                </View>
+                
+                {selectedVeterinarian.licenseImageUrl && (
+                  <View style={styles.formField}>
+                    <Text style={styles.formLabel}>License Image</Text>
+                    <View style={styles.formValue}>
+                      <Image 
+                        source={{ uri: selectedVeterinarian.licenseImageUrl }} 
+                        style={styles.licenseImagePreview} 
+                        resizeMode="contain"
+                      />
+                      <TouchableOpacity 
+                        style={styles.viewFullImageButton}
+                        onPress={() => {
+                          if (typeof window !== 'undefined') {
+                            window.open(selectedVeterinarian.licenseImageUrl, '_blank');
+                          }
+                        }}
+                      >
+                        <Text style={styles.viewFullImageText}>View Full Image</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+                
+
+              </View>
+            </ScrollView>
+          </View>
         )}
       </View>
       
@@ -599,98 +622,118 @@ export default function VeterinariansScreen() {
                     useNativeDriver: false,
                   }).start(() => setShowAddDrawer(false));
                 }}>
-                  <Ionicons name="close" size={16} color="#800000" />
+                  <Text style={styles.drawerCloseText}>×</Text>
                 </TouchableOpacity>
               </View>
               
               <ScrollView style={styles.drawerForm}>
-                  <Text style={styles.fieldLabel}>Surname *</Text>
-                  <TextInput
-                    style={styles.drawerInput}
-                    placeholder="Enter surname"
-                    placeholderTextColor="#ccc"
-                    value={newVeterinarian.surname}
-                    onChangeText={(text) => setNewVeterinarian({...newVeterinarian, surname: text})}
-                  />
-                  
-                  <Text style={styles.fieldLabel}>First Name *</Text>
-                  <TextInput
-                    style={styles.drawerInput}
-                    placeholder="Enter first name"
-                    placeholderTextColor="#ccc"
-                    value={newVeterinarian.firstname}
-                    onChangeText={(text) => setNewVeterinarian({...newVeterinarian, firstname: text})}
-                  />
-                  
-                  <Text style={styles.fieldLabel}>Middle Name</Text>
-                  <TextInput
-                    style={styles.drawerInput}
-                    placeholder="Enter middle name (optional)"
-                    placeholderTextColor="#ccc"
-                    value={newVeterinarian.middlename}
-                    onChangeText={(text) => setNewVeterinarian({...newVeterinarian, middlename: text})}
-                  />
-                  
-                  <Text style={styles.fieldLabel}>Specialty *</Text>
-                  <TextInput
-                    style={styles.drawerInput}
-                    placeholder="Enter specialty"
-                    placeholderTextColor="#ccc"
-                    value={newVeterinarian.specialty}
-                    onChangeText={(text) => setNewVeterinarian({...newVeterinarian, specialty: text})}
-                  />
-                  
-                  <Text style={styles.fieldLabel}>Contact Number *</Text>
-                  <TextInput
-                    style={styles.drawerInput}
-                    placeholder="Enter contact number"
-                    placeholderTextColor="#ccc"
-                    keyboardType="phone-pad"
-                    value={newVeterinarian.contact}
-                    onChangeText={(text) => setNewVeterinarian({...newVeterinarian, contact: text})}
-                  />
-                  
-                  <Text style={styles.fieldLabel}>Email Address *</Text>
-                  <TextInput
-                    style={styles.drawerInput}
-                    placeholder="Enter email address"
-                    placeholderTextColor="#ccc"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    value={newVeterinarian.email}
-                    onChangeText={(text) => setNewVeterinarian({...newVeterinarian, email: text})}
-                  />
-                  
-                  <Text style={styles.fieldLabel}>License Number *</Text>
-                  <TextInput
-                    style={styles.drawerInput}
-                    placeholder="Enter license number"
-                    placeholderTextColor="#ccc"
-                    value={newVeterinarian.license}
-                    onChangeText={(text) => setNewVeterinarian({...newVeterinarian, license: text})}
-                  />
-                  
-                  <Text style={styles.fieldLabel}>License Image</Text>
-                  <TouchableOpacity 
-                    style={styles.imageImportButton}
-                    onPress={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
-                      input.onchange = (e: any) => {
-                        const file = (e.target as HTMLInputElement).files?.[0];
-                        if (file) {
-                          setNewVeterinarian({...newVeterinarian, licenseImage: file});
-                          setLicenseVerified(null);
-                        }
-                      };
-                      input.click();
-                    }}
-                  >
-                    <Text style={styles.imageImportText}>
-                      {newVeterinarian.licenseImage ? 'Change License Image' : 'Import License Image'}
-                    </Text>
-                  </TouchableOpacity>
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Surname *</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter surname"
+                      placeholderTextColor="#9CA3AF"
+                      value={newVeterinarian.surname}
+                      onChangeText={(text) => setNewVeterinarian({...newVeterinarian, surname: text})}
+                    />
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>First Name *</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter first name"
+                      placeholderTextColor="#9CA3AF"
+                      value={newVeterinarian.firstname}
+                      onChangeText={(text) => setNewVeterinarian({...newVeterinarian, firstname: text})}
+                    />
+                  </View>
+                </View>
+                
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Middle Name</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter middle name (optional)"
+                      placeholderTextColor="#9CA3AF"
+                      value={newVeterinarian.middlename}
+                      onChangeText={(text) => setNewVeterinarian({...newVeterinarian, middlename: text})}
+                    />
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Specialty *</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter specialty"
+                      placeholderTextColor="#9CA3AF"
+                      value={newVeterinarian.specialty}
+                      onChangeText={(text) => setNewVeterinarian({...newVeterinarian, specialty: text})}
+                    />
+                  </View>
+                </View>
+                
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Contact Number *</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter contact number"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="phone-pad"
+                      value={newVeterinarian.contact}
+                      onChangeText={(text) => setNewVeterinarian({...newVeterinarian, contact: text})}
+                    />
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Email Address *</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter email address"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      value={newVeterinarian.email}
+                      onChangeText={(text) => setNewVeterinarian({...newVeterinarian, email: text})}
+                    />
+                  </View>
+                </View>
+                
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>License Number *</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter license number"
+                      placeholderTextColor="#9CA3AF"
+                      value={newVeterinarian.license}
+                      onChangeText={(text) => setNewVeterinarian({...newVeterinarian, license: text})}
+                    />
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>License Image</Text>
+                    <TouchableOpacity 
+                      style={styles.imageImportButton}
+                      onPress={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.onchange = (e: any) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (file) {
+                            setNewVeterinarian({...newVeterinarian, licenseImage: file});
+                            setLicenseVerified(null);
+                          }
+                        };
+                        input.click();
+                      }}
+                    >
+                      <Text style={styles.imageImportText}>
+                        {newVeterinarian.licenseImage ? 'Change License Image' : 'Import License Image'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
                   {newVeterinarian.licenseImage && (
                     <View>
                       <Image 
@@ -785,55 +828,68 @@ export default function VeterinariansScreen() {
               </View>
               
               <ScrollView style={styles.drawerForm}>
-                <Text style={styles.fieldLabel}>Full Name *</Text>
-                <TextInput
-                  style={styles.drawerInput}
-                  placeholder="Enter full name"
-                  placeholderTextColor="#ccc"
-                  value={editVetData.name}
-                  onChangeText={(text) => setEditVetData({...editVetData, name: text})}
-                />
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Full Name *</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter full name"
+                      placeholderTextColor="#9CA3AF"
+                      value={editVetData.name}
+                      onChangeText={(text) => setEditVetData({...editVetData, name: text})}
+                    />
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Specialty *</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter specialty"
+                      placeholderTextColor="#9CA3AF"
+                      value={editVetData.specialty}
+                      onChangeText={(text) => setEditVetData({...editVetData, specialty: text})}
+                    />
+                  </View>
+                </View>
                 
-                <Text style={styles.fieldLabel}>Specialty *</Text>
-                <TextInput
-                  style={styles.drawerInput}
-                  placeholder="Enter specialty"
-                  placeholderTextColor="#ccc"
-                  value={editVetData.specialty}
-                  onChangeText={(text) => setEditVetData({...editVetData, specialty: text})}
-                />
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Contact Number *</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter contact number"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="phone-pad"
+                      value={editVetData.contact}
+                      onChangeText={(text) => setEditVetData({...editVetData, contact: text})}
+                    />
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Email Address *</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter email address"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      value={editVetData.email}
+                      onChangeText={(text) => setEditVetData({...editVetData, email: text})}
+                    />
+                  </View>
+                </View>
                 
-                <Text style={styles.fieldLabel}>Contact Number *</Text>
-                <TextInput
-                  style={styles.drawerInput}
-                  placeholder="Enter contact number"
-                  placeholderTextColor="#ccc"
-                  keyboardType="phone-pad"
-                  value={editVetData.contact}
-                  onChangeText={(text) => setEditVetData({...editVetData, contact: text})}
-                />
-                
-                <Text style={styles.fieldLabel}>Email Address *</Text>
-                <TextInput
-                  style={styles.drawerInput}
-                  placeholder="Enter email address"
-                  placeholderTextColor="#ccc"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  value={editVetData.email}
-                  onChangeText={(text) => setEditVetData({...editVetData, email: text})}
-                />
-                
-                <Text style={styles.fieldLabel}>License Number</Text>
-                <TextInput
-                  style={styles.drawerInput}
-                  placeholder="Enter license number"
-                  placeholderTextColor="#ccc"
-                  value={editVetData.license}
-                  onChangeText={(text) => setEditVetData({...editVetData, license: text})}
-                />
-                
-                <Text style={styles.fieldLabel}>License Image (Optional)</Text>
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>License Number</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter license number"
+                      placeholderTextColor="#9CA3AF"
+                      value={editVetData.license}
+                      onChangeText={(text) => setEditVetData({...editVetData, license: text})}
+                    />
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>License Image (Optional)</Text>
                 {selectedVeterinarian?.licenseImageUrl && !editVetData.licenseImage && (
                   <View>
                     <Image 
@@ -843,36 +899,38 @@ export default function VeterinariansScreen() {
                     <Text style={styles.currentImageLabel}>Current License Image</Text>
                   </View>
                 )}
-                <TouchableOpacity 
-                  style={styles.imageImportButton}
-                  onPress={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = 'image/*';
-                    input.onchange = (e: any) => {
-                      const file = (e.target as HTMLInputElement).files?.[0];
-                      if (file) {
-                        setEditVetData({...editVetData, licenseImage: file});
-                      }
-                    };
-                    input.click();
-                  }}
-                >
-                  <Text style={styles.imageImportText}>
-                    {editVetData.licenseImage ? 'Change License Image' : (selectedVeterinarian?.licenseImageUrl ? 'Replace License Image' : 'Import License Image')}
-                  </Text>
-                </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.imageImportButton}
+                      onPress={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.onchange = (e: any) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (file) {
+                            setEditVetData({...editVetData, licenseImage: file});
+                          }
+                        };
+                        input.click();
+                      }}
+                    >
+                      <Text style={styles.imageImportText}>
+                        {editVetData.licenseImage ? 'Change License Image' : (selectedVeterinarian?.licenseImageUrl ? 'Replace License Image' : 'Import License Image')}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
                 {editVetData.licenseImage && (
-                  <View>
-                    <Image 
-                      source={{ uri: URL.createObjectURL(editVetData.licenseImage) }} 
-                      style={styles.previewImage} 
-                    />
-                    <Text style={styles.newImageLabel}>New License Image</Text>
+                  <View style={styles.formRow}>
+                    <View style={styles.formColumn}>
+                      <Image 
+                        source={{ uri: URL.createObjectURL(editVetData.licenseImage) }} 
+                        style={styles.previewImage} 
+                      />
+                      <Text style={styles.newImageLabel}>New License Image</Text>
+                    </View>
                   </View>
                 )}
-                
-
               </ScrollView>
               <View style={styles.drawerButtons}>
                 <TouchableOpacity style={styles.drawerCancelButton} onPress={() => {
@@ -986,13 +1044,15 @@ export default function VeterinariansScreen() {
           </View>
         </Modal>
       )}
-    </View>
+      </View>
+    </AdminLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   header: {
     paddingTop: 20,
@@ -1004,7 +1064,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   headerText: {
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#800000',
   },
@@ -1014,98 +1074,110 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   vetAddButton: {
-    flexDirection: 'row',
+    width: 32,
+    height: 32,
+    backgroundColor: '#7F1D1F',
+    borderRadius: 6,
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#23C062',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
   },
   addIcon: {
-    marginRight: 4,
+    marginRight: 0,
   },
   vetAddButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 12,
+    display: 'none',
   },
   vetSearchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#800000',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(127, 29, 31, 0.3)',
+    borderRadius: 8,
+    paddingLeft: 10,
+    width: 265.798,
+    height: 32,
+    flexShrink: 0,
+    backgroundColor: 'rgba(250, 250, 250, 0.00)',
+    shadowColor: 'rgba(31, 61, 89, 0.04)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 20,
   },
   searchIcon: {
-    marginRight: 6,
+    width: 32,
+    height: 32,
+    backgroundColor: '#7F1D1F',
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   vetSearchInput: {
-    width: 150,
-    fontSize: 12,
-    // web-only outlineStyle removed
+    flex: 1,
+    fontSize: 15,
   },
   content: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 8,
+    paddingTop: 20,
   },
   tableContainer: {
-    borderWidth: 2,
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 8,
-    backgroundColor: '#fff',
   },
   table: {
     backgroundColor: '#fff',
-    height: 390,
+    flex: 1,
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f8f9fa',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingLeft: 70,
+    paddingRight: 20,
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
+    paddingLeft: 70,
+    paddingRight: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
   headerCell: {
     flex: 1,
-    fontWeight: 'bold',
+    fontWeight: '600',
     textAlign: 'left',
     fontSize: 14,
-    color: '#333',
-    paddingRight: 10,
+    color: '#374151',
+    paddingRight: 16,
   },
   headerCellName: {
-    flex: 2,
-    fontWeight: 'bold',
+    flex: 1.5,
+    fontWeight: '600',
     textAlign: 'left',
     fontSize: 14,
-    color: '#333',
-    paddingRight: 10,
+    color: '#374151',
+    paddingRight: 16,
   },
   cell: {
     flex: 1,
     textAlign: 'left',
-    fontSize: 12,
-    color: '#555',
-    paddingRight: 10,
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+    fontSize: 14,
+    color: '#6B7280',
+    paddingRight: 16,
   },
   cellName: {
-    flex: 2,
+    flex: 1.5,
     textAlign: 'left',
-    fontSize: 12,
-    color: '#555',
-    paddingRight: 10,
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '500',
+    paddingRight: 16,
   },
   pagination: {
     backgroundColor: '#f8f9fa',
@@ -1331,14 +1403,20 @@ const styles = StyleSheet.create({
   returnButton: {
     backgroundColor: '#800000',
     borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    width: 32,
+    height: 32,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   returnButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 12,
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  returnIcon: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '900',
   },
   formDetailTitle: {
     fontSize: 20,
@@ -1355,8 +1433,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#007bff',
     borderRadius: 5,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    height: 32,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   editCategoryButtonText: {
     color: '#ffffff',
@@ -1367,8 +1446,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#dc3545',
     borderRadius: 5,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    height: 32,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   deleteCategoryButtonText: {
     color: '#ffffff',
@@ -1405,12 +1485,10 @@ const styles = StyleSheet.create({
     // web-only properties removed for React Native
   },
   drawerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
     zIndex: 10000,
   },
   detailModalOverlay: {
@@ -1420,36 +1498,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   drawer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 350,
+    width: '95%',
+    maxWidth: 600,
     backgroundColor: '#fff',
+    borderRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
+    shadowRadius: 20,
+    elevation: 20,
   },
   drawerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    padding: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    backgroundColor: '#f8f9fa',
+    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   drawerTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#800000',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
   },
   drawerCloseButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#f0f0f0',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1464,61 +1543,72 @@ const styles = StyleSheet.create({
     tintColor: '#800000',
   },
   drawerForm: {
-    flex: 1,
-    padding: 20,
+    maxHeight: '70%',
+    padding: 24,
   },
   fieldLabel: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: '600',
+    color: '#374151',
     marginBottom: 8,
-    marginTop: 15,
   },
   drawerInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
-    fontSize: 12,
-    backgroundColor: '#fafafa',
+    fontSize: 14,
+    backgroundColor: '#ffffff',
+    color: '#111827',
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 20,
+  },
+  formColumn: {
+    flex: 1,
   },
   drawerButtons: {
     flexDirection: 'row',
-    padding: 20,
+    padding: 24,
     borderTopWidth: 1,
-    borderTopColor: '#ddd',
+    borderTopColor: '#e5e7eb',
     backgroundColor: '#fff',
-    gap: 10,
+    gap: 12,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
   drawerCancelButton: {
-    backgroundColor: '#f5f5f5',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
+    backgroundColor: '#f9fafb',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#d1d5db',
     alignItems: 'center',
     flex: 1,
   },
   drawerCancelText: {
     textAlign: 'center',
-    color: '#666',
-    fontWeight: 'bold',
-    fontSize: 12,
+    color: '#6b7280',
+    fontWeight: '600',
+    fontSize: 14,
   },
   drawerSaveButton: {
-    backgroundColor: '#23C062',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
+    backgroundColor: '#800000',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
     flex: 1,
   },
   drawerSaveText: {
     textAlign: 'center',
     color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 12,
+    fontWeight: '600',
+    fontSize: 14,
   },
   specialtyDropdownContainer: {
     position: 'relative',
@@ -1613,6 +1703,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginBottom: 0,
+    alignSelf: 'flex-start',
   },
   generatePasswordText: {
     color: '#fff',
@@ -1823,5 +1914,58 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 5,
     textAlign: 'center',
+  },
+  subHeader: {
+    flexDirection: 'row',
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    padding: 8,
+  },
+  filterTabs: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  filterTab: {
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    alignItems: 'flex-start',
+    marginRight: 5,
+  },
+  appointmentDetailsText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#666',
+    textAlign: 'left',
+  },
+  formContainer: {
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  formField: {
+    marginBottom: 20,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  formValue: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  formValueText: {
+    fontSize: 14,
+    color: '#555',
   },
 });

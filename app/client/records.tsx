@@ -5,6 +5,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { deleteMedicalCategory, deleteMedicalForm, getMedicalForms, getMedicalCategories, addMedicalForm, addMedicalCategory, getFormFields, addFormField, updateMedicalForm, deleteFormField, updateFormField, addMedicalRecord, getVeterinarians } from '../../lib/services/firebaseService';
 import { useTenant } from '@/contexts/TenantContext';
+import AdminLayout from '../../components/AdminLayout';
 
 export default function RecordsScreen() {
   const { userEmail } = useTenant();
@@ -316,27 +317,29 @@ export default function RecordsScreen() {
   const formsDropdownOptions = [5, 10, 20];
 
   return (
-    <View style={styles.container}>
+    <AdminLayout>
+      <View style={styles.container}>
       <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.headerText}>Categories</Text>
           <View style={styles.headerActions}>
             <TouchableOpacity style={styles.recordAddButton} onPress={() => setShowAddCategoryDrawer(true)}>
-              <Ionicons name="add" size={14} color="#ffffff" />
-              <Text style={styles.recordAddButtonText}>Add Category</Text>
+              <Ionicons name="add" size={18} color="#ffffff" />
             </TouchableOpacity>
             <View style={styles.recordSearchContainer}>
-              <Ionicons name="search" size={14} color="#800000" />
               <TextInput 
                 style={styles.recordSearchInput}
-                placeholder="Search categories..."
-                placeholderTextColor="#999"
+                placeholder="Search..."
+                placeholderTextColor="rgba(153, 153, 153, 0.8)"
                 value={searchTerm}
                 onChangeText={(text) => {
                   setSearchTerm(text);
                   setCurrentPage(1);
                 }}
               />
+              <View style={styles.recordSearchIcon}>
+                <Ionicons name="search" size={14} color="#fff" />
+              </View>
             </View>
           </View>
         </View>
@@ -430,22 +433,23 @@ export default function RecordsScreen() {
           <Text style={styles.medicalFormsHeaderText}>Form Templates</Text>
           <View style={styles.medicalFormsHeaderActions}>
             <TouchableOpacity style={styles.formAddButton} onPress={() => setShowAddFormDrawer(true)}>
-              <Ionicons name="add" size={14} color="#ffffff" />
-              <Text style={styles.formAddButtonText}>Add Form</Text>
+              <Ionicons name="add" size={18} color="#ffffff" />
             </TouchableOpacity>
 
             <View style={styles.formSearchContainer}>
-              <Ionicons name="search" size={14} color="#800000" />
               <TextInput 
                 style={styles.formSearchInput}
-                placeholder="Search forms..."
-                placeholderTextColor="#999"
+                placeholder="Search..."
+                placeholderTextColor="rgba(153, 153, 153, 0.8)"
                 value={formsSearchTerm}
                 onChangeText={(text) => {
                   setFormsSearchTerm(text);
                   setFormsCurrentPage(1);
                 }}
               />
+              <View style={styles.formSearchIcon}>
+                <Ionicons name="search" size={14} color="#fff" />
+              </View>
             </View>
           </View>
         </View>
@@ -1483,13 +1487,15 @@ export default function RecordsScreen() {
         </Modal>
       )}
 
-    </View>
+      </View>
+    </AdminLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   scrollContainer: {
     flex: 1,
@@ -1504,7 +1510,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   headerText: {
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#800000',
   },
@@ -1514,12 +1520,12 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   recordAddButton: {
-    flexDirection: 'row',
+    width: 32,
+    height: 32,
+    backgroundColor: '#7F1D1F',
+    borderRadius: 6,
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#23C062',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
   },
 
   recordAddButtonText: {
@@ -1530,17 +1536,33 @@ const styles = StyleSheet.create({
   recordSearchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#800000',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(127, 29, 31, 0.3)',
+    borderRadius: 8,
+    paddingLeft: 10,
+    width: 265.798,
+    height: 32,
+    flexShrink: 0,
+    backgroundColor: 'rgba(250, 250, 250, 0.00)',
+    shadowColor: 'rgba(31, 61, 89, 0.04)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 20,
   },
 
   recordSearchInput: {
-    width: 150,
-    fontSize: 12,
-    // web-only outlineStyle removed
+    flex: 1,
+    fontSize: 15,
+  },
+  recordSearchIcon: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#7F1D1F',
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     padding: 20,
@@ -1548,10 +1570,11 @@ const styles = StyleSheet.create({
     zIndex: 3000,
   },
   tableContainer: {
-    borderWidth: 2,
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 8,
-    backgroundColor: '#fff',
   },
   table: {
     backgroundColor: '#fff',
@@ -1560,49 +1583,48 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f8f9fa',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingLeft: 70,
+    paddingRight: 20,
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
+    paddingLeft: 70,
+    paddingRight: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
   headerCell: {
     flex: 1,
-    fontWeight: 'bold',
+    fontWeight: '600',
     textAlign: 'left',
     fontSize: 14,
-    color: '#333',
-    paddingRight: 10,
+    color: '#374151',
+    paddingRight: 16,
   },
   headerCellName: {
-    flex: 2,
-    fontWeight: 'bold',
+    flex: 1.5,
+    fontWeight: '600',
     textAlign: 'left',
     fontSize: 14,
-    color: '#333',
-    paddingRight: 10,
+    color: '#374151',
+    paddingRight: 16,
   },
   cell: {
     flex: 1,
     textAlign: 'left',
-    fontSize: 12,
-    color: '#555',
-    paddingRight: 10,
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+    fontSize: 14,
+    color: '#6B7280',
+    paddingRight: 16,
   },
   cellName: {
-    flex: 2,
+    flex: 1.5,
     textAlign: 'left',
-    fontSize: 12,
-    color: '#555',
-    paddingRight: 10,
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '500',
+    paddingRight: 16,
   },
   pagination: {
     backgroundColor: '#f8f9fa',
@@ -1759,12 +1781,13 @@ const styles = StyleSheet.create({
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
     marginBottom: 15,
     fontSize: 14,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#ffffff',
+    color: '#111827',
   },
   halfInput: {
     width: '48%',
@@ -1823,7 +1846,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   medicalFormsHeaderText: {
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#800000',
   },
@@ -1833,12 +1856,12 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   formAddButton: {
-    flexDirection: 'row',
+    width: 32,
+    height: 32,
+    backgroundColor: '#7F1D1F',
+    borderRadius: 6,
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#23C062',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
   },
   formAddButtonText: {
     color: '#ffffff',
@@ -1848,26 +1871,43 @@ const styles = StyleSheet.create({
   formSearchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#800000',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(127, 29, 31, 0.3)',
+    borderRadius: 8,
+    paddingLeft: 10,
+    width: 265.798,
+    height: 32,
+    flexShrink: 0,
+    backgroundColor: 'rgba(250, 250, 250, 0.00)',
+    shadowColor: 'rgba(31, 61, 89, 0.04)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 20,
   },
   formSearchInput: {
-    width: 150,
-    fontSize: 12,
-    // web-only outlineStyle removed
+    flex: 1,
+    fontSize: 15,
+  },
+  formSearchIcon: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#7F1D1F',
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   medicalFormsContent: {
     flex: 1,
     paddingTop: 15,
   },
   medicalFormsTableContainer: {
-    borderWidth: 2,
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 8,
-    backgroundColor: '#fff',
   },
   medicalFormsTable: {
     backgroundColor: '#fff',
@@ -1876,49 +1916,48 @@ const styles = StyleSheet.create({
   medicalFormsTableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f8f9fa',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingLeft: 70,
+    paddingRight: 20,
   },
   medicalFormsTableRow: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
+    paddingVertical: 12,
+    paddingLeft: 70,
+    paddingRight: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
   medicalFormsHeaderCell: {
     flex: 1,
-    fontWeight: 'bold',
+    fontWeight: '600',
     textAlign: 'left',
     fontSize: 14,
-    color: '#333',
-    paddingRight: 10,
+    color: '#374151',
+    paddingRight: 16,
   },
   medicalFormsHeaderCellName: {
-    flex: 2,
-    fontWeight: 'bold',
+    flex: 1.5,
+    fontWeight: '600',
     textAlign: 'left',
     fontSize: 14,
-    color: '#333',
-    paddingRight: 10,
+    color: '#374151',
+    paddingRight: 16,
   },
   medicalFormsCell: {
     flex: 1,
     textAlign: 'left',
-    fontSize: 12,
-    color: '#555',
-    paddingRight: 10,
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+    fontSize: 14,
+    color: '#6B7280',
+    paddingRight: 16,
   },
   medicalFormsCellName: {
-    flex: 2,
+    flex: 1.5,
     textAlign: 'left',
-    fontSize: 12,
-    color: '#555',
-    paddingRight: 10,
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '500',
+    paddingRight: 16,
   },
   medicalFormsTableBody: {
     flex: 1,
@@ -2152,37 +2191,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   drawerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    zIndex: 10000,
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   drawer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 350,
     backgroundColor: '#fff',
+    borderRadius: 8,
+    width: '60%',
     shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
-    shadowRadius: 10,
+    shadowRadius: 12,
     elevation: 10,
   },
   drawerHeader: {
+    padding: 15,
+    paddingLeft: 25,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    backgroundColor: '#f8f9fa',
   },
   drawerTitle: {
-    fontSize: 14,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#800000',
   },
@@ -2200,16 +2232,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   drawerContent: {
-    flex: 1,
     padding: 20,
-    paddingBottom: 120,
+    flex: 1,
   },
   fieldLabel: {
     fontSize: 14,
-    fontWeight: 'bold',
     color: '#333',
-    marginBottom: 8,
-    marginTop: 15,
+    marginTop: 8,
+    fontWeight: 'bold',
   },
   fieldDescription: {
     fontSize: 12,
@@ -2222,8 +2252,14 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
+    marginTop: 6,
+    backgroundColor: '#fff',
     fontSize: 14,
-    backgroundColor: '#fafafa',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   drawerDropdown: {
     flexDirection: 'row',
@@ -2232,8 +2268,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
-    padding: 12,
     backgroundColor: '#fff',
+    padding: 12,
+    marginTop: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
@@ -2241,15 +2278,13 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   drawerDropdownText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#333',
+    flex: 1,
   },
   drawerButtons: {
     flexDirection: 'row',
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    backgroundColor: '#fff',
+    padding: 15,
     gap: 10,
   },
   labelWithAsterisk: {
@@ -2265,37 +2300,38 @@ const styles = StyleSheet.create({
   },
   drawerCancelButton: {
     backgroundColor: '#f5f5f5',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
     borderWidth: 1,
     borderColor: '#ddd',
-    alignItems: 'center',
-    flex: 1,
   },
   drawerCancelText: {
-    textAlign: 'center',
     color: '#666',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 14,
   },
   drawerSaveButton: {
-    backgroundColor: '#23C062',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
+    backgroundColor: '#7B2C2C',
+    padding: 14,
+    borderRadius: 8,
     alignItems: 'center',
     flex: 1,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   drawerSaveText: {
-    textAlign: 'center',
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 14,
   },
   drawerForm: {
-    flex: 1,
-    padding: 20,
+    maxHeight: '70%',
+    padding: 24,
   },
   inputTypeDropdownContainer: {
     position: 'relative',
@@ -2308,14 +2344,14 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
     zIndex: 2002,
     elevation: 15,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     maxHeight: 200,
   },
   requiredDropdownContainer: {
@@ -2367,11 +2403,12 @@ const styles = StyleSheet.create({
   optionInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
     fontSize: 14,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#ffffff',
+    color: '#111827',
   },
   deleteOptionButton: {
     width: 30,
@@ -2387,7 +2424,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   addOptionButton: {
-    backgroundColor: '#23C062',
+    backgroundColor: '#800000',
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',
@@ -2444,14 +2481,14 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
     zIndex: 3002,
     elevation: 15,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     maxHeight: 200,
   },
   categoryDropdownScroll: {
@@ -2610,11 +2647,12 @@ const styles = StyleSheet.create({
   },
   formPreviewFieldInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
-    fontSize: 12,
-    backgroundColor: '#fafafa',
+    fontSize: 14,
+    backgroundColor: '#ffffff',
+    color: '#111827',
     maxWidth: 300,
   },
   formPreviewFieldDropdown: {
@@ -2622,10 +2660,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#ffffff',
     maxWidth: 300,
   },
   formPreviewFieldDropdownText: {
@@ -2637,10 +2675,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#ffffff',
     maxWidth: 300,
   },
   formPreviewFieldDateText: {

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Animated, StyleSheet, Alert, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Alert, Animated, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AdminLayout from '../../components/AdminLayout';
 import { useAuth } from '../../contexts/AuthContext';
-import { addAppointment, getAppointments, deleteAppointment, updateAppointment, getCustomers, getPets, getVeterinarians, getReasonOptions, addReasonOption, updateReasonOption, deleteReasonOption, getMedicalForms, getMedicalCategories, addMedicalRecord, getFormFields } from '../../lib/services/firebaseService';
-import { notificationService } from '../../lib/services/notificationService';
+import { useTenant } from '../../contexts/TenantContext';
+import { addAppointment, addMedicalRecord, addReasonOption, deleteAppointment, deleteReasonOption, getAppointments, getCustomers, getMedicalCategories, getMedicalForms, getPets, getReasonOptions, getVeterinarians, updateAppointment, updateReasonOption } from '../../lib/services/firebaseService';
 import { sendAppointmentConfirmationEmail } from '../../lib/utils/emailService';
 
 interface Appointment {
@@ -27,6 +28,8 @@ interface Appointment {
 
 export default function AppointmentsScreen() {
   const { user } = useAuth();
+  const { userEmail } = useTenant();
+  const router = useRouter();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [pets, setPets] = useState<any[]>([]);
@@ -82,6 +85,7 @@ export default function AppointmentsScreen() {
     category: '',
     formTemplate: ''
   });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [newAppointment, setNewAppointment] = useState({
     customerId: '',
     customerName: '',
@@ -96,7 +100,7 @@ export default function AppointmentsScreen() {
   });
 
   useEffect(() => {
-    if (user?.email) {
+    if (userEmail) {
       loadAppointments();
       loadCustomers();
       loadPets();
@@ -110,53 +114,54 @@ export default function AppointmentsScreen() {
       
       return () => clearInterval(interval);
     }
-  }, [user]);
+  }, [userEmail]);
   
   // Refresh appointments when view mode changes to calendar
   useEffect(() => {
-    if (viewMode === 'calendar' && user?.email) {
+    if (viewMode === 'calendar' && userEmail) {
       loadAppointments();
     }
   }, [viewMode, statusFilter, vetFilter]);
 
+  // Helper function to determine appointment status based on date and current status
+  const determineAppointmentStatus = (appointment: any, currentTime: Date): 'completed' | 'cancelled' | 'due' | 'pending' => {
+    // Keep completed/cancelled status unchanged
+    if (appointment.status === 'completed' || appointment.status === 'cancelled') {
+      return appointment.status;
+    }
+    
+    const appointmentDateTime = parseAppointmentDate(appointment.appointmentDate);
+    
+    if (!appointmentDateTime || isNaN(appointmentDateTime.getTime())) {
+      return 'pending';
+    }
+    
+    // Smart status assignment: due = overdue, pending = future
+    const timeDiff = appointmentDateTime.getTime() - currentTime.getTime();
+    return timeDiff <= 0 ? 'due' : 'pending';
+  };
+
+  // Helper function to parse appointment date from various formats
+  const parseAppointmentDate = (appointmentDate: any): Date | null => {
+    if ((appointmentDate as any)?.seconds) {
+      return new Date((appointmentDate as any).seconds * 1000);
+    }
+    return new Date(appointmentDate);
+  };
+
   const loadAppointments = async () => {
-    if (!user?.email) return;
+    if (!userEmail) return;
     try {
       console.log('=== WEB APPOINTMENTS LOADING ===');
-      console.log('Web user email:', user.email);
-      const appointmentsList = await getAppointments(user.email);
+      console.log('Web user email:', userEmail);
+      const appointmentsList = await getAppointments(userEmail);
       console.log('Web appointments loaded:', appointmentsList.length);
       const now = new Date();
       
-      const smartSortedAppointments = appointmentsList.map(appointment => {
-        // Keep completed/cancelled status unchanged
-        if (appointment.status === 'completed' || appointment.status === 'cancelled') {
-          return { ...appointment, status: appointment.status === 'completed' ? 'completed' : 'cancelled' };
-        }
-        
-        let appointmentDateTime;
-        if ((appointment.appointmentDate as any)?.seconds) {
-          appointmentDateTime = new Date((appointment.appointmentDate as any).seconds * 1000);
-        } else {
-          appointmentDateTime = new Date(appointment.appointmentDate);
-        }
-        
-        if (isNaN(appointmentDateTime.getTime())) {
-          return { ...appointment, status: 'pending' };
-        }
-        
-        // Smart status assignment: due = overdue, pending = future, completed = done
-        const timeDiff = appointmentDateTime.getTime() - now.getTime();
-        
-        let newStatus;
-        if (timeDiff <= 0) {
-          newStatus = 'due'; // Overdue appointments
-        } else {
-          newStatus = 'pending'; // Future appointments
-        }
-        
-        return { ...appointment, status: newStatus };
-      });
+      const smartSortedAppointments = appointmentsList.map(appointment => ({
+        ...appointment,
+        status: determineAppointmentStatus(appointment, now)
+      })) as Appointment[];
       
       setAppointments(smartSortedAppointments);
     } catch (error) {
@@ -248,16 +253,14 @@ export default function AppointmentsScreen() {
       }
       
       // Navigate to medical record form screen
-      router.push({
-        pathname: '/client/medical-record-detail',
-        params: {
-          appointmentId: selectedAppointment?.id,
-          petName: selectedAppointment?.petName,
-          customerName: selectedAppointment?.customerName,
-          category: newRecord.category,
-          formTemplate: newRecord.formTemplate
-        }
+      const params = new URLSearchParams({
+        appointmentId: selectedAppointment?.id || '',
+        petName: selectedAppointment?.petName || '',
+        customerName: selectedAppointment?.customerName || '',
+        category: newRecord.category,
+        formTemplate: newRecord.formTemplate
       });
+      router.push(`/client/medical-record-detail?${params.toString()}` as any);
       
       // Close the drawer
       Animated.timing(recordSlideAnim, {
@@ -313,7 +316,7 @@ export default function AppointmentsScreen() {
     }
   };
 
-  const formatDate = (text) => {
+  const formatDate = (text: string): string => {
     const cleaned = text.replace(/\D/g, '');
     if (cleaned.length >= 4) {
       return `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
@@ -323,11 +326,11 @@ export default function AppointmentsScreen() {
     return cleaned;
   };
 
-  const formatNumber = (text) => {
+  const formatNumber = (text: string): string => {
     return text.replace(/[^0-9.]/g, '').replace(/(\.)(?=.*\1)/g, '');
   };
 
-  const renderFormField = (field) => {
+  const renderFormField = (field: any) => {
     switch (field.type) {
       case 'text':
         return (
@@ -496,28 +499,15 @@ export default function AppointmentsScreen() {
 
   const handleDeleteAppointment = async (appointmentId: string) => {
     if (!user?.email) return;
-    
-    Alert.alert(
-      'Delete Appointment',
-      'Are you sure you want to delete this appointment?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteAppointment(user.email, appointmentId);
-              await loadAppointments();
-              Alert.alert('Success', 'Appointment deleted successfully');
-            } catch (error) {
-              console.error('Failed to delete appointment:', error);
-              Alert.alert('Error', 'Failed to delete appointment');
-            }
-          }
-        }
-      ]
-    );
+    try {
+      await deleteAppointment(user.email, appointmentId);
+      await loadAppointments();
+      setSelectedAppointment(null);
+      Alert.alert('Success', 'Appointment deleted successfully');
+    } catch (error) {
+      console.error('Failed to delete appointment:', error);
+      Alert.alert('Error', 'Failed to delete appointment');
+    }
   };
 
   const openAddModal = () => {
@@ -679,6 +669,16 @@ export default function AppointmentsScreen() {
         }
       ]
     );
+  };
+
+  const handleNavigation = async (route: string | null) => {
+    if (!route) return;
+    try {
+      router.push(route as any);
+    } catch (error) {
+      console.error(`Navigation error to ${route}:`, error);
+      alert('Failed to navigate. Please try again.');
+    }
   };
 
   // Filter appointments by active status and search term with smart sorting
@@ -889,7 +889,7 @@ export default function AppointmentsScreen() {
 
   const renderFormModal = () => (
     <Modal visible={showFormModal} animationType="slide">
-      <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <View style={styles.formPreviewModalOverlay}>
         <View style={styles.formPreviewHeader}>
           <TouchableOpacity style={styles.formPreviewBackButton} onPress={() => setShowFormModal(false)}>
             <Text style={styles.formPreviewBackText}>←</Text>
@@ -905,17 +905,17 @@ export default function AppointmentsScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-        <ScrollView style={{ flex: 1, padding: 20 }}>
-          <Text style={{ fontSize: 14, color: '#666', marginBottom: 10 }}>
+        <ScrollView style={styles.formPreviewScrollView}>
+          <Text style={styles.formFieldsInfo}>
             Form Fields: {formFields.length} loaded
           </Text>
           {formFields.length === 0 ? (
-            <View style={{ padding: 20, alignItems: 'center' }}>
-              <Text style={{ fontSize: 16, color: '#999' }}>No form fields available</Text>
+            <View style={styles.noFormFieldsContainer}>
+              <Text style={styles.noFormFieldsText}>No form fields available</Text>
             </View>
           ) : (
             formFields.map((field) => (
-              <View key={field.id} style={{ marginBottom: 20 }}>
+              <View key={field.id} style={styles.formPreviewField}>
                 <Text style={styles.formPreviewFieldLabel}>
                   {field.label}{field.required && ' *'}
                 </Text>
@@ -930,7 +930,7 @@ export default function AppointmentsScreen() {
 
   if (selectedAppointment) {
     return (
-      <>
+      <AdminLayout>
         <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerText}>Appointments</Text>
@@ -945,7 +945,7 @@ export default function AppointmentsScreen() {
                     <Text style={styles.returnIcon}>←</Text>
                   </TouchableOpacity>
                   <View style={styles.filterTab}>
-                    <Text style={styles.filterTabText}>Appointment Details</Text>
+                    <Text style={styles.appointmentDetailsText}>Appointment Details</Text>
                   </View>
                 </View>
                 <View style={styles.categoryActions}>
@@ -974,70 +974,136 @@ export default function AppointmentsScreen() {
                       <Text style={styles.doneCategoryButtonText}>Done</Text>
                     </TouchableOpacity>
                   )}
-                  <TouchableOpacity style={styles.deleteCategoryButton} onPress={() => {
-                    console.log('Appointment delete button clicked!');
-                    handleDeleteAppointment(selectedAppointment.id);
-                  }}>
+                  <TouchableOpacity style={styles.deleteCategoryButton} onPress={() => setShowDeleteModal(true)}>
                     <Text style={styles.deleteCategoryButtonText}>Delete</Text>
                   </TouchableOpacity>
                 </View>
               </View>
-              <View style={styles.detailTableHeader}>
-                <Text style={styles.detailHeaderCell}>Field</Text>
-                <Text style={styles.detailHeaderCell}>Value</Text>
-              </View>
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Customer</Text>
-                <Text style={styles.detailCell}>{selectedAppointment.customerName}</Text>
-              </View>
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Pet</Text>
-                <Text style={styles.detailCell}>{selectedAppointment.petName}</Text>
-              </View>
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Date</Text>
-                <Text style={styles.detailCell}>{formatDateTime(selectedAppointment.appointmentDate).date}</Text>
-              </View>
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Time</Text>
-                <Text style={styles.detailCell}>{formatDateTime(selectedAppointment.appointmentDate).time}</Text>
-              </View>
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Reason</Text>
-                <Text style={styles.detailCell}>{selectedAppointment.reason}</Text>
-              </View>
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Appointment Details</Text>
-                <Text style={styles.detailCell}>{selectedAppointment.veterinarian || 'Not assigned'}</Text>
-              </View>
-              <View style={styles.detailTableRow}>
-                <Text style={styles.detailCell}>Status</Text>
-                <Text style={styles.detailCell}>{selectedAppointment.status}</Text>
-              </View>
-              {selectedAppointment.notes && (
-                <View style={styles.detailTableRow}>
-                  <Text style={styles.detailCell}>Notes</Text>
-                  <Text style={styles.detailCell}>{selectedAppointment.notes}</Text>
+              <View style={styles.formContainer}>
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.formLabel}>Customer</Text>
+                    <View style={styles.formValue}>
+                      <Text style={styles.formValueText}>{selectedAppointment.customerName}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.formLabel}>Pet</Text>
+                    <View style={styles.formValue}>
+                      <Text style={styles.formValueText}>{selectedAppointment.petName}</Text>
+                    </View>
+                  </View>
                 </View>
-              )}
-              {selectedAppointment.completedAt && (
-                <View style={styles.detailTableRow}>
-                  <Text style={styles.detailCell}>Completed At</Text>
-                  <Text style={styles.detailCell}>{formatDateTime(selectedAppointment.completedAt).date} at {formatDateTime(selectedAppointment.completedAt).time}</Text>
+                
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.formLabel}>Date</Text>
+                    <View style={styles.formValue}>
+                      <Text style={styles.formValueText}>{formatDateTime(selectedAppointment.appointmentDate).date}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.formLabel}>Time</Text>
+                    <View style={styles.formValue}>
+                      <Text style={styles.formValueText}>{formatDateTime(selectedAppointment.appointmentDate).time}</Text>
+                    </View>
+                  </View>
                 </View>
-              )}
+                
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.formLabel}>Veterinarian</Text>
+                    <View style={styles.formValue}>
+                      <Text style={styles.formValueText}>{selectedAppointment.veterinarian || 'Not assigned'}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.formLabel}>Status</Text>
+                    <View style={styles.formValue}>
+                      <Text style={styles.formValueText}>{selectedAppointment.status}</Text>
+                    </View>
+                  </View>
+                </View>
+                
+                <View style={styles.formField}>
+                  <Text style={styles.formLabel}>Reason</Text>
+                  <View style={styles.formValue}>
+                    <Text style={styles.formValueText}>{selectedAppointment.reason}</Text>
+                  </View>
+                </View>
+                
+                {selectedAppointment.notes && (
+                  <View style={styles.formField}>
+                    <Text style={styles.formLabel}>Notes</Text>
+                    <View style={styles.formValue}>
+                      <Text style={styles.formValueText}>{selectedAppointment.notes}</Text>
+                    </View>
+                  </View>
+                )}
+                
+                {selectedAppointment.completedAt && (
+                  <View style={styles.formField}>
+                    <Text style={styles.formLabel}>Completed At</Text>
+                    <View style={styles.formValue}>
+                      <Text style={styles.formValueText}>{formatDateTime(selectedAppointment.completedAt).date} at {formatDateTime(selectedAppointment.completedAt).time}</Text>
+                    </View>
+                  </View>
+                )}
+              </View>
             </ScrollView>
           </View>
         </View>
-      </View>
-      {renderAddRecordModal()}
-      {renderFormModal()}
-      </>
+        </View>
+        {renderAddRecordModal()}
+        {renderFormModal()}
+        
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <Modal transparent={true} visible={showDeleteModal} animationType="fade">
+            <View style={styles.modalOverlay}>
+              <View style={styles.reasonModal}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Delete Appointment</Text>
+                  <TouchableOpacity 
+                    style={styles.exitButton}
+                    onPress={() => setShowDeleteModal(false)}
+                  >
+                    <Text style={styles.exitText}>×</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.reasonInputContainer}>
+                  <Text style={styles.deleteConfirmText}>
+                    Are you sure you want to delete this appointment?
+                  </Text>
+                </View>
+                <View style={styles.buttonRow}>
+                  <TouchableOpacity 
+                    style={styles.cancelButton}
+                    onPress={() => setShowDeleteModal(false)}
+                  >
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.confirmButton, { backgroundColor: '#dc3545' }]}
+                    onPress={async () => {
+                      setShowDeleteModal(false);
+                      await handleDeleteAppointment(selectedAppointment.id);
+                    }}
+                  >
+                    <Text style={styles.confirmText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        )}
+      </AdminLayout>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <AdminLayout>
+      <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerText}>Appointments</Text>
         <View style={styles.headerActions}>
@@ -1046,7 +1112,8 @@ export default function AppointmentsScreen() {
               style={styles.calendarButton}
               onPress={() => setViewMode('calendar')}
             >
-              <Text style={styles.calendarButtonText}>📅 Calendar</Text>
+              <Ionicons name="calendar" size={18} color="#7F1D1F" style={{ marginRight: 8 }} />
+              <Text style={styles.calendarButtonText}>Calendar</Text>
             </TouchableOpacity>
           )}
           
@@ -1055,18 +1122,20 @@ export default function AppointmentsScreen() {
           {viewMode === 'table' && (
             <>
               <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
-                <Text style={styles.addButtonText}>+ Add Appointment</Text>
+                <Ionicons name="add" size={20} color="#fff" />
               </TouchableOpacity>
               
               <View style={styles.searchContainer}>
-                <Ionicons name="search" size={14} color="#800000" style={styles.searchIcon} />
                 <TextInput
                   style={styles.searchInput}
                   placeholder="Search..."
-                  placeholderTextColor="#999"
+                  placeholderTextColor="rgba(153, 153, 153, 0.8)"
                   value={searchTerm}
                   onChangeText={setSearchTerm}
                 />
+                <View style={styles.searchIconContainer}>
+                  <Ionicons name="search" size={14} color="#fff" />
+                </View>
               </View>
             </>
           )}
@@ -1306,9 +1375,7 @@ export default function AppointmentsScreen() {
                       }
                     });
                     
-                    if (day === 1) { // Debug first day of month
-                      console.log(`Day ${day} appointments:`, dayAppointments.length);
-                    }
+
                     
                     const hasAppointments = dayAppointments.length > 0;
                     
@@ -1377,34 +1444,23 @@ export default function AppointmentsScreen() {
               <Text style={styles.listTitle}>{selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</Text>
               <ScrollView style={styles.appointmentList} showsVerticalScrollIndicator={true}>
                 {(() => {
-                  console.log('=== CALENDAR VIEW DEBUG ===');
-                  console.log('Total appointments for calendar:', appointments.length);
-                  console.log('Selected date:', selectedDate.toDateString());
-                  console.log('Vet filter:', vetFilter);
-                  
                   const filteredAppointments = appointments
                     .filter(apt => {
                       try {
                         let aptDate;
-                        if (apt.appointmentDate?.seconds) {
-                          aptDate = new Date(apt.appointmentDate.seconds * 1000);
+                        if ((apt.appointmentDate as any)?.seconds) {
+                          aptDate = new Date((apt.appointmentDate as any).seconds * 1000);
                         } else {
                           aptDate = new Date(apt.appointmentDate);
                         }
                         
-                        if (isNaN(aptDate.getTime())) {
-                          console.log('Invalid date for appointment:', apt.id);
-                          return false;
-                        }
+                        if (isNaN(aptDate.getTime())) return false;
                         
                         const dateMatch = aptDate.toDateString() === selectedDate.toDateString();
                         const vetMatch = vetFilter === 'all' || apt.veterinarian === vetFilter;
                         
-                        console.log(`Appointment ${apt.id}: date=${aptDate.toDateString()}, dateMatch=${dateMatch}, vet=${apt.veterinarian}, vetMatch=${vetMatch}`);
-                        
                         return dateMatch && vetMatch;
                       } catch (error) {
-                        console.log('Error filtering appointment:', apt.id, error);
                         return false;
                       }
                     })
@@ -1418,7 +1474,7 @@ export default function AppointmentsScreen() {
                       }
                     });
                   
-                  console.log('Filtered appointments for selected date:', filteredAppointments.length);
+
                   
                   if (filteredAppointments.length === 0) {
                     return (
@@ -1480,12 +1536,12 @@ export default function AppointmentsScreen() {
               </View>
             </View>
             <View style={styles.tableHeader}>
-              <Text style={[styles.headerCell, { flex: 0.8, textAlign: 'center', marginLeft: -10, marginRight: 15 }]}>Date & Time</Text>
-              <Text style={[styles.headerCell, { flex: 1.9, textAlign: 'left' }]}>Customer</Text>
-              <Text style={[styles.headerCell, { flex: 1, textAlign: 'left' }]}>Pet</Text>
-              <Text style={[styles.headerCell, { flex: 1.2, textAlign: 'left' }]}>Reason</Text>
+              <Text style={[styles.headerCell, styles.dateTimeHeader]}>Date & Time</Text>
+              <Text style={[styles.headerCell, styles.customerHeader]}>Customer</Text>
+              <Text style={[styles.headerCell, styles.petHeader]}>Pet</Text>
+              <Text style={[styles.headerCell, styles.reasonHeader]}>Reason</Text>
               {(activeStatusFilter === 'pending' || activeStatusFilter === 'due' || activeStatusFilter === 'completed') && (
-                <Text style={[styles.headerCell, { flex: 0.6, textAlign: 'center' }]}>Action</Text>
+                <Text style={[styles.headerCell, styles.actionHeader]}>Action</Text>
               )}
             </View>
             
@@ -1503,19 +1559,16 @@ export default function AppointmentsScreen() {
                     onPress={() => setSelectedAppointment(appointment)}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.cell, { flex: 0.8, alignItems: 'center', justifyContent: 'center', marginLeft: -10, marginRight: 15 }]}>
-                      <Text style={[styles.cell, { fontWeight: 'bold' }]}>
-                        {formatDateTime(appointment.appointmentDate).date}
-                      </Text>
-                      <Text style={[styles.cell]}>
-                        {formatDateTime(appointment.appointmentDate).time}
+                    <View style={[styles.cell, styles.dateTimeCell]}>
+                      <Text style={[styles.dateTimeText, appointment.status === 'due' && styles.dueDateTime]}>
+                        {formatDateTime(appointment.appointmentDate).date} {formatDateTime(appointment.appointmentDate).time}
                       </Text>
                     </View>
-                    <Text style={[styles.cell, { flex: 1.9, textAlign: 'left' }]}>{appointment.customerName}</Text>
-                    <Text style={[styles.cell, { flex: 1, textAlign: 'left' }]}>{appointment.petName}</Text>
-                    <Text style={[styles.cell, { flex: 1.2, textAlign: 'left' }]}>{appointment.reason}</Text>
+                    <Text style={[styles.cellText, styles.customerCell]}>{appointment.customerName}</Text>
+                    <Text style={[styles.cellText, styles.petCell]}>{appointment.petName}</Text>
+                    <Text style={[styles.cellText, styles.reasonCell]}>{appointment.reason}</Text>
                     {(activeStatusFilter === 'pending' || activeStatusFilter === 'due') && (
-                      <View style={[styles.cell, { flex: 0.6, alignItems: 'center' }]}>
+                      <View style={styles.actionCell}>
                         <TouchableOpacity 
                           style={styles.doneButton}
                           onPress={async () => {
@@ -1535,7 +1588,7 @@ export default function AppointmentsScreen() {
                       </View>
                     )}
                     {activeStatusFilter === 'completed' && (
-                      <View style={[styles.cell, { flex: 0.6, alignItems: 'center' }]}>
+                      <View style={styles.actionCell}>
                         <Text style={styles.completedText}>Done</Text>
                       </View>
                     )}
@@ -1624,209 +1677,227 @@ export default function AppointmentsScreen() {
               </View>
               
               <ScrollView style={styles.drawerForm}>
-                <Text style={styles.fieldLabel}>Customer *</Text>
-                <View style={styles.customerSelector}>
-                  <TouchableOpacity 
-                    style={styles.dropdownButton}
-                    onPress={() => setShowCustomerDropdown(!showCustomerDropdown)}
-                  >
-                    <Text style={styles.selectedCustomer}>
-                      {newAppointment.customerName || 'Select Customer'}
-                    </Text>
-                    <Text style={styles.dropdownArrow}>▼</Text>
-                  </TouchableOpacity>
-                  {showCustomerDropdown && (
-                    <View style={styles.dropdownMenu}>
-                      <ScrollView style={styles.dropdownScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
-                        {customers.length === 0 ? (
-                          <View style={styles.dropdownOption}>
-                            <Text style={[styles.dropdownOptionText, {fontStyle: 'italic', color: '#999'}]}>
-                              No customers found
-                            </Text>
-                          </View>
-                        ) : (
-                          customers.map((customer) => (
-                            <TouchableOpacity
-                              key={customer.id}
-                              style={styles.dropdownOption}
-                              onPress={() => selectCustomer(customer)}
-                            >
-                              <Text style={styles.dropdownOptionText}>
-                                {`${customer.firstname || ''} ${customer.surname || ''}`.trim() || customer.email || 'Unknown'}
-                              </Text>
-                            </TouchableOpacity>
-                          ))
-                        )}
-                      </ScrollView>
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Customer *</Text>
+                    <View style={styles.customerSelector}>
+                      <TouchableOpacity 
+                        style={styles.dropdownButton}
+                        onPress={() => setShowCustomerDropdown(!showCustomerDropdown)}
+                      >
+                        <Text style={styles.selectedCustomer}>
+                          {newAppointment.customerName || 'Select Customer'}
+                        </Text>
+                        <Text style={styles.dropdownArrow}>▼</Text>
+                      </TouchableOpacity>
+                      {showCustomerDropdown && (
+                        <View style={styles.dropdownMenu}>
+                          <ScrollView style={styles.dropdownScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                            {customers.length === 0 ? (
+                              <View style={styles.dropdownOption}>
+                                <Text style={[styles.dropdownOptionText, {fontStyle: 'italic', color: '#999'}]}>
+                                  No customers found
+                                </Text>
+                              </View>
+                            ) : (
+                              customers.map((customer) => (
+                                <TouchableOpacity
+                                  key={customer.id}
+                                  style={styles.dropdownOption}
+                                  onPress={() => selectCustomer(customer)}
+                                >
+                                  <Text style={styles.dropdownOptionText}>
+                                    {`${customer.firstname || ''} ${customer.surname || ''}`.trim() || customer.email || 'Unknown'}
+                                  </Text>
+                                </TouchableOpacity>
+                              ))
+                            )}
+                          </ScrollView>
+                        </View>
+                      )}
                     </View>
-                  )}
-                </View>
+                  </View>
 
-                <Text style={styles.fieldLabel}>Pet *</Text>
-                <View style={styles.petSelector}>
-                  <TouchableOpacity 
-                    style={[styles.dropdownButton, !selectedCustomer && styles.disabledDropdown]}
-                    onPress={() => selectedCustomer && setShowPetDropdown(!showPetDropdown)}
-                    disabled={!selectedCustomer}
-                  >
-                    <Text style={styles.selectedCustomer}>
-                      {newAppointment.petName || 'Select Pet'}
-                    </Text>
-                    <Text style={styles.dropdownArrow}>▼</Text>
-                  </TouchableOpacity>
-                  {showPetDropdown && selectedCustomer && (
-                    <View style={styles.dropdownMenu}>
-                      <ScrollView style={styles.dropdownScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
-                        {getCustomerPets().map((pet) => (
-                          <TouchableOpacity
-                            key={pet.id}
-                            style={styles.dropdownOption}
-                            onPress={() => selectPet(pet)}
-                          >
-                            <Text style={styles.dropdownOptionText}>
-                              {pet.name} ({pet.species || 'Unknown'})
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                        {getCustomerPets().length === 0 && (
-                          <View style={styles.dropdownOption}>
-                            <Text style={[styles.dropdownOptionText, {fontStyle: 'italic', color: '#999'}]}>
-                              No pets found for this customer
-                            </Text>
-                          </View>
-                        )}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-
-                <Text style={styles.fieldLabel}>Date *</Text>
-                <TouchableOpacity 
-                  style={styles.dateTimeButton}
-                  onPress={() => setShowDatePicker(true)}
-                >
-                  <Text style={styles.dateTimeText}>
-                    {newAppointment.appointmentDate ? 
-                      new Date(newAppointment.appointmentDate + 'T00:00:00').toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        month: 'short', 
-                        day: 'numeric',
-                        year: 'numeric'
-                      }) : 'Select Date'}
-                  </Text>
-                  <Text style={styles.dropdownArrow}>📅</Text>
-                </TouchableOpacity>
-
-                <Text style={styles.fieldLabel}>Time *</Text>
-                <TouchableOpacity 
-                  style={styles.dateTimeButton}
-                  onPress={() => setShowTimePicker(true)}
-                >
-                  <Text style={styles.dateTimeText}>
-                    {newAppointment.appointmentTime ? 
-                      (() => {
-                        const [hour, minute] = newAppointment.appointmentTime.split(':');
-                        const h = parseInt(hour);
-                        const ampm = h >= 12 ? 'PM' : 'AM';
-                        const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
-                        return `${h12}:${minute} ${ampm}`;
-                      })()
-                      : 'Select Time'}
-                  </Text>
-                  <Text style={styles.dropdownArrow}>🕐</Text>
-                </TouchableOpacity>
-
-                <Text style={styles.fieldLabel}>Veterinarian (Optional)</Text>
-                <View style={styles.vetSelector}>
-                  <TouchableOpacity 
-                    style={styles.dropdownButton}
-                    onPress={() => setShowVetDropdown(!showVetDropdown)}
-                  >
-                    <Text style={styles.selectedCustomer}>
-                      {newAppointment.veterinarian || 'Select Veterinarian (Optional)'}
-                    </Text>
-                    <Text style={styles.dropdownArrow}>▼</Text>
-                  </TouchableOpacity>
-                  {showVetDropdown && (
-                    <View style={styles.dropdownMenu}>
-                      <ScrollView style={styles.dropdownScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
-                        {veterinarians.map((vet) => (
-                          <TouchableOpacity
-                            key={vet.id}
-                            style={styles.dropdownOption}
-                            onPress={() => selectVeterinarian(vet)}
-                          >
-                            <Text style={styles.dropdownOptionText}>
-                              {`${vet.firstname || ''} ${vet.surname || ''}`.trim() || vet.name || 'Unknown'}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                        {veterinarians.length === 0 && (
-                          <View style={styles.dropdownOption}>
-                            <Text style={[styles.dropdownOptionText, {fontStyle: 'italic', color: '#999'}]}>
-                              No veterinarians found
-                            </Text>
-                          </View>
-                        )}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-
-                <Text style={styles.fieldLabel}>Reason</Text>
-                <View style={styles.reasonSelector}>
-                  <TouchableOpacity 
-                    style={styles.dropdownButton}
-                    onPress={() => setShowReasonDropdown(!showReasonDropdown)}
-                  >
-                    <Text style={styles.selectedCustomer}>
-                      {newAppointment.reason || 'Select Reason'}
-                    </Text>
-                    <Text style={styles.dropdownArrow}>▼</Text>
-                  </TouchableOpacity>
-                  {showReasonDropdown && (
-                    <View style={styles.dropdownMenu}>
-                      <ScrollView style={styles.customerList} showsVerticalScrollIndicator={false}>
-                        {reasonOptions.map((reason) => (
-                          <View key={reason.id} style={styles.reasonOptionRow}>
-                            <TouchableOpacity
-                              style={styles.reasonOption}
-                              onPress={() => {
-                                setNewAppointment({...newAppointment, reason: reason.text});
-                                setShowReasonDropdown(false);
-                              }}
-                            >
-                              <Text style={styles.customerOptionText}>{reason.text}</Text>
-                            </TouchableOpacity>
-                            <View style={styles.reasonActions}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Pet *</Text>
+                    <View style={styles.petSelector}>
+                      <TouchableOpacity 
+                        style={[styles.dropdownButton, !selectedCustomer && styles.disabledDropdown]}
+                        onPress={() => selectedCustomer && setShowPetDropdown(!showPetDropdown)}
+                        disabled={!selectedCustomer}
+                      >
+                        <Text style={styles.selectedCustomer}>
+                          {newAppointment.petName || 'Select Pet'}
+                        </Text>
+                        <Text style={styles.dropdownArrow}>▼</Text>
+                      </TouchableOpacity>
+                      {showPetDropdown && selectedCustomer && (
+                        <View style={styles.dropdownMenu}>
+                          <ScrollView style={styles.dropdownScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                            {getCustomerPets().map((pet) => (
                               <TouchableOpacity
-                                style={styles.editIcon}
-                                onPress={() => {
-                                  setEditingReason(reason);
-                                  setNewReasonText(reason.text);
-                                  setShowEditReasonModal(true);
-                                }}
+                                key={pet.id}
+                                style={styles.dropdownOption}
+                                onPress={() => selectPet(pet)}
                               >
-                                <Text style={styles.iconText}>✏️</Text>
+                                <Text style={styles.dropdownOptionText}>
+                                  {pet.name} ({pet.species || 'Unknown'})
+                                </Text>
                               </TouchableOpacity>
-                              <TouchableOpacity
-                                style={styles.deleteIcon}
-                                onPress={() => handleDeleteReason(reason.id)}
-                              >
-                                <Text style={styles.iconText}>🗑️</Text>
-                              </TouchableOpacity>
-                            </View>
-                          </View>
-                        ))}
-                        <TouchableOpacity
-                          style={styles.addReasonOption}
-                          onPress={() => setShowAddReasonModal(true)}
-                        >
-                          <Text style={styles.addReasonText}>+ Add Custom Reason</Text>
-                        </TouchableOpacity>
-                      </ScrollView>
+                            ))}
+                            {getCustomerPets().length === 0 && (
+                              <View style={styles.dropdownOption}>
+                                <Text style={[styles.dropdownOptionText, {fontStyle: 'italic', color: '#999'}]}>
+                                  No pets found for this customer
+                                </Text>
+                              </View>
+                            )}
+                          </ScrollView>
+                        </View>
+                      )}
                     </View>
-                  )}
+                  </View>
+                </View>
+
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Date *</Text>
+                    <TouchableOpacity 
+                      style={styles.dateTimeButton}
+                      onPress={() => setShowDatePicker(true)}
+                    >
+                      <Text style={styles.dateTimeText}>
+                        {newAppointment.appointmentDate ? 
+                          new Date(newAppointment.appointmentDate + 'T00:00:00').toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short', 
+                            day: 'numeric',
+                            year: 'numeric'
+                          }) : 'Select Date'}
+                      </Text>
+                      <Text style={styles.dropdownArrow}>📅</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Time *</Text>
+                    <TouchableOpacity 
+                      style={styles.dateTimeButton}
+                      onPress={() => setShowTimePicker(true)}
+                    >
+                      <Text style={styles.dateTimeText}>
+                        {newAppointment.appointmentTime ? 
+                          (() => {
+                            const [hour, minute] = newAppointment.appointmentTime.split(':');
+                            const h = parseInt(hour);
+                            const ampm = h >= 12 ? 'PM' : 'AM';
+                            const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
+                            return `${h12}:${minute} ${ampm}`;
+                          })()
+                          : 'Select Time'}
+                      </Text>
+                      <Text style={styles.dropdownArrow}>🕐</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Veterinarian (Optional)</Text>
+                    <View style={styles.vetSelector}>
+                      <TouchableOpacity 
+                        style={styles.dropdownButton}
+                        onPress={() => setShowVetDropdown(!showVetDropdown)}
+                      >
+                        <Text style={styles.selectedCustomer}>
+                          {newAppointment.veterinarian || 'Select Veterinarian (Optional)'}
+                        </Text>
+                        <Text style={styles.dropdownArrow}>▼</Text>
+                      </TouchableOpacity>
+                      {showVetDropdown && (
+                        <View style={styles.dropdownMenu}>
+                          <ScrollView style={styles.dropdownScroll} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+                            {veterinarians.map((vet) => (
+                              <TouchableOpacity
+                                key={vet.id}
+                                style={styles.dropdownOption}
+                                onPress={() => selectVeterinarian(vet)}
+                              >
+                                <Text style={styles.dropdownOptionText}>
+                                  {`${vet.firstname || ''} ${vet.surname || ''}`.trim() || vet.name || 'Unknown'}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
+                            {veterinarians.length === 0 && (
+                              <View style={styles.dropdownOption}>
+                                <Text style={[styles.dropdownOptionText, {fontStyle: 'italic', color: '#999'}]}>
+                                  No veterinarians found
+                                </Text>
+                              </View>
+                            )}
+                          </ScrollView>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Reason</Text>
+                    <View style={styles.reasonSelector}>
+                      <TouchableOpacity 
+                        style={styles.dropdownButton}
+                        onPress={() => setShowReasonDropdown(!showReasonDropdown)}
+                      >
+                        <Text style={styles.selectedCustomer}>
+                          {newAppointment.reason || 'Select Reason'}
+                        </Text>
+                        <Text style={styles.dropdownArrow}>▼</Text>
+                      </TouchableOpacity>
+                      {showReasonDropdown && (
+                        <View style={styles.dropdownMenu}>
+                          <ScrollView style={styles.customerList} showsVerticalScrollIndicator={false}>
+                            {reasonOptions.map((reason) => (
+                              <View key={reason.id} style={styles.reasonOptionRow}>
+                                <TouchableOpacity
+                                  style={styles.reasonOption}
+                                  onPress={() => {
+                                    setNewAppointment({...newAppointment, reason: reason.text});
+                                    setShowReasonDropdown(false);
+                                  }}
+                                >
+                                  <Text style={styles.customerOptionText}>{reason.text}</Text>
+                                </TouchableOpacity>
+                                <View style={styles.reasonActions}>
+                                  <TouchableOpacity
+                                    style={styles.editIcon}
+                                    onPress={() => {
+                                      setEditingReason(reason);
+                                      setNewReasonText(reason.text);
+                                      setShowEditReasonModal(true);
+                                    }}
+                                  >
+                                    <Text style={styles.iconText}>✏️</Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={styles.deleteIcon}
+                                    onPress={() => handleDeleteReason(reason.id)}
+                                  >
+                                    <Text style={styles.iconText}>🗑️</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+                            ))}
+                            <TouchableOpacity
+                              style={styles.addReasonOption}
+                              onPress={() => setShowAddReasonModal(true)}
+                            >
+                              <Text style={styles.addReasonText}>+ Add Custom Reason</Text>
+                            </TouchableOpacity>
+                          </ScrollView>
+                        </View>
+                      )}
+                    </View>
+                  </View>
                 </View>
 
                 <Text style={styles.fieldLabel}>Notes</Text>
@@ -1835,6 +1906,7 @@ export default function AppointmentsScreen() {
                   value={newAppointment.notes}
                   onChangeText={(text) => setNewAppointment({...newAppointment, notes: text})}
                   placeholder="Additional notes"
+                  placeholderTextColor="rgba(153, 153, 153, 0.8)"
                   multiline
                 />
               </ScrollView>
@@ -1888,7 +1960,7 @@ export default function AppointmentsScreen() {
                         style={[styles.dateItem, selectedDay === day && styles.selectedDate]}
                         onPress={() => setSelectedDay(day)}
                       >
-                        <Text style={[styles.dateText, selectedDay === day && styles.selectedDateText]}>
+                        <Text style={[styles.dateTimeText, selectedDay === day && styles.selectedDateText]}>
                           {day}
                         </Text>
                       </TouchableOpacity>
@@ -1909,7 +1981,7 @@ export default function AppointmentsScreen() {
                           }
                         }}
                       >
-                        <Text style={[styles.dateText, selectedMonth === month.value && styles.selectedDateText]}>
+                        <Text style={[styles.dateTimeText, selectedMonth === month.value && styles.selectedDateText]}>
                           {month.name}
                         </Text>
                       </TouchableOpacity>
@@ -1925,7 +1997,7 @@ export default function AppointmentsScreen() {
                         style={[styles.dateItem, selectedYear === year && styles.selectedDate]}
                         onPress={() => setSelectedYear(year)}
                       >
-                        <Text style={[styles.dateText, selectedYear === year && styles.selectedDateText]}>
+                        <Text style={[styles.dateTimeText, selectedYear === year && styles.selectedDateText]}>
                           {year}
                         </Text>
                       </TouchableOpacity>
@@ -1967,7 +2039,7 @@ export default function AppointmentsScreen() {
                       checkAppointmentConflict(selectedDate, newAppointment.appointmentTime, newAppointment.veterinarian);
                     }
                   }}
-                >
+               >
                   <Text style={styles.confirmText}>Set</Text>
                 </TouchableOpacity>
               </View>
@@ -2000,7 +2072,7 @@ export default function AppointmentsScreen() {
                         style={[styles.timeItem, selectedHour === hour && styles.selectedTime]}
                         onPress={() => setSelectedHour(hour)}
                       >
-                        <Text style={[styles.timeText, selectedHour === hour && styles.selectedTimeText]}>
+                        <Text style={[styles.dateTimeText, selectedHour === hour && styles.selectedTimeText]}>
                           {hour}
                         </Text>
                       </TouchableOpacity>
@@ -2016,7 +2088,7 @@ export default function AppointmentsScreen() {
                         style={[styles.timeItem, selectedMinute === minute && styles.selectedTime]}
                         onPress={() => setSelectedMinute(minute)}
                       >
-                        <Text style={[styles.timeText, selectedMinute === minute && styles.selectedTimeText]}>
+                        <Text style={[styles.dateTimeText, selectedMinute === minute && styles.selectedTimeText]}>
                           {minute.toString().padStart(2, '0')}
                         </Text>
                       </TouchableOpacity>
@@ -2032,7 +2104,7 @@ export default function AppointmentsScreen() {
                         style={[styles.timeItem, selectedAMPM === period && styles.selectedTime]}
                         onPress={() => setSelectedAMPM(period)}
                       >
-                        <Text style={[styles.timeText, selectedAMPM === period && styles.selectedTimeText]}>
+                        <Text style={[styles.dateTimeText, selectedAMPM === period && styles.selectedTimeText]}>
                           {period}
                         </Text>
                       </TouchableOpacity>
@@ -2107,7 +2179,7 @@ export default function AppointmentsScreen() {
                   value={newReasonText}
                   onChangeText={setNewReasonText}
                   placeholder="Enter custom reason"
-                  placeholderTextColor="#999"
+                  placeholderTextColor="rgba(153, 153, 153, 0.8)"
                   autoFocus={true}
                   editable={true}
                   selectTextOnFocus={true}
@@ -2186,16 +2258,16 @@ export default function AppointmentsScreen() {
       )}
 
       {renderAddRecordModal()}
-    </ScrollView>
+      
+      </View>
+    </AdminLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
+    backgroundColor: '#FAFAFA',
   },
   header: {
     paddingTop: 20,
@@ -2207,7 +2279,7 @@ const styles = StyleSheet.create({
   },
 
   headerText: {
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#800000',
   },
@@ -2217,10 +2289,12 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   addButton: {
-    backgroundColor: '#23C062',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: '#7F1D1F',
+    borderRadius: 8,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   addButtonText: {
     color: '#ffffff',
@@ -2241,57 +2315,68 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#800000',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(127, 29, 31, 0.3)',
+    borderRadius: 8,
+    paddingLeft: 10,
+    width: 265.798,
+    height: 32,
+    flexShrink: 0,
+    backgroundColor: 'rgba(250, 250, 250, 0.00)',
+    shadowColor: 'rgba(31, 61, 89, 0.04)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 20,
   },
-  searchIcon: {
-    width: 14,
-    height: 14,
-    marginRight: 6,
+  searchIconContainer: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#7F1D1F',
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   searchInput: {
-    width: 150,
-    fontSize: 12,
-    // outlineStyle removed for React Native
+    flex: 1,
+    fontSize: 15,
   },
   content: {
-    padding: 20,
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingTop: 20,
   },
   tableContainer: {
-    borderWidth: 2,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    backgroundColor: '#fff',
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   table: {
-    backgroundColor: '#fff',
-    height: 390,
+    // backgroundColor: '#fff',
+    flex: 1,
+    borderRadius: 12,
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f8f9fa',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    alignItems: 'center',
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
     alignItems: 'center',
+    minHeight: 60,
   },
-  rowContent: {
-    flexDirection: 'row',
-    flex: 1,
-  },
-  actionsCell: {
-    flex: 0.5,
-    alignItems: 'center',
-  },
+
+
   deleteButton: {
     backgroundColor: '#dc3545',
     paddingHorizontal: 8,
@@ -2304,34 +2389,70 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   headerCell: {
-    fontWeight: 'bold',
+    fontWeight: '600',
     fontSize: 14,
-    color: '#333',
+    color: '#374151',
+    letterSpacing: 0.5,
+  },
+  dateTimeHeader: {
+    flex: 1.2,
+    textAlign: 'center',
+    marginRight: 10,
+  },
+  customerHeader: {
+    flex: 1.2,
+    textAlign: 'left',
+  },
+  petHeader: {
+    flex: 1,
+    textAlign: 'left',
+  },
+  reasonHeader: {
+    flex: 1.3,
+    textAlign: 'left',
+  },
+  actionHeader: {
+    flex: 0.8,
+    textAlign: 'center',
   },
   cell: {
-    fontSize: 12,
-    color: '#555',
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+    // fontSize and color moved to cellText style
   },
-  dateText: {
-    fontSize: 12,
-    color: '#555',
-    fontWeight: 'normal',
-    textAlign: 'center',
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+  dateTimeCell: {
+    flex: 1.2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
-  timeText: {
+  customerCell: {
+    flex: 1.2,
+    textAlign: 'left',
+  },
+  petCell: {
+    flex: 1,
+    textAlign: 'left',
+  },
+  reasonCell: {
+    flex: 1.3,
+    textAlign: 'left',
+  },
+  actionCell: {
+    flex: 0.8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateTimeText: {
     fontSize: 12,
-    color: '#555',
-    fontWeight: 'normal',
+    color: '#333',
+    fontWeight: '500',
     textAlign: 'center',
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+  },
+  dueDateTime: {
+    color: '#dc3545',
   },
   tableBody: {
     flex: 1,
+    backgroundColor: '#fff',
   },
   noDataContainer: {
     flex: 1,
@@ -2368,14 +2489,13 @@ const styles = StyleSheet.create({
   },
   dropdownButton: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 2,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    minWidth: 50,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#fafafa',
+    padding: 12,
   },
   dropdownText: {
     fontSize: 10,
@@ -2429,46 +2549,44 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   drawerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
     zIndex: 10000,
   },
   drawer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 350,
+    width: '95%',
+    maxWidth: 600,
     backgroundColor: '#fff',
+    borderRadius: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
+    shadowRadius: 20,
+    elevation: 20,
   },
   drawerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingLeft: 30,
+    padding: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    backgroundColor: '#f8f9fa',
+    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   drawerTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#800000',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
   },
   drawerCloseButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#f0f0f0',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -2478,8 +2596,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   drawerForm: {
-    flex: 1,
-    padding: 20,
+    maxHeight: '70%',
+    padding: 24,
   },
   fieldLabel: {
     fontSize: 14,
@@ -2489,12 +2607,15 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   drawerInput: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
+    backgroundColor: '#fafafa',
     padding: 12,
     fontSize: 12,
-    backgroundColor: '#fafafa',
   },
   notesInput: {
     height: 80,
@@ -2518,7 +2639,7 @@ const styles = StyleSheet.create({
   },
   selectedCustomer: {
     fontSize: 12,
-    color: '#333',
+    color: 'rgba(51, 51, 51, 0.8)',
     flex: 1,
   },
   dropdownScroll: {
@@ -2530,41 +2651,52 @@ const styles = StyleSheet.create({
   },
   drawerButtons: {
     flexDirection: 'row',
-    padding: 20,
+    padding: 24,
     borderTopWidth: 1,
-    borderTopColor: '#ddd',
+    borderTopColor: '#e5e7eb',
     backgroundColor: '#fff',
-    gap: 10,
+    gap: 12,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
   drawerCancelButton: {
-    backgroundColor: '#f5f5f5',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
+    backgroundColor: '#f9fafb',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: '#d1d5db',
     alignItems: 'center',
     flex: 1,
   },
   drawerCancelText: {
     textAlign: 'center',
-    color: '#666',
-    fontWeight: 'bold',
-    fontSize: 12,
+    color: '#6b7280',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 8,
+  },
+  formColumn: {
+    flex: 1,
   },
   drawerSaveButton: {
-    backgroundColor: '#23C062',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
+    backgroundColor: '#800000',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
     flex: 1,
   },
   drawerSaveText: {
     textAlign: 'center',
     color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 12,
+    fontWeight: '600',
+    fontSize: 14,
   },
   disabledButton: {
     backgroundColor: '#ccc',
@@ -2580,11 +2712,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fafafa',
     padding: 12,
   },
-  dateTimeText: {
-    fontSize: 12,
-    color: '#333',
-    flex: 1,
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -2593,14 +2720,15 @@ const styles = StyleSheet.create({
   },
   datePickerModal: {
     backgroundColor: '#fff',
-    borderRadius: 8,
-    width: '60%',
+    borderRadius: 16,
+    width: '95%',
+    maxWidth: 600,
     maxHeight: '90%',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 10,
+    shadowRadius: 20,
+    elevation: 20,
   },
   timePickerModal: {
     backgroundColor: '#fff',
@@ -2847,9 +2975,10 @@ const styles = StyleSheet.create({
   returnButton: {
     backgroundColor: '#800000',
     borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    width: 32,
+    height: 32,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   returnButtonText: {
     color: '#ffffff',
@@ -2866,13 +2995,15 @@ const styles = StyleSheet.create({
   categoryActions: {
     flexDirection: 'row',
     gap: 10,
+    padding: 8,
   },
   deleteCategoryButton: {
     backgroundColor: '#dc3545',
     borderRadius: 5,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    height: 32,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   deleteCategoryButtonText: {
     color: '#ffffff',
@@ -2883,8 +3014,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#28a745',
     borderRadius: 5,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    height: 32,
     alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 10,
   },
   doneCategoryButtonText: {
@@ -2896,8 +3028,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#23C062',
     borderRadius: 5,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    height: 32,
     alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 10,
   },
   addRecordButtonText: {
@@ -2950,8 +3083,9 @@ const styles = StyleSheet.create({
   },
   completedText: {
     color: '#28a745',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   calendarCompletedBadge: {
     backgroundColor: '#28a745',
@@ -2986,6 +3120,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
     color: '#333',
+    paddingHorizontal: 30,
+    paddingVertical: 10,
   },
   detailCell: {
     flex: 1,
@@ -2996,19 +3132,31 @@ const styles = StyleSheet.create({
   },
 
   cellText: {
-    fontSize: 12,
-    color: '#555',
+    fontSize: 13,
+    color: '#6B7280',
   },
   calendarButton: {
-    backgroundColor: '#800000',
-    borderRadius: 5,
+    backgroundColor: 'transparent',
+    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
+    height: 32,
+    flexShrink: 0,
+    shadowColor: '#070707',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#7F1D1F',
   },
   calendarButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 12,
+    color: '#7F1D1F',
+    fontWeight: '600',
+    fontSize: 16,
   },
   calendarFilters: {
     flexDirection: 'row',
@@ -3119,14 +3267,14 @@ const styles = StyleSheet.create({
   },
   calendarViewContainer: {
     flexDirection: 'row',
-    height: 500,
+    flex: 1,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: '#ddd',
     backgroundColor: '#fff',
     position: 'relative',
     zIndex: 1,
-    overflow: 'visible',
+    overflow: 'hidden',
   },
   calendarContainer: {
     flex: 1,
@@ -3162,25 +3310,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8f9fa',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
+    padding: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
     overflow: 'visible',
     zIndex: 10000000,
   },
   returnIconButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 32,
+    height: 32,
+    borderRadius: 6,
     backgroundColor: '#800000',
     justifyContent: 'center',
     alignItems: 'center',
   },
   returnIcon: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '900',
   },
   returnLabel: {
     fontSize: 16,
@@ -3254,13 +3401,15 @@ const styles = StyleSheet.create({
   },
   doneButton: {
     backgroundColor: '#28a745',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    minWidth: 50,
+    alignItems: 'center',
   },
   doneButtonText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
   },
   calendarDoneButton: {
@@ -3338,7 +3487,7 @@ const styles = StyleSheet.create({
   },
   calendarDay: {
     width: '14.28%',
-    height: 60,
+    height: 50,
     borderWidth: 1,
     borderColor: '#f0f0f0',
     padding: 4,
@@ -3346,7 +3495,7 @@ const styles = StyleSheet.create({
   },
   emptyDay: {
     width: '14.28%',
-    height: 60,
+    height: 50,
   },
   dayNumber: {
     fontSize: 12,
@@ -3382,9 +3531,7 @@ const styles = StyleSheet.create({
   },
   subHeader: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingVertical: 5,
-    paddingHorizontal: 20,
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
     borderBottomColor: '#ddd',
     justifyContent: 'flex-start',
@@ -3393,6 +3540,8 @@ const styles = StyleSheet.create({
   filterTabs: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
+    alignItems: 'center',
+    padding: 8,
   },
   filterTab: {
     paddingVertical: 8,
@@ -3512,5 +3661,59 @@ const styles = StyleSheet.create({
     fontSize: 12,
     backgroundColor: '#fafafa',
     maxWidth: 300,
+  },
+  formContainer: {
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  formField: {
+    marginBottom: 20,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  formValue: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  formValueText: {
+    fontSize: 14,
+    color: '#555',
+  },
+  appointmentDetailsText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#666',
+    textAlign: 'left',
+  },
+  deleteConfirmText: {
+    fontSize: 14,
+    color: '#333',
+    textAlign: 'center',
+  },
+  formFieldsInfo: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 10,
+  },
+  noFormFieldsContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  noFormFieldsText: {
+    fontSize: 16,
+    color: '#999',
+  },
+  formPreviewScrollView: {
+    flex: 1,
+    padding: 20,
   },
 });

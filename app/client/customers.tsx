@@ -6,6 +6,7 @@ import { useTenant } from '@/contexts/TenantContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
 import { useNotificationTriggers } from '@/hooks/useNotificationTriggers';
+import AdminLayout from '../../components/AdminLayout';
 
 export default function CustomersScreen() {
   const { user } = useAuth();
@@ -160,7 +161,7 @@ export default function CustomersScreen() {
 
   const handleRowPress = (customer) => {
     console.log('Navigating to customer:', customer.id);
-    router.push(`/client/customer-detail?id=${customer.id}`);
+    router.replace(`/client/customer-detail?id=${customer.id}`);
   };
 
   const filteredCustomers = customers.filter(customer => {
@@ -261,7 +262,7 @@ export default function CustomersScreen() {
         createdAt: new Date().toISOString()
       };
       
-      await addMedicalRecord(recordData, userEmail);
+      // await addMedicalRecord(recordData, userEmail);
       setNewRecord({ category: '', formTemplate: '' });
       Alert.alert('Success', 'Medical record added successfully');
       
@@ -282,26 +283,29 @@ export default function CustomersScreen() {
 
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <AdminLayout>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <View style={styles.header}>
         <Text style={styles.headerText}>Customers</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.addButton} onPress={() => setShowAddModal(true)}>
-            <Text style={styles.addButtonText}>+ Add Customer</Text>
+            <Ionicons name="add" size={20} color="#fff" />
           </TouchableOpacity>
 
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={14} color="#999" />
-            <TextInput 
+            <TextInput
               style={styles.searchInput}
-              placeholder="Search customers..."
-              placeholderTextColor="#999"
+              placeholder="Search..."
+              placeholderTextColor="rgba(153, 153, 153, 0.8)"
               value={searchTerm}
               onChangeText={(text) => {
                 setSearchTerm(text);
                 setCurrentPage(1);
               }}
             />
+            <View style={styles.searchIconContainer}>
+              <Ionicons name="search" size={14} color="#fff" />
+            </View>
           </View>
         </View>
       </View>
@@ -310,11 +314,11 @@ export default function CustomersScreen() {
         <View style={styles.tableContainer}>
           <View style={styles.table}>
             <View style={styles.tableHeader}>
-              <Text style={styles.headerCell}>Name</Text>
-              <Text style={styles.headerCell}>Contact</Text>
-              <Text style={styles.headerCell}>Email</Text>
-              <Text style={styles.headerCell}>Address</Text>
-              <Text style={[styles.headerCell, { textAlign: 'center' }]}>Actions</Text>
+              <Text style={[styles.headerCell, styles.nameHeader]}>Name</Text>
+              <Text style={[styles.headerCell, styles.contactHeader]}>Contact</Text>
+              <Text style={[styles.headerCell, styles.emailHeader]}>Email</Text>
+              <Text style={[styles.headerCell, styles.addressHeader]}>Address</Text>
+              <Text style={[styles.headerCell, styles.actionsHeader]}>Actions</Text>
             </View>
             
             {loading ? (
@@ -336,10 +340,10 @@ export default function CustomersScreen() {
                       onPress={() => handleRowPress(customer)}
                       activeOpacity={0.7}
                     >
-                      <Text style={styles.cell}>{customer.name || `${customer.surname || ''}, ${customer.firstname || ''}`}</Text>
-                      <Text style={styles.cell}>{customer.contact || 'N/A'}</Text>
-                      <Text style={styles.cell}>{customer.email || 'N/A'}</Text>
-                      <Text style={styles.cell}>{customer.address || 'N/A'}</Text>
+                      <Text style={[styles.cell, styles.nameCell]}>{customer.name || `${customer.surname || ''}, ${customer.firstname || ''}`}</Text>
+                      <Text style={[styles.cell, styles.contactCell]}>{customer.contact || 'N/A'}</Text>
+                      <Text style={[styles.cell, styles.emailCell]}>{customer.email || 'N/A'}</Text>
+                      <Text style={[styles.cell, styles.addressCell]}>{customer.address || 'N/A'}</Text>
                     </TouchableOpacity>
                     <View style={styles.actionsCell}>
                       <View style={styles.actionButtons}>
@@ -371,10 +375,10 @@ export default function CustomersScreen() {
                     onPress={() => handleRowPress(customer)}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.cell}>{customer.name || `${customer.surname || ''}, ${customer.firstname || ''}`}</Text>
-                    <Text style={styles.cell}>{customer.contact || 'N/A'}</Text>
-                    <Text style={styles.cell}>{customer.email || 'N/A'}</Text>
-                    <Text style={styles.cell}>{customer.address || 'N/A'}</Text>
+                    <Text style={[styles.cell, styles.nameCell]}>{customer.name || `${customer.surname || ''}, ${customer.firstname || ''}`}</Text>
+                    <Text style={[styles.cell, styles.contactCell]}>{customer.contact || 'N/A'}</Text>
+                    <Text style={[styles.cell, styles.emailCell]}>{customer.email || 'N/A'}</Text>
+                    <Text style={[styles.cell, styles.addressCell]}>{customer.address || 'N/A'}</Text>
                   </TouchableOpacity>
                   <View style={styles.actionsCell}>
                     <View style={styles.actionButtons}>
@@ -521,55 +525,59 @@ export default function CustomersScreen() {
       {showEditModal && (
         <Modal visible={true} transparent animationType="none">
           <View style={styles.drawerOverlay}>
-            <Animated.View style={[styles.drawer, { left: editSlideAnim }]}>
+            <View style={styles.drawer}>
               <View style={styles.drawerHeader}>
                 <Text style={styles.drawerTitle}>Edit Customer</Text>
-                <TouchableOpacity style={styles.drawerCloseButton} onPress={() => {
-                  Animated.timing(editSlideAnim, {
-                    toValue: -350,
-                    duration: 200,
-                    useNativeDriver: false,
-                  }).start(() => setShowEditModal(false));
-                }}>
+                <TouchableOpacity style={styles.drawerCloseButton} onPress={() => setShowEditModal(false)}>
                   <Text style={styles.drawerCloseText}>×</Text>
                 </TouchableOpacity>
               </View>
               
               <ScrollView style={styles.drawerForm}>
-                <Text style={styles.fieldLabel}>First Name *</Text>
-                <TextInput
-                  style={styles.drawerInput}
-                  placeholder="Enter first name"
-                  value={editCustomer.firstname}
-                  onChangeText={(text) => setEditCustomer({...editCustomer, firstname: text})}
-                />
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>First Name *</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter first name"
+                      value={editCustomer.firstname}
+                      onChangeText={(text) => setEditCustomer({...editCustomer, firstname: text})}
+                    />
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Surname *</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter surname"
+                      value={editCustomer.surname}
+                      onChangeText={(text) => setEditCustomer({...editCustomer, surname: text})}
+                    />
+                  </View>
+                </View>
                 
-                <Text style={styles.fieldLabel}>Surname *</Text>
-                <TextInput
-                  style={styles.drawerInput}
-                  placeholder="Enter surname"
-                  value={editCustomer.surname}
-                  onChangeText={(text) => setEditCustomer({...editCustomer, surname: text})}
-                />
-                
-                <Text style={styles.fieldLabel}>Email</Text>
-                <TextInput
-                  style={styles.drawerInput}
-                  placeholder="Enter email address"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  value={editCustomer.email}
-                  onChangeText={(text) => setEditCustomer({...editCustomer, email: text})}
-                />
-                
-                <Text style={styles.fieldLabel}>Contact</Text>
-                <TextInput
-                  style={styles.drawerInput}
-                  placeholder="Enter contact number"
-                  keyboardType="phone-pad"
-                  value={editCustomer.contact}
-                  onChangeText={(text) => setEditCustomer({...editCustomer, contact: text})}
-                />
+                <View style={styles.formRow}>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Email</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter email address"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      value={editCustomer.email}
+                      onChangeText={(text) => setEditCustomer({...editCustomer, email: text})}
+                    />
+                  </View>
+                  <View style={styles.formColumn}>
+                    <Text style={styles.fieldLabel}>Contact</Text>
+                    <TextInput
+                      style={styles.drawerInput}
+                      placeholder="Enter contact number"
+                      keyboardType="phone-pad"
+                      value={editCustomer.contact}
+                      onChangeText={(text) => setEditCustomer({...editCustomer, contact: text})}
+                    />
+                  </View>
+                </View>
                 
                 <Text style={styles.fieldLabel}>Address</Text>
                 <TextInput
@@ -581,32 +589,28 @@ export default function CustomersScreen() {
               </ScrollView>
               
               <View style={styles.drawerButtons}>
-                <TouchableOpacity style={styles.drawerCancelButton} onPress={() => {
-                  Animated.timing(editSlideAnim, {
-                    toValue: -350,
-                    duration: 200,
-                    useNativeDriver: false,
-                  }).start(() => setShowEditModal(false));
-                }}>
+                <TouchableOpacity style={styles.drawerCancelButton} onPress={() => setShowEditModal(false)}>
                   <Text style={styles.drawerCancelText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.drawerSaveButton} onPress={handleUpdateCustomer}>
+                <TouchableOpacity style={[styles.drawerSaveButton, { backgroundColor: '#800000' }]} onPress={handleUpdateCustomer}>
                   <Text style={styles.drawerSaveText}>Update Customer</Text>
                 </TouchableOpacity>
               </View>
-            </Animated.View>
+            </View>
           </View>
         </Modal>
       )}
 
 
-    </ScrollView>
+      </ScrollView>
+    </AdminLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   header: {
     paddingTop: 20,
@@ -617,7 +621,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   headerText: {
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#800000',
   },
@@ -627,10 +631,12 @@ const styles = StyleSheet.create({
     gap: 15,
   },
   addButton: {
-    backgroundColor: '#23C062',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: '#7F1D1F',
+    borderRadius: 8,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   addButtonText: {
     color: '#ffffff',
@@ -641,58 +647,82 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#800000',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(127, 29, 31, 0.3)',
+    borderRadius: 8,
+    paddingLeft: 10,
+    width: 265.798,
+    height: 32,
+    flexShrink: 0,
+    backgroundColor: 'rgba(250, 250, 250, 0.00)',
+    shadowColor: 'rgba(31, 61, 89, 0.04)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 20,
   },
-  searchIcon: {
-    width: 14,
-    height: 14,
-    marginRight: 6,
+  searchIconContainer: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#7F1D1F',
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   searchInput: {
-    width: 150,
-    fontSize: 12,
-    // web-only outlineStyle removed
+    flex: 1,
+    fontSize: 15,
   },
   scrollContent: {
     flexGrow: 1,
   },
   content: {
-    padding: 20,
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingTop: 20,
   },
   tableContainer: {
-    borderWidth: 2,
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 8,
-    backgroundColor: '#fff',
   },
   table: {
     backgroundColor: '#fff',
-    height: 390,
+    flex: 1,
+    borderRadius: 12,
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f8f9fa',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingLeft: 70,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    alignItems: 'center',
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingLeft: 70,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
     alignItems: 'center',
+    minHeight: 60,
   },
   rowContent: {
     flexDirection: 'row',
     flex: 1,
+    marginLeft: 0,
   },
   actionsCell: {
-    flex: 0.2,
+    flex: 0.3,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -705,10 +735,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 3,
     borderRadius: 3,
+    width: 80,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   editButtonText: {
     color: '#fff',
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   deleteButton: {
@@ -716,27 +750,66 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 3,
     borderRadius: 3,
+    width: 80,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   deleteButtonText: {
     color: '#fff',
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   headerCell: {
-    flex: 1,
-    fontWeight: 'bold',
+    fontWeight: '600',
     fontSize: 14,
-    color: '#333',
+    color: '#374151',
+    letterSpacing: 0.5,
+  },
+  nameHeader: {
+    flex: 1.2,
+    textAlign: 'left',
+  },
+  contactHeader: {
+    flex: 1,
+    textAlign: 'left',
+  },
+  emailHeader: {
+    flex: 1.2,
+    textAlign: 'left',
+  },
+  addressHeader: {
+    flex: 1.3,
+    textAlign: 'left',
+  },
+  actionsHeader: {
+    flex: 1.2,
+    textAlign: 'center',
+  },
+  nameCell: {
+    flex: 1.2,
+    textAlign: 'left',
+  },
+  contactCell: {
+    flex: 1,
+    textAlign: 'left',
+  },
+  emailCell: {
+    flex: 1.2,
+    textAlign: 'left',
+  },
+  addressCell: {
+    flex: 1.3,
+    textAlign: 'left',
   },
   cell: {
-    flex: 1,
-    fontSize: 12,
-    color: '#555',
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+    fontSize: 13,
+    color: '#6B7280',
+    paddingLeft: 0,
   },
   tableBody: {
     flex: 1,
+    backgroundColor: '#fff',
   },
   noDataContainer: {
     flex: 1,
@@ -750,38 +823,30 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   drawerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    zIndex: 10000,
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   drawer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 350,
     backgroundColor: '#fff',
+    borderRadius: 8,
+    width: '60%',
     shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
-    shadowRadius: 10,
+    shadowRadius: 12,
     elevation: 10,
   },
   drawerHeader: {
+    padding: 15,
+    paddingLeft: 25,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingLeft: 30,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    backgroundColor: '#f8f9fa',
   },
   drawerTitle: {
-    fontSize: 14,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#800000',
   },
@@ -804,56 +869,59 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontSize: 14,
-    fontWeight: 'bold',
     color: '#333',
-    marginBottom: 8,
-    marginTop: 15,
+    marginTop: 8,
+    fontWeight: 'bold',
   },
   drawerInput: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
-    fontSize: 12,
-    backgroundColor: '#fafafa',
+    marginTop: 6,
+    backgroundColor: '#fff',
+    fontSize: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   drawerButtons: {
     flexDirection: 'row',
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    backgroundColor: '#fff',
+    padding: 15,
     gap: 10,
   },
   drawerCancelButton: {
     backgroundColor: '#f5f5f5',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
     borderWidth: 1,
     borderColor: '#ddd',
-    alignItems: 'center',
-    flex: 1,
   },
   drawerCancelText: {
-    textAlign: 'center',
     color: '#666',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 14,
   },
   drawerSaveButton: {
-    backgroundColor: '#23C062',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
+    backgroundColor: '#7B2C2C',
+    padding: 14,
+    borderRadius: 8,
     alignItems: 'center',
     flex: 1,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   drawerSaveText: {
-    textAlign: 'center',
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 14,
   },
   pagination: {
     backgroundColor: '#f8f9fa',
@@ -921,6 +989,14 @@ const styles = StyleSheet.create({
   pageOf: {
     fontSize: 10,
     color: '#666',
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 8,
+  },
+  formColumn: {
+    flex: 1,
   },
 
 });

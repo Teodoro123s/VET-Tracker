@@ -1,26 +1,42 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTenant } from '../../contexts/TenantContext';
 import { useSubscription } from '../../contexts/SubscriptionContext';
+import { useAdminProfile } from '../../contexts/AdminProfileContext';
 import { useState, useEffect } from 'react';
+import Sidebar from '../../components/Sidebar';
 
 export default function SettingsScreen() {
   const { user } = useAuth();
-  const { userEmail } = useTenant();
   const { hasActiveSubscription, daysRemaining, totalDaysRemaining, queuedPeriods, currentPeriod, endDate, loading, isInGracePeriod, graceDaysRemaining } = useSubscription();
+  const { adminEmail, adminRole, profileImage, uploading, handleImageUpload } = useAdminProfile();
   const [adminData, setAdminData] = useState(null);
+  const [clinicName, setClinicName] = useState('');
+
+  const handleNavigation = async (route: string | null) => {
+    if (!route) return;
+    try {
+      if (typeof window !== 'undefined') {
+        window.location.href = route;
+      }
+    } catch (error) {
+      console.error(`Navigation error to ${route}:`, error);
+      alert('Failed to navigate. Please try again.');
+    }
+  };
+
+  useEffect(() => {
+    setClinicName(adminEmail.split('@')[0]);
+  }, [adminEmail]);
 
   useEffect(() => {
     const loadAdminData = async () => {
       try {
-        const email = user?.email || userEmail || 'admin@clinic.com';
-        
         const adminInfo = {
-          email: email,
-          role: 'Clinic Administrator',
-          createdAt: user?.metadata?.creationTime || new Date().toISOString(),
-          lastLogin: user?.metadata?.lastSignInTime || new Date().toISOString()
+          email: adminEmail,
+          role: adminRole,
+          createdAt: (user as any)?.metadata?.creationTime || new Date().toISOString(),
+          lastLogin: (user as any)?.metadata?.lastSignInTime || new Date().toISOString()
         };
         setAdminData(adminInfo);
       } catch (error) {
@@ -29,15 +45,51 @@ export default function SettingsScreen() {
     };
     
     loadAdminData();
-  }, [user, userEmail]);
+  }, [user, adminEmail, adminRole]);
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Admin Details</Text>
+    <View style={styles.container}>
+      {/* Admin Header */}
+      <View style={styles.adminHeader}>
+        <Image source={require('../../assets/pawns web logo v3.png')} style={styles.logo} />
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => handleNavigation('/client/notifications')}>
+            <Ionicons name="notifications" size={20} color="#800000" />
+          </TouchableOpacity>
+          <View style={styles.profileContainer}>
+            <TouchableOpacity style={styles.profileImage} onPress={handleImageUpload} disabled={uploading}>
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.profileImagePhoto} />
+              ) : (
+                <Ionicons name="person" size={20} color="#666" />
+              )}
+              {uploading && (
+                <View style={styles.uploadingOverlay}>
+                  <Ionicons name="cloud-upload" size={16} color="#fff" />
+                </View>
+              )}
+            </TouchableOpacity>
+            <View style={styles.profileInfo}>
+              <Text style={styles.adminName}>{adminEmail}</Text>
+              <Text style={styles.adminRole}>{adminRole}</Text>
+            </View>
+            <Ionicons name="chevron-down" size={16} color="#666" />
+          </View>
+        </View>
       </View>
       
-      <View style={styles.content}>
+      {/* Main Layout Container */}
+      <View style={styles.mainLayout}>
+        {/* Admin Sidebar */}
+        <View style={styles.adminSidebar}>
+          <Sidebar />
+        </View>
+        
+        {/* Main Content */}
+        <View style={styles.mainContent}>
+          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <View style={styles.settingsSection}>
+              <Text style={styles.sectionTitle}>Admin Details</Text>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account Information</Text>
           <View style={styles.detailRow}>
@@ -185,44 +237,158 @@ export default function SettingsScreen() {
             <Text style={styles.value}>{adminData?.lastLogin ? new Date(adminData.lastLogin).toLocaleDateString() : 'N/A'}</Text>
           </View>
         </View>
+            </View>
+          </ScrollView>
+        </View>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
+    padding: 16,
   },
-  header: {
-    paddingTop: 20,
-    paddingBottom: 5,
+  adminHeader: {
+    height: 70,
+    borderRadius: 10,
+    backgroundColor: '#FAFAFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
+    marginBottom: 16,
   },
-  headerText: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#800000',
+  logo: {
+    width: 120,
+    height: 40,
+    resizeMode: 'contain',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    width: 200,
+  },
+  searchInput: {
+    marginLeft: 8,
+    fontSize: 14,
+    flex: 1,
+    color: '#333',
+  },
+  iconButton: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#f8f9fa',
+  },
+  profileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+  },
+  profileImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#e9ecef',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  profileImagePhoto: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  uploadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileInfo: {
+    flexDirection: 'column',
+  },
+  adminName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  adminRole: {
+    fontSize: 12,
+    color: '#666',
+  },
+  mainLayout: {
+    flexDirection: 'row',
+    gap: 16,
+    flex: 1,
+  },
+  adminSidebar: {
+    width: 279,
+    flexShrink: 0,
+    borderRadius: 10,
+    backgroundColor: '#FAFAFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  mainContent: {
+    flex: 1,
+    borderRadius: 10,
   },
   content: {
-    padding: 20,
+    flex: 1,
+  },
+  settingsSection: {
+    marginBottom: 32,
+    paddingHorizontal: 24,
+    marginTop: 24,
   },
   section: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 20,
-    marginBottom: 20,
-    elevation: 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 24,
+    marginBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#800000',
-    marginBottom: 15,
+    marginBottom: 20,
   },
   detailRow: {
     flexDirection: 'row',
