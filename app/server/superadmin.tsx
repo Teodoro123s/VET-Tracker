@@ -2,19 +2,35 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput,
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../contexts/AuthContext';
 import SuperAdminSidebar from '@/components/SuperAdminSidebar';
 import SearchableDropdown from '@/components/SearchableDropdown';
 import { createTenant, registerUser } from '../../lib/services/firebaseService';
 import { fetchAllTenants, deleteTenant, subscribeToTenants, updateSubscriber, createSubscriber, Subscriber } from '../../lib/services/superAdminService';
-import { sendCredentialsEmail, sendAdminCredentialsEmail } from '../../lib/services/emailjsService';
+import { sendCredentialsEmail } from '../../lib/services/workingEmailService';
 import { generateSecurePassword } from '../../lib/utils/emailService';
 import { deleteUserCompletely } from '../../lib/utils/completeUserDeletion';
 import { addSubscriptionPeriod , lockTenantByEmail, unlockTenantByEmail } from '../../lib/services/subscriptionService';
+import { updateDoc, doc } from 'firebase/firestore';
 import { hashPassword } from '../../lib/utils/passwordUtils';
 
 import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../../lib/config/firebaseConfig';
+import { db, storage } from '../../lib/config/firebaseConfig';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import * as ImagePicker from 'expo-image-picker';
 import { Typography, Spacing, ButtonSizes, ModalSizes } from '@/constants/Typography';
+
+// Update payment status function
+const updatePaymentStatus = async (transactionId, newStatus) => {
+  try {
+    await updateDoc(doc(db, 'transactions', transactionId), {
+      paymentStatus: newStatus,
+      updatedAt: new Date()
+    });
+  } catch (error) {
+    console.error('Error updating payment status:', error);
+  }
+};
 
 function SubscriptionPeriodsTable({ selectedTenant }) {
   const [subscriberTransactions, setSubscriberTransactions] = useState([]);
@@ -22,6 +38,8 @@ function SubscriptionPeriodsTable({ selectedTenant }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
   
   useEffect(() => {
     if (selectedTenant?.email) {
@@ -45,7 +63,7 @@ function SubscriptionPeriodsTable({ selectedTenant }) {
         });
         
         const emailTransactions = transactions
-          .filter(t => t.email === selectedTenant.email)
+          .filter(t => t.email === selectedTenant?.email)
           .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
         
         const processedTransactions = emailTransactions.map((transaction, index) => {
@@ -68,7 +86,8 @@ function SubscriptionPeriodsTable({ selectedTenant }) {
           return {
             ...transaction,
             status,
-            startDate
+            startDate,
+            paymentStatus: transaction.paymentStatus || 'completed'
           };
         });
         
@@ -105,10 +124,12 @@ function SubscriptionPeriodsTable({ selectedTenant }) {
       </View>
       
       <View style={styles.tableHeader}>
-        <Text style={[styles.headerCell, {flex: 2}]}>Period</Text>
-        <Text style={[styles.headerCell, {flex: 2}]}>Start Date</Text>
-        <Text style={[styles.headerCell, {flex: 2}]}>End Date</Text>
+        <Text style={[styles.headerCell, {flex: 1.5}]}>Period</Text>
+        <Text style={[styles.headerCell, {flex: 1.5}]}>Start Date</Text>
+        <Text style={[styles.headerCell, {flex: 1.5}]}>End Date</Text>
         <Text style={[styles.headerCell, {flex: 1}]}>Status</Text>
+        <Text style={[styles.headerCell, {flex: 1.2}]}>Payment Status</Text>
+        <Text style={[styles.headerCell, {flex: 1.3}]}>Payment Proof</Text>
       </View>
       
       <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={false}>
@@ -121,15 +142,85 @@ function SubscriptionPeriodsTable({ selectedTenant }) {
         ) : (
           paginatedTransactions.map((transaction) => (
             <View key={transaction.id} style={styles.tableRow}>
-              <Text style={[styles.cell, {flex: 2}]}>{transaction.period}</Text>
-              <Text style={[styles.cell, {flex: 2}]}>{transaction.startDate.toLocaleDateString()}</Text>
-              <Text style={[styles.cell, {flex: 2}]}>{transaction.endDate.toLocaleDateString()}</Text>
+              <Text style={[styles.cell, {flex: 1.5}]}>{transaction.period}</Text>
+              <Text style={[styles.cell, {flex: 1.5}]}>{transaction.startDate.toLocaleDateString()}</Text>
+              <Text style={[styles.cell, {flex: 1.5}]}>{transaction.endDate.toLocaleDateString()}</Text>
               <View style={[styles.statusContainer, {flex: 1}]}>
-                <Text style={[styles.statusText,
-                  transaction.status === 'active' && styles.activeText,
-                  transaction.status === 'queued' && styles.pendingText,
-                  transaction.status === 'expired' && styles.expiredText
-                ]}>{transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}</Text>
+                <TouchableOpacity 
+                  style={[styles.statusBadge,
+                    transaction.status === 'active' && styles.activeBadge,
+                    transaction.status === 'queued' && styles.pendingBadge,
+                    transaction.status === 'expired' && styles.expiredBadge
+                  ]}
+                  onPress={() => {
+                    const paymentStatus = transaction.paymentStatus || 'completed';
+                    Alert.alert(
+                      'Update Payment Status',
+                      `Current status: ${paymentStatus}\nSelect new status:`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Completed', onPress: () => updatePaymentStatus(transaction.id, 'completed') },
+                        { text: 'Pending', onPress: () => updatePaymentStatus(transaction.id, 'pending') },
+                        { text: 'Failed', onPress: () => updatePaymentStatus(transaction.id, 'failed') }
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={[styles.statusText,
+                    transaction.status === 'active' && styles.activeText,
+                    transaction.status === 'queued' && styles.pendingText,
+                    transaction.status === 'expired' && styles.expiredText
+                  ]}>{transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.statusContainer, {flex: 1}]}>
+                <TouchableOpacity 
+                  style={[styles.statusBadge,
+                    (transaction.paymentStatus === 'completed' || !transaction.paymentStatus) && styles.activeBadge,
+                    transaction.paymentStatus === 'pending' && styles.pendingBadge,
+                    transaction.paymentStatus === 'failed' && styles.expiredBadge
+                  ]}
+                  onPress={() => {
+                    const paymentStatus = transaction.paymentStatus || 'completed';
+                    Alert.alert(
+                      'Update Payment Status',
+                      `Current status: ${paymentStatus}\nSelect new status:`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Completed', onPress: () => updatePaymentStatus(transaction.id, 'completed') },
+                        { text: 'Pending', onPress: () => updatePaymentStatus(transaction.id, 'pending') },
+                        { text: 'Failed', onPress: () => updatePaymentStatus(transaction.id, 'failed') }
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={[styles.statusText,
+                    (transaction.paymentStatus === 'completed' || !transaction.paymentStatus) && styles.activeText,
+                    transaction.paymentStatus === 'pending' && styles.pendingText,
+                    transaction.paymentStatus === 'failed' && styles.expiredText
+                  ]}>{(transaction.paymentStatus || 'completed').charAt(0).toUpperCase() + (transaction.paymentStatus || 'completed').slice(1)}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={{flex: 1.5}}>
+                {(() => {
+                  console.log('Transaction details:', {
+                    id: transaction.id,
+                    email: transaction.email,
+                    paymentImage: transaction.paymentImage ? 'HAS IMAGE' : 'NO IMAGE',
+                    paymentImageLength: transaction.paymentImage?.length || 0,
+                    allFields: Object.keys(transaction)
+                  });
+                  return transaction.paymentImage ? (
+                    <TouchableOpacity onPress={() => {
+                      setSelectedImage(transaction.paymentImage);
+                      setShowImageModal(true);
+                    }}>
+                      <Text style={styles.paymentProofLink}>View Proof</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={styles.noPaymentText}>No proof</Text>
+                  );
+                })()}
               </View>
             </View>
           ))
@@ -182,14 +273,32 @@ function SubscriptionPeriodsTable({ selectedTenant }) {
           </TouchableOpacity>
         </View>
       </View>
+      
+      {showImageModal && selectedImage && (
+        <Modal visible={true} transparent animationType="fade">
+          <View style={styles.imageModalOverlay}>
+            <View style={styles.imageModalContainer}>
+              <TouchableOpacity style={styles.imageModalClose} onPress={() => {
+                setShowImageModal(false);
+                setSelectedImage(null);
+              }}>
+                <Text style={styles.imageModalCloseText}>×</Text>
+              </TouchableOpacity>
+              <Image source={{ uri: selectedImage }} style={styles.modalImage} resizeMode="contain" />
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
 
 export default function SuperAdminScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   
   const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
+  const [superAdminData, setSuperAdminData] = useState(null);
   
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [showTenantDetails, setShowTenantDetails] = useState(false);
@@ -197,18 +306,47 @@ export default function SuperAdminScreen() {
   const [addDrawerAnimation] = useState(new Animated.Value(-350));
   const [newSubscriber, setNewSubscriber] = useState({
     email: '',
-    period: '1 month'
+    clinicName: '',
+    period: '1 month',
+    paymentImage: null,
+    localImageUri: null
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Active');
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
+  const [showSubscriberPeriodDropdown, setShowSubscriberPeriodDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGeneratingPassword, setIsGeneratingPassword] = useState(false);
   const [activePeriod, setActivePeriod] = useState('');
   const [subscriberPeriods, setSubscriberPeriods] = useState({});
-  
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [tenantToDelete, setTenantToDelete] = useState(null);
+
+
 
   const [notification, setNotification] = useState(null);
+
+  // Fetch superadmin data
+  useEffect(() => {
+    if (user?.email) {
+      // Fetch superadmin data from database
+      const fetchSuperAdminData = async () => {
+        try {
+          const unsubscribe = onSnapshot(collection(db, 'superadmins'), (snapshot) => {
+            const superAdmins = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const currentSuperAdmin = superAdmins.find(admin => admin.email === user.email);
+            if (currentSuperAdmin) {
+              setSuperAdminData(currentSuperAdmin);
+            }
+          });
+          return () => unsubscribe();
+        } catch (error) {
+          console.error('Error fetching superadmin data:', error);
+        }
+      };
+      fetchSuperAdminData();
+    }
+  }, [user?.email]);
 
   // Real-time subscription to tenants with inactivity check
   useEffect(() => {
@@ -217,8 +355,8 @@ export default function SuperAdminScreen() {
     const unsubscribe = subscribeToTenants((tenants) => {
       // Filter to only show admin accounts (clinic owners), not veterinarians/staff
       const adminTenants = tenants.filter(tenant => 
-        tenant.role === 'admin' || 
-        (!tenant.role && !tenant.email?.includes('veterinarian') && !tenant.email?.includes('staff'))
+        (tenant as any).role === 'admin' || 
+        (!(tenant as any).role && !(tenant as any).email?.includes('veterinarian') && !(tenant as any).email?.includes('staff'))
       );
       
       // Check for inactive tenants (no subscription activity in 6 months)
@@ -227,7 +365,7 @@ export default function SuperAdminScreen() {
         onSnapshot(collection(db, 'transactions'), (snapshot) => {
           const transactions = snapshot.docs
             .map(doc => ({ ...doc.data(), createdAt: doc.data().createdAt?.toDate() }))
-            .filter(t => t.email === tenant.email)
+            .filter(t => (t as any).email === (tenant as any).email)
             .sort((a, b) => b.createdAt - a.createdAt);
           
           if (transactions.length > 0) {
@@ -276,7 +414,7 @@ export default function SuperAdminScreen() {
         });
         
         // Get transactions for this email
-        const emailTransactions = transactions.filter(t => t.email === selectedTenant.email)
+        const emailTransactions = transactions.filter(t => (t as any).email === selectedTenant.email)
           .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
         
         // Find active subscription (first one that hasn't expired)
@@ -365,7 +503,7 @@ export default function SuperAdminScreen() {
       
       const periods = {};
       subscribers.forEach(subscriber => {
-        const emailTransactions = transactions.filter(t => t.email === subscriber.email)
+        const emailTransactions = transactions.filter(t => (t as any).email === subscriber.email)
           .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
         
         if (emailTransactions.length > 0) {
@@ -395,68 +533,96 @@ export default function SuperAdminScreen() {
 
   return (
     <View style={styles.container}>
-      <SuperAdminSidebar />
-      <View style={styles.mainContent}>
-
-      
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <Text style={styles.headerText}>Clinic Management</Text>
-          <View style={styles.headerActions}>
-
-            <View style={styles.searchContainer}>
-              <Ionicons name="search" size={14} color="#800000" />
-              <TextInput 
-                style={styles.searchInput}
-                placeholder="Search clinics..."
-                placeholderTextColor="#bbb"
-                value={searchTerm}
-                onChangeText={setSearchTerm}
-              />
+      {/* SuperAdmin Header */}
+      <View style={styles.adminHeader}>
+        <Image source={require('../../assets/pawns web logo v3.png')} style={styles.logo} />
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.iconButton}>
+            <Ionicons name="notifications" size={24} color="#800000" />
+          </TouchableOpacity>
+          <View style={styles.profileContainer}>
+            <Ionicons name="person" size={20} color="#666" />
+            <View style={styles.profileInfo}>
+              <Text style={styles.adminName}>{superAdminData?.email || user?.email || 'SuperAdmin'}</Text>
+              <Text style={styles.adminRole}>{superAdminData?.role || 'Super Administrator'}</Text>
             </View>
           </View>
         </View>
-        {!showTenantDetails ? (
-        <View style={styles.tableContainer}>
-            <View style={styles.tableTopRow}>
-            <View style={styles.headerRow}>
-              <Text style={styles.detailTitle}>All Clinics</Text>
-              <View style={styles.filterButtons}>
-                <TouchableOpacity 
-                  style={[styles.filterButton, statusFilter === 'Active' && styles.activeFilterButton]} 
-                  onPress={() => setStatusFilter('Active')}
-                >
-                  <Text style={[styles.filterButtonText, statusFilter === 'Active' && styles.activeFilterText]}>Active</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.filterButton, statusFilter === 'Inactive' && styles.activeFilterButton]} 
-                  onPress={() => setStatusFilter('Inactive')}
-                >
-                  <Text style={[styles.filterButtonText, statusFilter === 'Inactive' && styles.activeFilterText]}>Inactive</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-              <TouchableOpacity style={styles.addSubscriberButton} onPress={() => {
-                setShowAddDrawer(true);
-                Animated.timing(addDrawerAnimation, {
-                  toValue: 0,
-                  duration: 300,
-                  useNativeDriver: false,
-                }).start();
-              }}>
-                <Text style={styles.addSubscriberButtonText}>+ Add New Subscriber</Text>
-              </TouchableOpacity>
+      </View>
+      
+      {/* Main Layout Container */}
+      <View style={styles.mainLayout}>
+        <View style={styles.adminSidebar}>
+          <SuperAdminSidebar />
+        </View>
+        <View style={styles.mainContent}>
+          <View style={styles.container}>
+            <View style={styles.header}>
+              <Text style={styles.headerText}>Clinic Management</Text>
+              {!showTenantDetails && (
+                <View style={styles.headerActions}>
+                  <TouchableOpacity style={styles.addButton} onPress={() => {
+                    setShowAddDrawer(true);
+                    Animated.timing(addDrawerAnimation, {
+                      toValue: 0,
+                      duration: 300,
+                      useNativeDriver: false,
+                    }).start();
+                  }}>
+                    <Ionicons name="add" size={20} color="#fff" />
+                  </TouchableOpacity>
+                  
+                  <View style={styles.searchContainer}>
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search..."
+                      placeholderTextColor="rgba(153, 153, 153, 0.8)"
+                      value={searchTerm}
+                      onChangeText={setSearchTerm}
+                    />
+                    <View style={styles.searchIconContainer}>
+                      <Ionicons name="search" size={14} color="#fff" />
+                    </View>
+                  </View>
+                </View>
+              )}
             </View>
             
-            <View style={styles.tableHeader}>
-            <Text style={[styles.headerCell, {flex: 2}]}>Email</Text>
-            <Text style={[styles.headerCell, {flex: 2}]}>Clinic Name</Text>
-            <Text style={[styles.headerCell, {flex: 1.5}]}>Expiry Date</Text>
-            <Text style={[styles.headerCell, {flex: 1}]}>Period</Text>
-            <Text style={[styles.headerCell, {flex: 1}]}>Status</Text>
-            </View>
-          
-          <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={false}>
+            <View style={styles.content}>
+              {!showTenantDetails ? (
+              <View style={styles.tableContainer}>
+                <View style={styles.table}>
+                  <View style={styles.subHeader}>
+                    <View style={styles.filterTabs}>
+                      <TouchableOpacity 
+                        style={[styles.filterTab, statusFilter === 'Active' && styles.activeFilterTab]} 
+                        onPress={() => setStatusFilter('Active')}
+                      >
+                        <Text style={[styles.filterTabText, statusFilter === 'Active' && styles.activeFilterTabText]}>
+                          Active ({subscribers.filter(s => s.status === 'active').length})
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={[styles.filterTab, statusFilter === 'Inactive' && styles.activeFilterTab]} 
+                        onPress={() => setStatusFilter('Inactive')}
+                      >
+                        <Text style={[styles.filterTabText, statusFilter === 'Inactive' && styles.activeFilterTabText]}>
+                          Inactive ({subscribers.filter(s => s.status !== 'active').length})
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.tableHeader}>
+                  <Text style={[styles.headerCell, {flex: 2}]}>Email</Text>
+                  <Text style={[styles.headerCell, {flex: 2}]}>Clinic Name</Text>
+                  <Text style={[styles.headerCell, {flex: 1.5}]}>Expiry Date</Text>
+                  <Text style={[styles.headerCell, {flex: 1}]}>Period</Text>
+                  <Text style={[styles.headerCell, {flex: 1}]}>Status</Text>
+                  <Text style={[styles.headerCell, {flex: 0.8}]}>Actions</Text>
+                  </View>
+                
+                <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={false}>
             {(() => {
               const filteredSubscribers = subscribers.filter(subscriber => {
                 const matchesSearch = (subscriber.clinicName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -484,19 +650,50 @@ export default function SuperAdminScreen() {
               }
               
               return paginatedSubscribers.map((subscriber) => (
-                <TouchableOpacity 
-                  key={subscriber.id} 
-                  style={[styles.tableRow, selectedTenant?.id === subscriber.id && styles.selectedRow]}
-                  onPress={() => {
-                    setSelectedTenant(subscriber);
-                    setShowTenantDetails(true);
-                  }}
-                >
-                  <Text style={[styles.cell, {flex: 2}]} numberOfLines={1}>{subscriber.email}</Text>
-                  <Text style={[styles.cell, {flex: 2}]} numberOfLines={1}>{subscriber.clinicName || subscriber.email?.split('@')[0]}</Text>
-                  <Text style={[styles.cell, {flex: 1.5}]} numberOfLines={1}>{subscriber.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}</Text>
-                  <Text style={[styles.cell, {flex: 1}]} numberOfLines={1}>{subscriberPeriods[subscriber.email] || 'Loading...'}</Text>
-                  <View style={[styles.statusCell, {flex: 1}]}>
+                <View key={subscriber.id} style={[styles.tableRow, selectedTenant?.id === subscriber.id && styles.selectedRow]}>
+                  <TouchableOpacity 
+                    style={{flex: 2}}
+                    onPress={() => {
+                      setSelectedTenant(subscriber);
+                      setShowTenantDetails(true);
+                    }}
+                  >
+                    <Text style={styles.cell} numberOfLines={1}>{subscriber.email}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={{flex: 2}}
+                    onPress={() => {
+                      setSelectedTenant(subscriber);
+                      setShowTenantDetails(true);
+                    }}
+                  >
+                    <Text style={styles.cell} numberOfLines={1}>{subscriber.clinicName || subscriber.email?.split('@')[0]}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={{flex: 1.5}}
+                    onPress={() => {
+                      setSelectedTenant(subscriber);
+                      setShowTenantDetails(true);
+                    }}
+                  >
+                    <Text style={styles.cell} numberOfLines={1}>{subscriber.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={{flex: 1}}
+                    onPress={() => {
+                      setSelectedTenant(subscriber);
+                      setShowTenantDetails(true);
+                    }}
+                  >
+                    <Text style={styles.cell} numberOfLines={1}>{subscriberPeriods[(subscriber as any).email] || 'Loading...'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={{flex: 1}}
+                    onPress={() => {
+                      setSelectedTenant(subscriber);
+                      setShowTenantDetails(true);
+                    }}
+                  >
                     <View style={[styles.statusBadge, 
                       subscriber.status === 'active' && styles.activeBadge,
                       subscriber.status === 'expired' && styles.expiredBadge,
@@ -510,13 +707,24 @@ export default function SuperAdminScreen() {
                         subscriber.status === 'pending' && styles.pendingText
                       ]}>{subscriber.status?.charAt(0).toUpperCase() + subscriber.status?.slice(1)}</Text>
                     </View>
+                  </TouchableOpacity>
+                  <View style={{flex: 0.8, alignItems: 'center'}}>
+                    <TouchableOpacity 
+                      style={styles.deleteButton}
+                      onPress={() => {
+                        setTenantToDelete(subscriber);
+                        setShowDeleteModal(true);
+                      }}
+                    >
+                      <Ionicons name="trash" size={16} color="#fff" />
+                    </TouchableOpacity>
                   </View>
-                </TouchableOpacity>
+                </View>
               ));
             })()}
-          </ScrollView>
-          
-          <View style={styles.paginationContainer}>
+                </ScrollView>
+                
+                <View style={styles.paginationContainer}>
             <View style={styles.paginationControls}>
               <Text style={styles.paginationLabel}>Show:</Text>
               <View style={styles.dropdownContainer}>
@@ -570,46 +778,23 @@ export default function SuperAdminScreen() {
                 <Text style={styles.pageBtnText}>Next</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
-        ) : (
-          <>
-          <View style={styles.tableContainer}>
-              <View style={styles.tableTopRow}>
-              <View style={styles.headerRow}>
-                <TouchableOpacity style={styles.returnButton} onPress={() => {
-                  setShowTenantDetails(false);
-                  setSelectedTenant(null);
-                }}>
-                  <Ionicons name="arrow-back" size={16} color="#ffffff" />
-                </TouchableOpacity>
-                <Text style={styles.detailTitle}>Clinic Details</Text>
+                </View>
+                </View>
               </View>
-              </View>
-              
-              <View style={styles.tableHeader}>
-              <Text style={[styles.headerCell, {flex: 1}]}>Field</Text>
-              <Text style={[styles.headerCell, {flex: 2}]}>Value</Text>
-              </View>
-            
-            <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={false}>
-              <View style={styles.tableRow}>
-                <Text style={[styles.cell, {flex: 1}]}>Clinic Name</Text>
-                <Text style={[styles.cell, {flex: 2}]}>{selectedTenant?.clinicName || 'Clinic Name'}</Text>
-              </View>
-              <View style={styles.tableRow}>
-                <Text style={[styles.cell, {flex: 1}]}>Email Address</Text>
-                <Text style={[styles.cell, {flex: 2}]}>{selectedTenant?.email}</Text>
-              </View>
-              <View style={styles.tableRow}>
-                <Text style={[styles.cell, {flex: 1}]}>Account Created</Text>
-                <Text style={[styles.cell, {flex: 2}]}>{selectedTenant?.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}</Text>
-              </View>
-              <View style={styles.tableRow}>
-                <Text style={[styles.cell, {flex: 1}]}>Actions</Text>
-                <View style={[styles.actionButtonsRow, {flex: 2}]}>
+              ) : (
+                <>
+                <View style={styles.detailsContainer}>
+                  <View style={styles.detailsHeader}>
+                    <TouchableOpacity style={styles.returnButton} onPress={() => {
+                      setShowTenantDetails(false);
+                      setSelectedTenant(null);
+                    }}>
+                      <Ionicons name="arrow-back" size={16} color="#ffffff" />
+                    </TouchableOpacity>
+                    <Text style={styles.detailTitle}>Clinic Details</Text>
+                    <View style={styles.detailActionsContainer}>
                   <TouchableOpacity
-                    style={[styles.lockButton, { flex: 0, minWidth: 150, marginRight: 8 }]}
+                    style={styles.detailActionButton}
                     onPress={() => {
                       const action = selectedTenant?.status === 'locked' ? 'unlock' : 'lock';
                       Alert.alert(
@@ -645,10 +830,10 @@ export default function SuperAdminScreen() {
                       );
                     }}
                   >
-                    <Text style={styles.lockButtonText}>{selectedTenant?.status === 'locked' ? 'Unlock Account' : 'Lock Account'}</Text>
+                    <Text style={styles.detailActionButtonText}>{selectedTenant?.status === 'locked' ? 'Unlock Account' : 'Lock Account'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    style={[styles.resendCredentialsButton, { flex: 0, minWidth: 150, opacity: isGeneratingPassword ? 0.5 : 1 }]} 
+                    style={[styles.detailActionButton, styles.primaryActionButton, { opacity: isGeneratingPassword ? 0.5 : 1 }]} 
                     disabled={isGeneratingPassword}
                     onPress={async () => {
                     if (isGeneratingPassword) return;
@@ -681,7 +866,7 @@ export default function SuperAdminScreen() {
                       }
                       
                       // Send new credentials via email
-                      const emailResult = await sendCredentialsEmail(selectedTenant?.email, selectedTenant?.clinicName || 'Admin', selectedTenant?.email, newTempPassword);
+                      const emailResult = await sendCredentialsEmail(selectedTenant?.email, selectedTenant?.clinicName || 'Admin', newTempPassword);
                       
                       // Hash new password before storing
                       const { hashPassword } = await import('../../lib/utils/passwordUtils.js');
@@ -692,7 +877,7 @@ export default function SuperAdminScreen() {
                         passwordHash,
                         salt,
                         lastPasswordReset: new Date().toISOString()
-                      });
+                      } as any);
                       
                       // Update local state
                       const updatedSubscribers = subscribers.map(sub => 
@@ -720,20 +905,55 @@ export default function SuperAdminScreen() {
                       setIsGeneratingPassword(false);
                     }
                   }}>
-                    <Text style={styles.resendCredentialsText}>
+                    <Text style={styles.detailActionButtonText}>
                       {isGeneratingPassword ? 'Generating...' : 'Generate New Password'}
                     </Text>
                   </TouchableOpacity>
-
+                    </View>
+                  </View>
+                  
+                  <ScrollView style={styles.detailsForm} showsVerticalScrollIndicator={false}>
+                    <View style={styles.formRow}>
+                      <View style={styles.formColumn}>
+                        <Text style={styles.detailFieldLabel}>Clinic Name</Text>
+                        <View style={styles.detailFieldValue}>
+                          <Text style={styles.detailValueText}>{selectedTenant?.clinicName || 'N/A'}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.formColumn}>
+                        <Text style={styles.detailFieldLabel}>Email Address</Text>
+                        <View style={styles.detailFieldValue}>
+                          <Text style={styles.detailValueText}>{selectedTenant?.email || 'N/A'}</Text>
+                        </View>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.formRow}>
+                      <View style={styles.formColumn}>
+                        <Text style={styles.detailFieldLabel}>Account Created</Text>
+                        <View style={styles.detailFieldValue}>
+                          <Text style={styles.detailValueText}>{selectedTenant?.createdAt?.toDate?.()?.toLocaleDateString() || 'N/A'}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.formColumn}>
+                        <Text style={styles.detailFieldLabel}>Status</Text>
+                        <View style={styles.detailFieldValue}>
+                          <Text style={[styles.detailValueText, 
+                            selectedTenant?.status === 'active' && styles.activeStatusText,
+                            selectedTenant?.status === 'locked' && styles.lockedStatusText
+                          ]}>{selectedTenant?.status?.charAt(0).toUpperCase() + selectedTenant?.status?.slice(1) || 'N/A'}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  </ScrollView>
                 </View>
-              </View>
-            </ScrollView>
+                
+                <SubscriptionPeriodsTable selectedTenant={selectedTenant} />
+                </>
+              )}
+            </View>
           </View>
-          
-          <SubscriptionPeriodsTable selectedTenant={selectedTenant} />
-          </>
-        )}
-      </ScrollView>
+        </View>
       </View>
       
       {notification && (
@@ -747,23 +967,19 @@ export default function SuperAdminScreen() {
       
       {showAddDrawer && (
         <Modal visible={true} transparent animationType="none">
-          <View style={styles.drawerOverlay}>
-            <Animated.View style={[styles.drawer, { left: addDrawerAnimation }]}>
-              <View style={styles.drawerHeader}>
-                <Text style={styles.drawerTitle}>Add New Subscriber</Text>
-                <TouchableOpacity style={styles.drawerCloseButton} onPress={() => {
-                  Animated.timing(addDrawerAnimation, {
-                    toValue: -350,
-                    duration: 300,
-                    useNativeDriver: false,
-                  }).start(() => setShowAddDrawer(false));
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Add New Subscriber</Text>
+                <TouchableOpacity style={styles.modalCloseButton} onPress={() => {
+                  setShowAddDrawer(false);
                 }}>
-                  <Ionicons name="close" size={16} color="#800000" />
+                  <Text style={styles.modalCloseText}>×</Text>
                 </TouchableOpacity>
               </View>
               
-              <ScrollView style={styles.drawerForm}>
-                <Text style={styles.fieldLabel}>Email *</Text>
+              <ScrollView style={styles.modalForm}>
+                <Text style={styles.modalFieldLabel}>Email *</Text>
                 <TextInput
                   style={styles.modalInput}
                   placeholder="Enter email (e.g., clinic@gmail.com)"
@@ -773,98 +989,270 @@ export default function SuperAdminScreen() {
                   autoCapitalize="none"
                 />
                 
-
+                <Text style={styles.modalFieldLabel}>Clinic Name *</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Enter clinic name"
+                  value={newSubscriber.clinicName}
+                  onChangeText={(text) => setNewSubscriber({...newSubscriber, clinicName: text})}
+                />
+                
+                <Text style={styles.modalFieldLabel}>Subscription Period *</Text>
+                <View style={styles.periodDropdownContainer}>
+                  <TouchableOpacity style={styles.modalDropdown} onPress={() => setShowSubscriberPeriodDropdown(!showSubscriberPeriodDropdown)}>
+                    <Text style={styles.modalDropdownText}>{subscriptionPeriods.length === 0 ? 'No periods available' : newSubscriber.period}</Text>
+                    <Text style={styles.dropdownArrow}>▼</Text>
+                  </TouchableOpacity>
+                  {showSubscriberPeriodDropdown && (
+                    <View style={styles.modalDropdownMenu}>
+                      <ScrollView nestedScrollEnabled={true} showsVerticalScrollIndicator={false}>
+                        {subscriptionPeriods.length === 0 ? (
+                          <View style={styles.noPeriodsContainer}>
+                            <Text style={styles.noPeriodsText}>No subscription periods found</Text>
+                          </View>
+                        ) : (
+                          subscriptionPeriods.map((item, index) => (
+                            <TouchableOpacity
+                              key={index}
+                              style={styles.modalDropdownOption}
+                              onPress={() => {
+                                setNewSubscriber({...newSubscriber, period: item.period});
+                                setShowSubscriberPeriodDropdown(false);
+                              }}
+                            >
+                              <Text style={styles.modalDropdownOptionText}>{item.period}</Text>
+                            </TouchableOpacity>
+                          ))
+                        )}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
+                
+                <Text style={styles.modalFieldLabel}>Payment Proof</Text>
+                <TouchableOpacity style={styles.uploadButton} onPress={async () => {
+                  try {
+                    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                    if (!permissionResult.granted) {
+                      Alert.alert('Permission Required', 'Please allow access to your photo library to upload payment proof.');
+                      return;
+                    }
+                    
+                    const result = await ImagePicker.launchImageLibraryAsync({
+                      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                      allowsEditing: true,
+                      aspect: [4, 3],
+                      quality: 0.8,
+                    });
+                    
+                    if (!result.canceled && result.assets[0]) {
+                      const asset = result.assets[0];
+                      setNewSubscriber({...newSubscriber, localImageUri: asset.uri});
+                    }
+                  } catch (error) {
+                    console.error('Error selecting image:', error);
+                    Alert.alert('Error', 'Failed to select image. Please try again.');
+                  }
+                }}>
+                  <Ionicons name="cloud-upload" size={20} color="#666" />
+                  <Text style={styles.uploadButtonText}>
+                    {newSubscriber.localImageUri ? 'Change Image' : 'Upload Payment Screenshot'}
+                  </Text>
+                </TouchableOpacity>
+                {newSubscriber.localImageUri && (
+                  <View style={styles.imagePreview}>
+                    <Image 
+                      source={{ uri: newSubscriber.localImageUri }} 
+                      style={styles.previewImage} 
+                    />
+                    <Text style={styles.imagePreviewText}>Payment proof selected</Text>
+                  </View>
+                )}
               </ScrollView>
               
-              <View style={styles.drawerButtons}>
-                <TouchableOpacity style={styles.cancelButton} onPress={() => {
-                  Animated.timing(addDrawerAnimation, {
-                    toValue: -350,
-                    duration: 300,
-                    useNativeDriver: false,
-                  }).start(() => setShowAddDrawer(false));
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={styles.modalCancelButton} onPress={() => {
+                  setShowAddDrawer(false);
                 }}>
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                  <Text style={styles.modalCancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.saveButton} onPress={async () => {
-                  if (newSubscriber.email) {
+                <TouchableOpacity style={styles.modalSaveButton} onPress={async () => {
+                  if (newSubscriber.email && newSubscriber.clinicName) {
                     const tempPassword = generateSecurePassword();
                     const tenantId = newSubscriber.email.split('@')[0];
                     
-                    console.log('=== CREATING SUBSCRIBER ===');
-                    console.log('Email:', newSubscriber.email);
-                    console.log('Password:', tempPassword);
-                    console.log('Tenant ID:', tenantId);
-                    
                     try {
-                      // Send credentials via email FIRST (using admin credentials template)
-                      console.log('Step 1: Sending email...');
-                      const emailResult = await sendAdminCredentialsEmail(
-                        newSubscriber.email,
-                        tenantId,
-                        newSubscriber.email,
-                        tempPassword
-                      );
-                      
-                      console.log('Email result:', emailResult);
-                      
-                      if (!emailResult.success) {
-                        throw new Error('Email sending failed: ' + (emailResult.error || 'Unknown error'));
-                      }
-                      
                       // Hash password before storing
-                      console.log('Step 2: Hashing password...');
                       const { passwordHash, salt } = hashPassword(tempPassword);
-                      console.log('Password hashed successfully');
                       
                       // Create database records
-                      console.log('Step 3: Creating subscriber in database...');
                       const subscriberData = {
                         email: newSubscriber.email,
                         passwordHash,
                         salt,
                         tenantId: tenantId,
-                        clinicName: tenantId.replace(/[^a-zA-Z0-9]/g, ' '),
+                        clinicName: newSubscriber.clinicName,
                         role: 'admin',
                         status: 'active'
                       };
-                      console.log('Subscriber data:', subscriberData);
                       
                       const subscriberId = await createSubscriber(subscriberData);
                       
-                      console.log('Subscriber ID returned:', subscriberId);
-                      
                       if (!subscriberId) {
-                        throw new Error('Failed to create subscriber in database - createSubscriber returned null');
+                        throw new Error('Failed to create subscriber in database');
                       }
                       
-                      console.log('✅ SUCCESS! Subscriber created with ID:', subscriberId);
+                      // Convert image to base64 if selected
+                      let paymentImageBase64 = null;
+                      if (newSubscriber.localImageUri) {
+                        const response = await fetch(newSubscriber.localImageUri);
+                        const blob = await response.blob();
+                        const reader = new FileReader();
+                        paymentImageBase64 = await new Promise((resolve) => {
+                          reader.onloadend = () => resolve(reader.result);
+                          reader.readAsDataURL(blob);
+                        });
+                      }
                       
-                      Alert.alert(
-                        'Success',
-                        `✅ Subscriber created successfully!\n\n📧 Email: ${newSubscriber.email}\n🔑 Password: ${tempPassword}\n\n💡 Credentials sent to user's email.\n\nSubscriber ID: ${subscriberId}`
+                      // Create transaction record for the subscription
+                      const { addDoc, collection } = await import('firebase/firestore');
+                      const periodDays = newSubscriber.period === '1 month' ? 30 : 
+                                       newSubscriber.period === '6 months' ? 180 : 
+                                       newSubscriber.period === '1 year' ? 365 : 730;
+                      const startDate = new Date();
+                      const endDate = new Date(startDate);
+                      endDate.setDate(startDate.getDate() + periodDays);
+                      
+                      // Get the price for the selected period
+                      const selectedPeriodData = subscriptionPeriods.find(p => p.period === newSubscriber.period);
+                      const periodPrice = selectedPeriodData?.price || '₱7,499';
+                      
+                      await addDoc(collection(db, 'transactions'), {
+                        email: newSubscriber.email,
+                        period: newSubscriber.period,
+                        price: periodPrice,
+                        paymentImage: paymentImageBase64,
+                        status: 'paid',
+                        createdAt: startDate,
+                        startDate: startDate,
+                        endDate: endDate,
+                        createdBy: 'superadmin'
+                      });
+                      
+                      // Send login credentials email
+                      await sendCredentialsEmail(
+                        newSubscriber.email,
+                        newSubscriber.clinicName,
+                        tempPassword
                       );
                       
-                      setNewSubscriber({ email: '', period: '1 month' });
-                      Animated.timing(addDrawerAnimation, {
-                        toValue: -350,
-                        duration: 300,
-                        useNativeDriver: false,
-                      }).start(() => setShowAddDrawer(false));
+                      // Show success notification
+                      setNotification({ 
+                        type: 'success', 
+                        message: `✅ Subscriber added successfully!\n📧 ${newSubscriber.email}` 
+                      });
+                      setTimeout(() => setNotification(null), 3000);
+                      
+                      setNewSubscriber({ email: '', clinicName: '', period: '1 month', paymentImage: null, localImageUri: null });
+                      setShowAddDrawer(false);
                       
                     } catch (error) {
-                      console.error('❌ ERROR creating subscriber:', error);
-                      console.error('Error details:', error.message, error.stack);
-                      Alert.alert('Error', `❌ Failed to create subscriber:\n\n${error.message}\n\nCheck console for details.`);
+                      setNotification({ 
+                        type: 'warning', 
+                        message: `❌ Failed to create subscriber: ${error.message}` 
+                      });
+                      setTimeout(() => setNotification(null), 5000);
                     }
                   } else {
-                    Alert.alert('Error', 'Please fill in all required fields');
+                    setNotification({ 
+                      type: 'warning', 
+                      message: '⚠️ Please fill in all required fields (Email and Clinic Name)' 
+                    });
+                    setTimeout(() => setNotification(null), 3000);
                   }
                 }}>
-                  <Text style={styles.saveButtonText}>Add Subscriber</Text>
+                  <Text style={styles.modalSaveButtonText}>Add Subscriber</Text>
                 </TouchableOpacity>
               </View>
-            </Animated.View>
+            </View>
+          </View>
+        </Modal>
+      )}
+      
+      {showDeleteModal && tenantToDelete && (
+        <Modal visible={true} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContainer, { width: '30%' }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Delete Account</Text>
+                <TouchableOpacity style={styles.modalCloseButton} onPress={() => {
+                  setShowDeleteModal(false);
+                  setTenantToDelete(null);
+                }}>
+                  <Text style={styles.modalCloseText}>×</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.deleteModalContent}>
+                <Ionicons name="warning" size={48} color="#FF6B6B" style={styles.deleteWarningIcon} />
+                <Text style={styles.deleteModalText}>
+                  Are you sure you want to delete this account?
+                </Text>
+                <Text style={styles.deleteModalSubtext}>
+                  <Text style={styles.deleteModalEmail}>{(tenantToDelete as any).email}</Text>
+                  {(tenantToDelete as any).clinicName && (
+                    <Text>\n{(tenantToDelete as any).clinicName}</Text>
+                  )}
+                </Text>
+                <Text style={styles.deleteModalWarning}>
+                  This action cannot be undone. All data associated with this account will be permanently deleted.
+                </Text>
+              </View>
+              
+              <View style={styles.modalButtons}>
+                <TouchableOpacity style={styles.modalCancelButton} onPress={() => {
+                  setShowDeleteModal(false);
+                  setTenantToDelete(null);
+                }}>
+                  <Text style={styles.modalCancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalSaveButton, styles.deleteConfirmButton]} onPress={async () => {
+                  try {
+                    setIsLoading(true);
+                    
+                    // Delete from database
+                    await deleteTenant((tenantToDelete as any).id);
+                    
+                    // Update local state
+                    const updatedSubscribers = subscribers.filter(sub => sub.id !== (tenantToDelete as any).id);
+                    setSubscribers(updatedSubscribers);
+                    
+                    // Show success notification
+                    setNotification({ 
+                      type: 'success', 
+                      message: `✅ Account deleted successfully: ${(tenantToDelete as any).email}` 
+                    });
+                    setTimeout(() => setNotification(null), 4000);
+                    
+                    // Close modal
+                    setShowDeleteModal(false);
+                    setTenantToDelete(null);
+                    
+                  } catch (error) {
+                    console.error('Error deleting tenant:', error);
+                    setNotification({ 
+                      type: 'warning', 
+                      message: `❌ Failed to delete account: ${error.message}` 
+                    });
+                    setTimeout(() => setNotification(null), 4000);
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}>
+                  <Text style={styles.modalSaveButtonText}>Delete Account</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </Modal>
       )}
@@ -875,10 +1263,79 @@ export default function SuperAdminScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FAFAFA',
+    padding: 16,
+  },
+  adminHeader: {
+    height: 70,
+    borderRadius: 10,
+    backgroundColor: '#FAFAFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  logo: {
+    width: 120,
+    height: 40,
+    resizeMode: 'contain',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  iconButton: {
+    padding: 8,
+    borderRadius: 6,
+  },
+  profileContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+  },
+  profileInfo: {
+    flexDirection: 'column',
+  },
+  adminName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  adminRole: {
+    fontSize: 12,
+    color: '#666',
+  },
+  mainLayout: {
+    flexDirection: 'row',
+    gap: 16,
+    flex: 1,
+  },
+  adminSidebar: {
+    width: 279,
+    flexShrink: 0,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+    overflow: 'hidden',
   },
   mainContent: {
     flex: 1,
+    borderRadius: 10,
   },
   header: {
     paddingTop: 20,
@@ -890,43 +1347,63 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   headerText: {
-    fontSize: Typography.header,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#800000',
+  },
+  addButton: {
+    backgroundColor: '#7F1D1F',
+    borderRadius: 8,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#800000',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginHorizontal: 20,
-    marginVertical: 10,
-    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: 'rgba(127, 29, 31, 0.3)',
+    borderRadius: 8,
+    paddingLeft: 10,
+    width: 265.798,
+    height: 32,
+    flexShrink: 0,
+    backgroundColor: 'rgba(250, 250, 250, 0.00)',
+    shadowColor: 'rgba(31, 61, 89, 0.04)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 20,
   },
-
+  searchIconContainer: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#7F1D1F',
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   searchInput: {
-    width: 200,
-    fontSize: Typography.fieldInput,
+    flex: 1,
+    fontSize: 15,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 15,
   },
 
   content: {
     flex: 1,
-    padding: 20,
-    paddingTop: 0,
+    paddingHorizontal: 8,
+    paddingTop: 20,
   },
   tableContainer: {
-    borderWidth: 2,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    backgroundColor: '#fff',
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   stickyHeader: {
     backgroundColor: '#fff',
@@ -967,22 +1444,29 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f8f9fa',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingLeft: 80,
+    paddingRight: 10,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    alignItems: 'center',
   },
   tableBody: {
-    height: 250,
+    flex: 1,
+    backgroundColor: '#fff',
   },
   tableBodySmall: {
     height: 150,
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingLeft: 80,
+    paddingRight: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
     alignItems: 'center',
+    minHeight: 60,
   },
   selectedRow: {
     backgroundColor: '#f0f8ff',
@@ -990,12 +1474,11 @@ const styles = StyleSheet.create({
     borderLeftColor: '#800000',
   },
   headerCell: {
-    flex: 1,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    fontSize: 14,
+    color: '#374151',
+    letterSpacing: 0.5,
     textAlign: 'left',
-    fontSize: Typography.tableHeader,
-    color: '#333',
-    paddingRight: Spacing.medium,
   },
   headerCellActions: {
     width: 80,
@@ -1005,11 +1488,8 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   cell: {
-    flex: 1,
-    textAlign: 'left',
-    fontSize: Typography.tableData,
-    color: '#555',
-    paddingRight: Spacing.medium,
+    fontSize: 13,
+    color: '#6B7280',
   },
   statusCell: {
     flex: 1,
@@ -1080,80 +1560,53 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: Typography.button,
   },
-  filterButtons: {
+  subHeader: {
     flexDirection: 'row',
-    gap: 5,
-    marginLeft: 20,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
   },
-  filterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  filterTabs: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  filterTab: {
+    paddingVertical: 8,
+    paddingHorizontal: 15,
     borderRadius: 5,
-    backgroundColor: '#f8f9fa',
+    alignItems: 'flex-start',
+    marginRight: 5,
   },
-  activeFilterButton: {
+  activeFilterTab: {
     backgroundColor: '#800000',
   },
-  filterButtonText: {
+  filterTabText: {
     fontSize: 12,
     fontWeight: 'bold',
     color: '#666',
+    textAlign: 'left',
   },
-  activeFilterText: {
+  activeFilterTabText: {
     color: '#fff',
   },
-  modalDropdown: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: '#fafafa',
-    marginBottom: 15,
-  },
-  modalDropdownText: {
-    fontSize: Typography.dropdown,
-    color: '#333',
-  },
-  modalDropdownMenu: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
+  table: {
     backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    zIndex: 1000,
-    elevation: 15,
-    maxHeight: 150,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    flex: 1,
+    borderRadius: 12,
   },
-  modalDropdownOption: {
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  modalDropdownOptionText: {
-    fontSize: Typography.dropdown,
-    color: '#333',
-  },
+
+
   dropdownScrollView: {
     maxHeight: 120,
   },
   emailDropdownContainer: {
     position: 'relative',
     zIndex: 2000,
-  },
-  periodDropdownContainer: {
-    position: 'relative',
-    zIndex: 1500,
   },
   paginationContainer: {
     backgroundColor: '#f8f9fa',
@@ -1163,6 +1616,10 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     paddingLeft: 20,
     paddingRight: 15,
+  },
+  periodDropdownContainer: {
+    position: 'relative',
+    zIndex: 1500,
   },
   paginationControls: {
     flexDirection: 'row',
@@ -1485,5 +1942,349 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     marginTop: 20,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    width: '40%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  modalHeader: {
+    padding: 15,
+    paddingLeft: 25,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#800000',
+  },
+  modalCloseButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseText: {
+    fontSize: 18,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  modalForm: {
+    flex: 1,
+    padding: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    padding: 15,
+    gap: 10,
+  },
+  modalFieldLabel: {
+    fontSize: 14,
+    color: '#333',
+    marginTop: 8,
+    fontWeight: 'bold',
+  },
+  modalCancelButton: {
+    backgroundColor: '#f5f5f5',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  modalCancelButtonText: {
+    color: '#666',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  modalSaveButton: {
+    backgroundColor: '#7B2C2C',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  modalSaveButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  modalDropdown: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fafafa',
+    marginBottom: 15,
+  },
+  modalDropdownText: {
+    fontSize: 12,
+    color: '#333',
+  },
+  modalDropdownMenu: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    zIndex: 1501,
+    elevation: 15,
+    maxHeight: 150,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  modalDropdownOption: {
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  modalDropdownOptionText: {
+    fontSize: 12,
+    color: '#333',
+  },
+  noPeriodsContainer: {
+    padding: 15,
+    alignItems: 'center',
+  },
+  noPeriodsText: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    padding: 20,
+    marginBottom: 15,
+    backgroundColor: '#f9f9f9',
+  },
+  uploadButtonText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 8,
+  },
+  imagePreview: {
+    padding: 10,
+    backgroundColor: '#e8f5e8',
+    borderRadius: 8,
+    marginBottom: 15,
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  imagePreviewText: {
+    fontSize: 12,
+    color: '#2d5a2d',
+    textAlign: 'center',
+  },
+  detailsContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    margin: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    flex: 1,
+  },
+  detailsHeader: {
+    padding: 15,
+    paddingLeft: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    gap: 15,
+  },
+  detailsForm: {
+    flex: 1,
+    padding: 20,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  formColumn: {
+    flex: 1,
+  },
+  detailFieldLabel: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 6,
+    fontWeight: 'bold',
+  },
+  detailFieldValue: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#f9f9f9',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  detailValueText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  activeStatusText: {
+    color: '#23C062',
+    fontWeight: 'bold',
+  },
+  lockedStatusText: {
+    color: '#FF6B6B',
+    fontWeight: 'bold',
+  },
+  detailActionsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  detailActionButton: {
+    backgroundColor: '#FF6B6B',
+    borderRadius: 6,
+    paddingHorizontal: 16,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  primaryActionButton: {
+    backgroundColor: '#007BFF',
+  },
+  detailActionButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  paymentProofLink: {
+    color: '#007BFF',
+    fontSize: 12,
+    textDecorationLine: 'underline',
+  },
+  noPaymentText: {
+    color: '#999',
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  imageModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageModalContainer: {
+    width: '80%',
+    height: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    position: 'relative',
+  },
+  imageModalClose: {
+    position: 'absolute',
+    top: 10,
+    right: 15,
+    zIndex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageModalCloseText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  modalImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+  deleteButton: {
+    backgroundColor: '#FF6B6B',
+    borderRadius: 4,
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteModalContent: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  deleteWarningIcon: {
+    marginBottom: 16,
+  },
+  deleteModalText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  deleteModalSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  deleteModalEmail: {
+    fontWeight: 'bold',
+    color: '#800000',
+  },
+  deleteModalWarning: {
+    fontSize: 12,
+    color: '#FF6B6B',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  deleteConfirmButton: {
+    backgroundColor: '#FF6B6B',
   },
 });

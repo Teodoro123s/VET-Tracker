@@ -1,17 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/Colors';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { Typography, Spacing } from '@/constants/Typography';
 
 export default function SuperAdminSidebar() {
   const router = useRouter();
+  const pathname = usePathname();
   const { logout } = useAuth();
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  
-  const username = 'superadmin';
 
   const menuItems = [
     { name: 'Dashboard', icon: require('@/assets/dashboard.png'), route: '/server/superadmin-dashboard' },
@@ -19,31 +16,42 @@ export default function SuperAdminSidebar() {
     { name: 'Subscriptions', icon: require('@/assets/notifications.png'), route: '/server/subscriptions' },
     { name: 'Subscription Periods', icon: require('@/assets/appointments.png'), route: '/server/subscription-periods' },
     { name: 'Transaction History', icon: require('@/assets/medical-forms.png'), route: '/server/transaction-history' },
-    { name: 'Notifications', icon: require('@/assets/settings.png'), route: '/server/notifications' },
+    { name: 'Settings', icon: require('@/assets/settings.png'), route: '/server/settings' },
     { name: 'Logout', icon: require('@/assets/logout.png'), route: null },
   ];
 
   return (
-    <View style={styles.sidebar}>
-      <View style={styles.logoSection}>
-        <Image source={require('@/assets/web-logo.png')} style={styles.logo} />
-        <TouchableOpacity 
-          style={styles.emailClickable}
-          onPress={() => router.push('/server/superadmin')}
-        >
-          <Text style={styles.emailText}>{username}</Text>
-        </TouchableOpacity>
+    <View style={styles['sidebar-container']}>
+      <View style={styles['sidebar-section']}>
+        <Text style={styles['sidebar-section-title']}>System Management</Text>
+        {menuItems.slice(0, 5).map((item) => {
+          const isActive = pathname === item.route;
+          return (
+            <TouchableOpacity
+              key={item.name}
+              style={[styles['sidebar-menu-item'], isActive && styles['sidebar-menu-item-active']]}
+              onPress={() => item.name === 'Logout' ? setShowLogoutModal(true) : router.push(item.route as any)}
+            >
+              <Image source={item.icon} style={[styles['sidebar-menu-icon'], isActive && styles['sidebar-menu-icon-active']]} />
+              <Text style={[styles['sidebar-menu-text'], isActive && styles['sidebar-menu-text-active']]}>{item.name}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
-      {menuItems.map((item) => (
-        <TouchableOpacity
-          key={item.name}
-          style={styles.menuItem}
-          onPress={() => item.name === 'Logout' ? setShowLogoutModal(true) : router.push(item.route)}
-        >
-          <Image source={item.icon} style={styles.icon} />
-          <Text style={styles.menuText}>{item.name}</Text>
-        </TouchableOpacity>
-      ))}
+      
+      <View style={styles['sidebar-section']}>
+        <Text style={styles['sidebar-section-title']}>Settings</Text>
+        {menuItems.slice(5, 7).map((item) => (
+          <TouchableOpacity
+            key={item.name}
+            style={styles['sidebar-menu-item']}
+            onPress={() => item.name === 'Logout' ? setShowLogoutModal(true) : router.push(item.route as any)}
+          >
+            <Image source={item.icon} style={styles['sidebar-menu-icon']} />
+            <Text style={styles['sidebar-menu-text']}>{item.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
 
       {/* Logout Confirmation Modal */}
       <Modal
@@ -88,58 +96,62 @@ export default function SuperAdminSidebar() {
 }
 
 const styles = StyleSheet.create({
-  sidebar: {
-    width: 250,
+  'sidebar-container': {
+    width: '100%',
     height: '100%',
-    paddingTop: 10,
-    paddingHorizontal: Spacing.xlarge,
-    borderRightWidth: 1,
-    backgroundColor: '#800000',
-    borderRightColor: '#A0002A',
+    paddingTop: 30,
+    paddingHorizontal: 16,
+    backgroundColor: '#FAFAFF',
   },
-  logoSection: {
-    marginTop: 0,
-    marginBottom: 25,
-    alignItems: 'center',
+  'sidebar-section': {
+    marginBottom: 24,
   },
-  logo: {
-    width: 140,
-    height: 80,
-    resizeMode: 'contain',
-    marginBottom: 0,
+  'sidebar-section-title': {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#BDC3C7',
-    textAlign: 'center',
-  },
-  emailClickable: {
-    minHeight: 24,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 0,
-  },
-  emailText: {
-    color: '#ffffff',
-    fontSize: Typography.sidebarEmail,
-  },
-  menuItem: {
+  'sidebar-menu-item': {
+    width: 236,
+    height: 43.1,
+    flexShrink: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.medium,
-    paddingHorizontal: Spacing.medium,
-    borderBottomWidth: 1,
-    borderBottomColor: '#A0002A',
+    justifyContent: 'flex-start',
+    paddingHorizontal: 30,
+    marginBottom: 4,
+    backgroundColor: 'transparent',
   },
-  menuText: {
-    fontSize: Typography.sidebarItem,
-    marginLeft: Spacing.large,
-    color: '#ffffff',
+  'sidebar-menu-item-active': {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(127, 29, 31, 0.02)',
+    backgroundColor: '#7F1D1F',
+    shadowColor: 'rgba(17, 31, 61, 0.06)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: 3,
   },
-  icon: {
+  'sidebar-menu-text': {
+    fontSize: 14,
+    marginLeft: 12,
+    color: '#800000',
+    fontWeight: '500',
+  },
+  'sidebar-menu-text-active': {
+    color: '#FFFFFF',
+  },
+  'sidebar-menu-icon': {
     width: 20,
     height: 20,
+    tintColor: '#800000',
+  },
+  'sidebar-menu-icon-active': {
+    tintColor: '#FFFFFF',
   },
   modalOverlay: {
     flex: 1,

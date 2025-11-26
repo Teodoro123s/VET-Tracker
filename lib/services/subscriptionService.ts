@@ -2,6 +2,7 @@ import { collection, doc, setDoc, getDocs, query, orderBy, where, updateDoc, add
 import { db } from '../config/firebaseConfig';
 import { addSubscriptionHistory } from './subscriptionHistoryService';
 import { sendActivationNotification, sendExpirationNotification, createSubscriptionNotification, sendLockNotification, sendUnlockNotification } from './subscriptionNotificationService';
+import { parsePrice, getSubscriptionPrice } from '../utils/priceUtils';
 
 export interface SubscriptionPeriod {
   id: string;
@@ -53,7 +54,8 @@ export async function addSubscriptionPeriod(
   email: string,
   clinicName: string,
   period: string,
-  amount: string
+  amount: string,
+  paymentImage?: string | null
 ): Promise<{ success: boolean; message: string; periodId?: string }> {
   try {
     // Check for existing active period for this tenant
@@ -88,16 +90,24 @@ export async function addSubscriptionPeriod(
     const endDate = new Date(startDate);
     endDate.setDate(startDate.getDate() + periodDays);
     
-    // Create transaction record
+    // Create transaction record with proper pricing
     const transactionRef = doc(collection(db, 'transactions'));
+    const numericAmount = parsePrice(amount);
+    
+    console.log('Creating transaction with price:', amount, 'numeric amount:', numericAmount);
     
     await setDoc(transactionRef, {
       tenantId,
       email,
-      clinicName,
       period,
       price: amount,
-      createdAt: Timestamp.fromDate(now)
+      amount: numericAmount,
+      status: 'paid',
+      createdAt: Timestamp.fromDate(now),
+      createdBy: 'superadmin',
+      startDate: Timestamp.fromDate(startDate),
+      endDate: Timestamp.fromDate(endDate),
+      paymentImage: paymentImage || null
     });
     
     // Add to subscription history

@@ -1,12 +1,14 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, Modal, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, Modal, Animated, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import SuperAdminSidebar from '@/components/SuperAdminSidebar';
+import SuperAdminLayout from '../../components/SuperAdminLayout';
 import { subscribeToTenants, Subscriber } from '../../lib/services/superAdminService';
 import { addSubscriptionPeriod } from '../../lib/services/subscriptionService';
-import { collection, onSnapshot, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, query, where, getDocs, deleteDoc } from 'firebase/firestore';
 import { db } from '../../lib/config/firebaseConfig';
+import * as ImagePicker from 'expo-image-picker';
+import { getDisplayPrice, getFormattedSubscriptionPrice } from '../../lib/utils/priceUtils';
 
 
 export default function SubscriptionsScreen() {
@@ -39,11 +41,13 @@ export default function SubscriptionsScreen() {
       const subscriptionMap = new Map();
       
       transactions.forEach(transaction => {
-        const email = transaction.email;
-        if (!subscriptionMap.has(email)) {
+        const email = (transaction as any).email;
+        if (email && !subscriptionMap.has(email)) {
           subscriptionMap.set(email, []);
         }
-        subscriptionMap.get(email).push(transaction);
+        if (email) {
+          subscriptionMap.get(email).push(transaction);
+        }
       });
       
       const subscriptions = [];
@@ -56,6 +60,7 @@ export default function SubscriptionsScreen() {
           const now = new Date();
           let status = 'queued';
           let startDate = transaction.createdAt;
+          let endDate = transaction.endDate;
           
           if (index === 0) {
             // First transaction - check if still active
@@ -65,16 +70,25 @@ export default function SubscriptionsScreen() {
               status = 'expired';
             }
           } else {
-            // Subsequent transactions are queued
+            // Subsequent transactions are queued - start after previous ends
             const prevTransaction = emailTransactions[index - 1];
             startDate = prevTransaction.endDate;
+            
+            // Calculate new end date based on queued start date
+            const periodDays = transaction.period === '1 month' ? 30 : 
+                             transaction.period === '6 months' ? 180 : 
+                             transaction.period === '1 year' ? 365 : 730;
+            endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + periodDays);
+            
             status = 'queued';
           }
           
           subscriptions.push({
             ...transaction,
             status,
-            startDate
+            startDate,
+            endDate
           });
         });
       });
@@ -90,43 +104,6 @@ export default function SubscriptionsScreen() {
     return () => unsubscribe();
   }, []);
 
-  const calculateDaysLeft = (tenant: Subscriber): number => {
-    if (!tenant.createdAt) return 30;
-    const createdDate = tenant.createdAt.toDate ? tenant.createdAt.toDate() : new Date(tenant.createdAt);
-    const periodDays = getPeriodDays(tenant.subscriptionPlan || '1 month');
-    const endDate = new Date(createdDate);
-    endDate.setDate(endDate.getDate() + periodDays);
-    
-    const now = new Date();
-    const diffTime = endDate.getTime() - now.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
-
-  const getPeriodDays = (period: string): number => {
-    switch (period) {
-      case '1 month': return 30;
-      case '6 months': return 180;
-      case '1 year': return 365;
-      case '2 years': return 730;
-      default: return 30;
-    }
-  };
-
-  const getSubscriptionStatus = (daysLeft: number): string => {
-    if (daysLeft < 0) return 'Overdue';
-    if (daysLeft <= 7) return 'Expiring Soon';
-    return 'Active';
-  };
-
-  const getEndDate = (tenant: Subscriber): string => {
-    if (!tenant.createdAt) return 'N/A';
-    const createdDate = tenant.createdAt.toDate ? tenant.createdAt.toDate() : new Date(tenant.createdAt);
-    const periodDays = getPeriodDays(tenant.subscriptionPlan || '1 month');
-    const endDate = new Date(createdDate);
-    endDate.setDate(endDate.getDate() + periodDays);
-    return endDate.toLocaleDateString();
-  };
-  
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [showTenantDetails, setShowTenantDetails] = useState(false);
@@ -134,7 +111,9 @@ export default function SubscriptionsScreen() {
   const [addPeriodAnimation] = useState(new Animated.Value(-350));
   const [newPeriod, setNewPeriod] = useState({
     email: '',
-    period: '1 month'
+    period: '1 month',
+    paymentImage: null,
+    localImageUri: null
   });
   const [showPeriodDropdown, setShowPeriodDropdown] = useState(false);
   const [showEmailDropdown, setShowEmailDropdown] = useState(false);
@@ -158,6 +137,34 @@ export default function SubscriptionsScreen() {
   const [showDropdown, setShowDropdown] = useState(false);
 
   const [subscriptionPeriods, setSubscriptionPeriods] = useState([]);
+  const [notification, setNotification] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  // Delete queued subscription
+  const deleteQueuedSubscription = (subscriptionId, email, period) => {
+    setDeleteConfirm({ subscriptionId, email, period });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    
+    try {
+      await deleteDoc(doc(db, 'transactions', deleteConfirm.subscriptionId));
+      setNotification({ 
+        type: 'success', 
+        message: `Queued subscription deleted successfully` 
+      });
+      setTimeout(() => setNotification(null), 3000);
+    } catch (error) {
+      console.error('Error deleting subscription:', error);
+      setNotification({ 
+        type: 'warning', 
+        message: `Failed to delete subscription: ${error.message}` 
+      });
+      setTimeout(() => setNotification(null), 3000);
+    }
+    setDeleteConfirm(null);
+  };
 
   // Fetch subscription periods from database
   useEffect(() => {
@@ -174,269 +181,184 @@ export default function SubscriptionsScreen() {
   }, []);
 
   return (
-    <View style={styles.container}>
-      <SuperAdminSidebar />
-      <View style={styles.mainContent}>
+    <SuperAdminLayout>
+      <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.headerText}>Subscription Periods</Text>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={14} color="#999" />
-            <TextInput 
-              style={styles.searchInput}
-              placeholder="Search subscriptions..."
-              placeholderTextColor="#bbb"
-              value={searchTerm}
-              onChangeText={setSearchTerm}
-            />
+          <Text style={styles.headerText}>Subscriptions</Text>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.addButton} onPress={() => {
+              setShowAddPeriodDrawer(true);
+              Animated.timing(addPeriodAnimation, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: false,
+              }).start();
+            }}>
+              <Ionicons name="add" size={20} color="#fff" />
+            </TouchableOpacity>
+            
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search..."
+                placeholderTextColor="rgba(153, 153, 153, 0.8)"
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+              />
+              <View style={styles.searchIconContainer}>
+                <Ionicons name="search" size={14} color="#fff" />
+              </View>
+            </View>
           </View>
         </View>
         
         <View style={styles.content}>
-          {!showTenantDetails ? (
           <View style={styles.tableContainer}>
-            <View style={styles.tableTopRow}>
-              <View style={styles.headerRow}>
-                <Text style={styles.detailTitle}>Active Subscriptions</Text>
-                <View style={styles.filterButtons}>
+            <View style={styles.table}>
+              <View style={styles.subHeader}>
+                <View style={styles.filterTabs}>
                   <TouchableOpacity 
-                    style={[styles.filterButton, statusFilter === 'Active' && styles.activeFilterButton]} 
+                    style={[styles.filterTab, statusFilter === 'Active' && styles.activeFilterTab]} 
                     onPress={() => setStatusFilter('Active')}
                   >
-                    <Text style={[styles.filterButtonText, statusFilter === 'Active' && styles.activeFilterText]}>Active</Text>
+                    <Text style={[styles.filterTabText, statusFilter === 'Active' && styles.activeFilterTabText]}>
+                      Active ({activeSubscriptions.length})
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    style={[styles.filterButton, statusFilter === 'Queued' && styles.activeFilterButton]} 
+                    style={[styles.filterTab, statusFilter === 'Queued' && styles.activeFilterTab]} 
                     onPress={() => setStatusFilter('Queued')}
                   >
-                    <Text style={[styles.filterButtonText, statusFilter === 'Queued' && styles.activeFilterText]}>Queued</Text>
+                    <Text style={[styles.filterTabText, statusFilter === 'Queued' && styles.activeFilterTabText]}>
+                      Queued ({queuedSubscriptions.length})
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
-              <TouchableOpacity style={styles.addPeriodButton} onPress={() => {
-                setShowAddPeriodDrawer(true);
-                Animated.timing(addPeriodAnimation, {
-                  toValue: 0,
-                  duration: 300,
-                  useNativeDriver: false,
-                }).start();
-              }}>
-                <Text style={styles.addPeriodButtonText}>+ Add Subscription Period</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.tableHeader}>
-              <Text style={[styles.headerCell, {flex: 2}]}>Email</Text>
-              <Text style={[styles.headerCell, {flex: 1.5}]}>Current Period</Text>
-              <Text style={[styles.headerCell, {flex: 1.5}]}>End Date</Text>
-              <Text style={[styles.headerCell, {flex: 1}]}>Days Left</Text>
-              <Text style={[styles.headerCell, {flex: 1}]}>Status</Text>
-            </View>
-            
-            <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={false}>
-              {(() => {
-                if (isLoading) {
-                  return (
-                    <View style={styles.noDataContainer}>
-                      <Text style={styles.noDataText}>Loading subscriptions...</Text>
-                    </View>
+              
+              <View style={styles.tableHeader}>
+                <Text style={[styles.headerCell, styles.emailHeader]}>Email</Text>
+                <Text style={[styles.headerCell, styles.periodHeader]}>Period</Text>
+                <Text style={[styles.headerCell, styles.priceHeader]}>Price</Text>
+                <Text style={[styles.headerCell, styles.statusHeader]}>Status</Text>
+                <Text style={[styles.headerCell, styles.dateHeader]}>Start Date</Text>
+                <Text style={[styles.headerCell, styles.endDateHeader]}>End Date</Text>
+                {statusFilter === 'Queued' && <Text style={[styles.headerCell, { flex: 0.5 }]}>Actions</Text>}
+              </View>
+              
+              <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={true}>
+                {(() => {
+                  const currentData = statusFilter === 'Active' ? activeSubscriptions : queuedSubscriptions;
+                  const filteredData = currentData.filter(sub => 
+                    sub.email?.toLowerCase().includes(searchTerm.toLowerCase())
                   );
-                }
-                
-                const currentSubscriptions = statusFilter === 'Active' ? activeSubscriptions : queuedSubscriptions;
-                const filteredSubscriptions = currentSubscriptions.filter(sub => 
-                  sub.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  sub.clinicName?.toLowerCase().includes(searchTerm.toLowerCase())
-                );
-                
-                if (filteredSubscriptions.length === 0) {
-                  return (
-                    <View style={styles.noDataContainer}>
-                      <Text style={styles.noDataText}>No {statusFilter.toLowerCase()} subscription periods found</Text>
-                    </View>
-                  );
-                }
-                
-                return filteredSubscriptions.map((subscription) => {
-                  if (statusFilter === 'Active') {
-                    const now = new Date();
-                    const daysLeft = Math.ceil((subscription.endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                    const status = daysLeft < 0 ? 'Overdue' : daysLeft <= 7 ? 'Expiring Soon' : 'Active';
-                    
+                  
+                  if (filteredData.length === 0) {
                     return (
-                      <TouchableOpacity 
-                        key={subscription.id} 
-                        style={[styles.tableRow, selectedTenant?.id === subscription.id && styles.selectedRow]}
-                        onPress={() => {
-                          setSelectedTenant(subscription);
-                          setShowTenantDetails(true);
-                        }}
-                      >
-                        <Text style={[styles.cell, {flex: 2}]}>{subscription.email}</Text>
-                        <Text style={[styles.cell, {flex: 1.5}]}>{subscription.period}</Text>
-                        <Text style={[styles.cell, {flex: 1.5}]}>{subscription.endDate.toLocaleDateString()}</Text>
-                        <Text style={[styles.cell, {flex: 1},
-                          daysLeft < 0 && styles.overdueText,
-                          daysLeft <= 7 && daysLeft >= 0 && styles.dueSoonText
-                        ]}>{daysLeft < 0 ? `${Math.abs(daysLeft)} overdue` : `${daysLeft} days`}</Text>
-                        <View style={[styles.statusContainer, {flex: 1}]}>
-                          <View style={[styles.statusBadge, 
-                            status === 'Active' && styles.activeBadge,
-                            status === 'Expiring Soon' && styles.expiringSoonBadge,
-                            status === 'Overdue' && styles.overdueBadge
-                          ]}>
-                            <Text style={[styles.statusText,
-                              status === 'Active' && styles.activeText,
-                              status === 'Expiring Soon' && styles.expiringSoonText,
-                              status === 'Overdue' && styles.overdueText
-                            ]}>{status}</Text>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  } else {
-                    return (
-                      <TouchableOpacity 
-                        key={subscription.id} 
-                        style={[styles.tableRow, styles.queuedRow, selectedTenant?.id === subscription.id && styles.selectedRow]}
-                        onPress={() => {
-                          setSelectedTenant(subscription);
-                          setShowTenantDetails(true);
-                        }}
-                      >
-                        <Text style={[styles.cell, {flex: 2}]}>{subscription.email}</Text>
-                        <Text style={[styles.cell, {flex: 1.5}]}>{subscription.period}</Text>
-                        <Text style={[styles.cell, {flex: 1.5}]}>{subscription.startDate.toLocaleDateString()}</Text>
-                        <Text style={[styles.cell, {flex: 1}]}>Queued</Text>
-                        <View style={[styles.statusContainer, {flex: 1}]}>
-                          <View style={[styles.statusBadge, styles.queuedBadge]}>
-                            <Text style={[styles.statusText, styles.queuedText]}>Pending</Text>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
+                      <View style={styles.noDataContainer}>
+                        <Text style={styles.noDataText}>No {statusFilter.toLowerCase()} subscriptions found</Text>
+                      </View>
                     );
                   }
-                });
-              })()}
-            </ScrollView>
-            
-            <View style={styles.paginationContainer}>
+                  
+                  return filteredData.map((subscription) => {
+                    const startDate = subscription.startDate ? new Date(subscription.startDate) : new Date();
+                    const endDate = subscription.endDate ? new Date(subscription.endDate) : new Date();
+                    
+
+                    
+                    return (
+                      <View key={subscription.id} style={styles.tableRow}>
+                        <Text style={[styles.cellText, styles.emailCell]}>{subscription.email}</Text>
+                        <Text style={[styles.cellText, styles.periodCell]}>{subscription.period}</Text>
+                        <Text style={[styles.cellText, styles.priceCell]}>{getDisplayPrice(subscription)}</Text>
+                        <Text style={[styles.cellText, styles.statusCell]}>
+                          {subscription.status === 'active' ? 'Active' : 'Queued'}
+                        </Text>
+                        <Text style={[styles.cellText, styles.dateCell]}>
+                          {startDate.toLocaleDateString()}
+                        </Text>
+                        <Text style={[styles.cellText, styles.endDateCell]}>
+                          {endDate.toLocaleDateString()}
+                        </Text>
+                        {statusFilter === 'Queued' && (
+                          <View style={{ flex: 0.5, alignItems: 'center' }}>
+                            <TouchableOpacity 
+                              style={styles.deleteButton}
+                              onPress={() => {
+                                console.log('Delete button pressed for:', subscription.id);
+                                deleteQueuedSubscription(subscription.id, subscription.email, subscription.period);
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <Ionicons name="trash" size={14} color="#fff" />
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    );
+                  });
+                })()
+                }
+              </ScrollView>
+            </View>
+
+            {/* Pagination */}
+            <View style={styles.pagination}>
               <View style={styles.paginationControls}>
-                <Text style={styles.paginationLabel}>Show:</Text>
-                <View style={styles.dropdownContainer}>
-                  <TouchableOpacity style={styles.dropdown} onPress={() => setShowDropdown(!showDropdown)}>
+                <Text style={styles.paginationLabel}>Rows per page:</Text>
+                <View style={styles.dropdown}>
+                  <TouchableOpacity
+                    style={styles.dropdownButton}
+                    onPress={() => setShowDropdown(!showDropdown)}
+                  >
                     <Text style={styles.dropdownText}>{itemsPerPage}</Text>
                     <Text style={styles.dropdownArrow}>▼</Text>
                   </TouchableOpacity>
                   {showDropdown && (
                     <View style={styles.dropdownMenu}>
-                      {[5, 10, 20, 50].map((option) => (
+                      {[5, 10, 25, 50].map((size) => (
                         <TouchableOpacity
-                          key={option}
+                          key={size}
                           style={styles.dropdownOption}
                           onPress={() => {
-                            setItemsPerPage(option);
+                            setItemsPerPage(size);
                             setCurrentPage(1);
                             setShowDropdown(false);
                           }}
                         >
-                          <Text style={styles.dropdownOptionText}>{option}</Text>
+                          <Text style={styles.dropdownOptionText}>{size}</Text>
                         </TouchableOpacity>
                       ))}
                     </View>
                   )}
                 </View>
-                <Text style={styles.paginationLabel}>entries</Text>
                 
-                <TouchableOpacity style={styles.pageBtn} onPress={() => currentPage > 1 && setCurrentPage(currentPage - 1)}>
-                  <Text style={styles.pageBtnText}>Prev</Text>
+                <TouchableOpacity
+                  style={styles.pageBtn}
+                  onPress={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                >
+                  <Text style={styles.pageBtnText}>‹</Text>
                 </TouchableOpacity>
-                <TextInput 
-                  style={styles.pageInput}
-                  value={currentPage.toString()}
-                  keyboardType="numeric"
-                  onChangeText={(text) => {
-                    const page = parseInt(text);
-                    if (page >= 1) setCurrentPage(page);
-                  }}
-                />
-                <Text style={styles.pageOf}>of {Math.ceil((statusFilter === 'Active' ? activeSubscriptions : queuedSubscriptions).filter(sub => 
-                  sub.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  sub.clinicName?.toLowerCase().includes(searchTerm.toLowerCase())
-                ).length / itemsPerPage)}</Text>
-                <TouchableOpacity style={styles.pageBtn} onPress={() => setCurrentPage(currentPage + 1)}>
-                  <Text style={styles.pageBtnText}>Next</Text>
+                
+                <Text style={styles.pageOf}>
+                  {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, (statusFilter === 'Active' ? activeSubscriptions : queuedSubscriptions).length)} of {(statusFilter === 'Active' ? activeSubscriptions : queuedSubscriptions).length}
+                </Text>
+                
+                <TouchableOpacity
+                  style={styles.pageBtn}
+                  onPress={() => setCurrentPage(Math.min(Math.ceil((statusFilter === 'Active' ? activeSubscriptions : queuedSubscriptions).length / itemsPerPage), currentPage + 1))}
+                  disabled={currentPage >= Math.ceil((statusFilter === 'Active' ? activeSubscriptions : queuedSubscriptions).length / itemsPerPage)}
+                >
+                  <Text style={styles.pageBtnText}>›</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </View>
-          ) : (
-            <View style={styles.tableContainer}>
-              <View style={styles.tableTopRow}>
-                <View style={styles.headerRow}>
-                  <TouchableOpacity style={styles.returnButton} onPress={() => {
-                    setShowTenantDetails(false);
-                    setSelectedTenant(null);
-                  }}>
-                    <Text style={styles.returnButtonText}>←</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.detailTitle}>Subscription Details - {selectedTenant?.clinicName}</Text>
-                </View>
-              </View>
-              
-              <View style={styles.tableHeader}>
-                <Text style={styles.headerCell}>Field</Text>
-                <Text style={styles.headerCell}>Value</Text>
-              </View>
-              
-              <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={false}>
-                <View style={styles.tableRow}>
-                  <Text style={styles.cell}>Clinic Name</Text>
-                  <Text style={styles.cell}>{selectedTenant?.clinicName}</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.cell}>Email Address</Text>
-                  <Text style={styles.cell}>{selectedTenant?.email}</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.cell}>Current Period</Text>
-                  <Text style={styles.cell}>{selectedTenant?.period || '1 month'}</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.cell}>Amount</Text>
-                  <Text style={styles.cell}>{selectedTenant?.price || '₱44,994'}</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.cell}>Start Date</Text>
-                  <Text style={styles.cell}>{selectedTenant?.startDate?.toLocaleDateString() || new Date().toLocaleDateString()}</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.cell}>End Date</Text>
-                  <Text style={styles.cell}>{getEndDate(selectedTenant)}</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.cell}>Days Left</Text>
-                  <Text style={styles.cell}>{(() => {
-                    const daysLeft = calculateDaysLeft(selectedTenant);
-                    return daysLeft < 0 ? `${Math.abs(daysLeft)} days overdue` : `${daysLeft} days remaining`;
-                  })()}</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.cell}>Status</Text>
-                  <Text style={styles.cell}>{selectedTenant?.status?.charAt(0).toUpperCase() + selectedTenant?.status?.slice(1)}</Text>
-                </View>
-                <View style={styles.tableRow}>
-                  <Text style={styles.cell}>Created Date</Text>
-                  <Text style={styles.cell}>{selectedTenant?.createdAt?.toDate?.()?.toLocaleDateString() || new Date('2024-09-15').toLocaleDateString()}</Text>
-                </View>
-
-
-              </ScrollView>
-            </View>
-          )}
         </View>
-      </View>
-      
-      {showAddPeriodDrawer && (
+        
+        {showAddPeriodDrawer && (
         <Modal visible={true} transparent animationType="none">
           <View style={styles.drawerOverlay}>
             <Animated.View style={[styles.drawer, { left: addPeriodAnimation }]}>
@@ -517,6 +439,46 @@ export default function SubscriptionsScreen() {
                     </View>
                   )}
                 </View>
+                
+                <Text style={styles.fieldLabel}>Payment Proof</Text>
+                <TouchableOpacity style={styles.uploadButton} onPress={async () => {
+                  try {
+                    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                    if (!permissionResult.granted) {
+                      Alert.alert('Permission Required', 'Please allow access to your photo library to upload payment proof.');
+                      return;
+                    }
+                    
+                    const result = await ImagePicker.launchImageLibraryAsync({
+                      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                      allowsEditing: true,
+                      aspect: [4, 3],
+                      quality: 0.8,
+                    });
+                    
+                    if (!result.canceled && result.assets[0]) {
+                      const asset = result.assets[0];
+                      setNewPeriod({...newPeriod, localImageUri: asset.uri});
+                    }
+                  } catch (error) {
+                    console.error('Error selecting image:', error);
+                    Alert.alert('Error', 'Failed to select image. Please try again.');
+                  }
+                }}>
+                  <Ionicons name="cloud-upload" size={20} color="#666" />
+                  <Text style={styles.uploadButtonText}>
+                    {newPeriod.localImageUri ? 'Change Image' : 'Upload Payment Screenshot'}
+                  </Text>
+                </TouchableOpacity>
+                {newPeriod.localImageUri && (
+                  <View style={styles.imagePreview}>
+                    <Image 
+                      source={{ uri: newPeriod.localImageUri }} 
+                      style={styles.previewImage} 
+                    />
+                    <Text style={styles.imagePreviewText}>Payment proof selected</Text>
+                  </View>
+                )}
               </ScrollView>
               
               <View style={styles.drawerButtons}>
@@ -537,20 +499,52 @@ export default function SubscriptionsScreen() {
                       const clinicName = newPeriod.email.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' ');
                       
                       // Get the price for the selected period
-                      const selectedPeriodData = subscriptionPeriods.find(p => p.period === newPeriod.period);
-                      const periodPrice = selectedPeriodData?.price || '₱7,499';
+                      const periodPrice = getFormattedSubscriptionPrice(newPeriod.period);
                       
-                      const result = await addSubscriptionPeriod(
-                        tenantId,
-                        newPeriod.email,
-                        clinicName,
-                        newPeriod.period,
-                        periodPrice
-                      );
+                      // Convert image to base64 if selected
+                      let paymentImageBase64 = null;
+                      if (newPeriod.localImageUri) {
+                        console.log('Converting image to base64:', newPeriod.localImageUri);
+                        const response = await fetch(newPeriod.localImageUri);
+                        const blob = await response.blob();
+                        const reader = new FileReader();
+                        paymentImageBase64 = await new Promise((resolve) => {
+                          reader.onloadend = () => resolve(reader.result);
+                          reader.readAsDataURL(blob);
+                        });
+                        console.log('Image converted to base64, length:', paymentImageBase64?.length);
+                      }
+                      
+                      console.log('Calling addSubscriptionPeriod with paymentImage:', paymentImageBase64 ? 'YES' : 'NO');
+                      let result;
+                      try {
+                        result = await addSubscriptionPeriod(
+                          tenantId,
+                          newPeriod.email,
+                          clinicName,
+                          newPeriod.period,
+                          periodPrice,
+                          paymentImageBase64 || null
+                        );
+                        console.log('addSubscriptionPeriod result:', result);
+                        
+                        // Check if the transaction was saved with paymentImage
+                        if (result.periodId) {
+                          const { doc, getDoc } = await import('firebase/firestore');
+                          const transactionDoc = await getDoc(doc(db, 'transactions', result.periodId));
+                          if (transactionDoc.exists()) {
+                            const data = transactionDoc.data();
+                            console.log('Transaction saved with paymentImage:', data.paymentImage ? 'YES' : 'NO');
+                          }
+                        }
+                      } catch (addError) {
+                        console.error('Error calling addSubscriptionPeriod:', addError);
+                        throw addError;
+                      }
                       
                       if (result.success) {
                         alert(`✅ ${result.message}`);
-                        setNewPeriod({ email: '', period: '1 month' });
+                        setNewPeriod({ email: '', period: '1 month', paymentImage: null, localImageUri: null });
                         
                         Animated.timing(addPeriodAnimation, {
                           toValue: -350,
@@ -575,238 +569,352 @@ export default function SubscriptionsScreen() {
           </View>
         </Modal>
       )}
-    </View>
+      
+      {notification && (
+        <View style={[styles.notification, notification.type === 'success' ? styles.successNotification : styles.warningNotification]}>
+          <Text style={styles.notificationText}>{notification.message}</Text>
+          <TouchableOpacity style={styles.notificationClose} onPress={() => setNotification(null)}>
+            <Text style={styles.notificationCloseText}>×</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      
+      {deleteConfirm && (
+        <Modal visible={true} transparent animationType="fade">
+          <View style={styles.confirmOverlay}>
+            <View style={styles.confirmModal}>
+              <Text style={styles.confirmTitle}>Delete Subscription?</Text>
+              <Text style={styles.confirmMessage}>
+                This will permanently delete the queued subscription.
+              </Text>
+              <View style={styles.confirmButtons}>
+                <TouchableOpacity style={styles.confirmCancel} onPress={() => setDeleteConfirm(null)}>
+                  <Text style={styles.confirmCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.confirmDelete} onPress={confirmDelete}>
+                  <Text style={styles.confirmDeleteText}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+      </View>
+    </SuperAdminLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: 'row',
-    position: 'relative',
-  },
-  mainContent: {
-    flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   header: {
     paddingTop: 20,
     paddingBottom: 5,
     paddingHorizontal: 20,
-    marginTop: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
   headerText: {
-    fontSize: 36,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#800000',
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#800000',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  searchIcon: {
-    width: 14,
-    height: 14,
-    marginRight: 6,
-  },
-  searchInput: {
-    width: 200,
-    fontSize: 12,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  tableContainer: {
-    borderWidth: 2,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    marginBottom: 20,
-  },
-  tableTopRow: {
-    backgroundColor: '#fff',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-  },
-  headerRow: {
+  headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 15,
   },
-  returnButton: {
-    backgroundColor: '#800000',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  addButton: {
+    backgroundColor: '#7F1D1F',
+    borderRadius: 8,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  returnButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 12,
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(127, 29, 31, 0.3)',
+    borderRadius: 8,
+    paddingLeft: 10,
+    width: 265.798,
+    height: 32,
+    flexShrink: 0,
+    backgroundColor: 'rgba(250, 250, 250, 0.00)',
+    shadowColor: 'rgba(31, 61, 89, 0.04)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 20,
   },
-  detailTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#800000',
+  searchIconContainer: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#7F1D1F',
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchInput: {
     flex: 1,
+    fontSize: 15,
   },
+  content: {
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingTop: 20,
+  },
+  tableContainer: {
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  table: {
+    flex: 1,
+    borderRadius: 12,
+  },
+  subHeader: {
+    flexDirection: 'row',
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  filterTabs: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  filterTab: {
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    alignItems: 'flex-start',
+    marginRight: 5,
+  },
+  activeFilterTab: {
+    backgroundColor: '#800000',
+  },
+  filterTabText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#666',
+    textAlign: 'left',
+  },
+  activeFilterTabText: {
+    color: '#fff',
+  },
+
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f8f9fa',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-  },
-  tableBody: {
-    height: 250,
-  },
-  tableBodySmall: {
-    height: 120,
+    paddingVertical: 16,
+    paddingLeft: 80,
+    paddingRight: 10,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    alignItems: 'center',
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingLeft: 80,
+    paddingRight: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
     alignItems: 'center',
+    minHeight: 60,
   },
   headerCell: {
-    flex: 1,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    fontSize: 14,
+    color: '#374151',
+    letterSpacing: 0.5,
+  },
+  emailHeader: {
+    flex: 1.8,
     textAlign: 'left',
-    fontSize: 14,
-    color: '#333',
-    paddingRight: 10,
   },
-  headerCellActions: {
-    width: 80,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    fontSize: 14,
-    color: '#333',
-  },
-  cell: {
+  periodHeader: {
     flex: 1,
     textAlign: 'left',
-    fontSize: 12,
-    color: '#555',
-    paddingRight: 10,
   },
-
-  statusContainer: {
+  priceHeader: {
     flex: 1,
-    paddingRight: 10,
+    textAlign: 'left',
   },
-  statusBadge: {
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignSelf: 'flex-start',
+  statusHeader: {
+    flex: 1,
+    textAlign: 'left',
   },
-  activeBadge: {
-    backgroundColor: '#23C062',
+  dateHeader: {
+    flex: 1.1,
+    textAlign: 'left',
   },
-  expiringSoonBadge: {
-    backgroundColor: '#FFA500',
+  endDateHeader: {
+    flex: 1.1,
+    textAlign: 'left',
   },
-  overdueBadge: {
-    backgroundColor: '#FF6B6B',
+  cellText: {
+    fontSize: 13,
+    color: '#6B7280',
   },
-  statusText: {
-    fontSize: 10,
-    fontWeight: 'bold',
+  emailCell: {
+    flex: 1.8,
+    textAlign: 'left',
   },
-  activeText: {
-    color: '#fff',
+  periodCell: {
+    flex: 1,
+    textAlign: 'left',
   },
-  expiringSoonText: {
-    color: '#fff',
+  priceCell: {
+    flex: 1,
+    textAlign: 'left',
   },
-  overdueText: {
-    color: '#fff',
+  statusCell: {
+    flex: 1,
+    textAlign: 'left',
   },
-  dueSoonText: {
-    color: '#FFA500',
-    fontWeight: 'bold',
+  dateCell: {
+    flex: 1.1,
+    textAlign: 'left',
   },
-
-  billingActions: {
-    width: 80,
-    alignItems: 'center',
+  endDateCell: {
+    flex: 1.1,
+    textAlign: 'left',
   },
-  extendButton: {
-    backgroundColor: '#23C062',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  extendText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  selectedRow: {
-    backgroundColor: '#f0f8ff',
-    borderLeftWidth: 4,
-    borderLeftColor: '#800000',
-  },
-  addPeriodButton: {
-    backgroundColor: '#23C062',
-    borderRadius: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  addPeriodButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  drawerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    zIndex: 10000,
-  },
-  drawer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 350,
+  tableBody: {
+    flex: 1,
     backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
   },
-  drawerHeader: {
+  noDataContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  noDataText: {
+    fontSize: 16,
+    color: '#666',
+    fontStyle: 'italic',
+  },
+  pagination: {
+    backgroundColor: '#f8f9fa',
+    borderTopWidth: 1,
+    borderTopColor: '#ddd',
+    paddingTop: 12,
+    paddingBottom: 12,
+    paddingLeft: 20,
+    paddingRight: 15,
+  },
+  paginationControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  paginationLabel: {
+    fontSize: 10,
+    color: '#666',
+  },
+  dropdown: {
+    position: 'relative',
+    zIndex: 1001,
+  },
+  dropdownButton: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#fafafa',
+    padding: 12,
+  },
+  dropdownText: {
+    fontSize: 10,
+    marginRight: 4,
+  },
+  dropdownArrow: {
+    fontSize: 6,
+    color: '#666',
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 4,
+    zIndex: 10000,
+    maxHeight: 200,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  dropdownOption: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    backgroundColor: '#f8f9fa',
+    borderBottomColor: '#eee',
+  },
+  dropdownOptionText: {
+    fontSize: 12,
+    textAlign: 'center',
+    color: '#333',
+  },
+  pageBtn: {
+    backgroundColor: '#800000',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 2,
+  },
+  pageBtnText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  pageOf: {
+    fontSize: 10,
+    color: '#666',
+  },
+  drawerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  drawer: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    width: '40%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  drawerHeader: {
+    padding: 15,
+    paddingLeft: 25,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   drawerTitle: {
-    fontSize: 14,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#800000',
   },
@@ -829,28 +937,47 @@ const styles = StyleSheet.create({
   },
   drawerButtons: {
     flexDirection: 'row',
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    backgroundColor: '#fff',
+    padding: 15,
     gap: 10,
   },
   fieldLabel: {
     fontSize: 14,
-    fontWeight: 'bold',
     color: '#333',
-    marginBottom: 8,
-    marginTop: 15,
-    textAlign: 'left',
+    marginTop: 8,
+    fontWeight: 'bold',
   },
-  modalInput: {
+  emailDropdownContainer: {
+    position: 'relative',
+    zIndex: 2000,
+  },
+  emailDropdownMenu: {
+    position: 'absolute',
+    top: 50,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
-    padding: 12,
-    marginBottom: 15,
+    zIndex: 2001,
+    elevation: 20,
+    maxHeight: 150,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  emailDropdownScroll: {
+    maxHeight: 150,
+  },
+  noEmailsContainer: {
+    padding: 15,
+    alignItems: 'center',
+  },
+  noEmailsText: {
     fontSize: 12,
-    backgroundColor: '#fafafa',
+    color: '#999',
+    fontStyle: 'italic',
   },
   periodDropdownContainer: {
     position: 'relative',
@@ -887,216 +1014,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#333',
   },
-  dropdownArrow: {
-    fontSize: 10,
-    color: '#666',
-  },
-  dropdownOption: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  dropdownOptionText: {
-    fontSize: 12,
-    textAlign: 'left',
-    color: '#333',
-  },
-  cancelButton: {
-    backgroundColor: '#f5f5f5',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
-    flex: 1,
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    textAlign: 'center',
-    color: '#666',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  saveButton: {
-    backgroundColor: '#23C062',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
-    flex: 1,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    textAlign: 'center',
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  paginationContainer: {
-    backgroundColor: '#f8f9fa',
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    paddingTop: 12,
-    paddingBottom: 12,
-    paddingLeft: 20,
-    paddingRight: 15,
-  },
-  paginationControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  paginationLabel: {
-    fontSize: 10,
-    color: '#666',
-  },
-  dropdownContainer: {
-    position: 'relative',
-    zIndex: 100,
-  },
-  dropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 2,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    minWidth: 35,
-  },
-  dropdownText: {
-    fontSize: 10,
-    marginRight: 2,
-  },
-  dropdownMenu: {
-    position: 'absolute',
-    top: 0,
-    left: 40,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 2,
-    zIndex: 101,
-    minWidth: 35,
-    elevation: 5,
-  },
-  pageBtn: {
-    backgroundColor: '#800000',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 2,
-  },
-  pageBtnText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  pageInput: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 2,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    width: 25,
-    textAlign: 'center',
-    fontSize: 10,
-  },
-  pageOf: {
-    fontSize: 10,
-    color: '#666',
-  },
-  noDataContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-    minHeight: 200,
-  },
-  noDataText: {
-    fontSize: 16,
-    color: '#666',
-    fontStyle: 'italic',
-  },
-  subHeader: {
-    backgroundColor: '#f0f0f0',
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-  },
-  subHeaderText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#800000',
-    textTransform: 'uppercase',
-  },
-  queuedRow: {
-    backgroundColor: '#f9f9f9',
-  },
-  queuedBadge: {
-    backgroundColor: '#9C27B0',
-  },
-  queuedText: {
-    color: '#fff',
-  },
-  filterButtons: {
-    flexDirection: 'row',
-    gap: 5,
-    marginLeft: 20,
-  },
-  filterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 5,
-    backgroundColor: '#f8f9fa',
-  },
-  activeFilterButton: {
-    backgroundColor: '#800000',
-  },
-  filterButtonText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#666',
-  },
-  activeFilterText: {
-    color: '#fff',
-  },
-  emailDropdownContainer: {
-    position: 'relative',
-    zIndex: 2000,
-  },
-  emailDropdownMenu: {
-    position: 'absolute',
-    top: 50,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    zIndex: 2001,
-    elevation: 20,
-    maxHeight: 150,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  emailDropdownScroll: {
-    maxHeight: 150,
-  },
-  noEmailsContainer: {
-    padding: 15,
-    alignItems: 'center',
-  },
-  noEmailsText: {
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
-  },
   noPeriodsContainer: {
     padding: 15,
     alignItems: 'center',
@@ -1106,5 +1023,176 @@ const styles = StyleSheet.create({
     color: '#999',
     fontStyle: 'italic',
   },
-
+  cancelButton: {
+    backgroundColor: '#f5f5f5',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  saveButton: {
+    backgroundColor: '#7B2C2C',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  deleteButton: {
+    backgroundColor: '#FF6B6B',
+    borderRadius: 4,
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  notification: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    padding: 15,
+    borderRadius: 8,
+    minWidth: 300,
+    maxWidth: 400,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 10000,
+  },
+  successNotification: {
+    backgroundColor: '#d4edda',
+    borderColor: '#c3e6cb',
+    borderWidth: 1,
+  },
+  warningNotification: {
+    backgroundColor: '#fff3cd',
+    borderColor: '#ffeaa7',
+    borderWidth: 1,
+  },
+  notificationText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#333',
+    lineHeight: 16,
+  },
+  notificationClose: {
+    marginLeft: 10,
+    padding: 2,
+  },
+  notificationCloseText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    padding: 20,
+    marginBottom: 15,
+    backgroundColor: '#f9f9f9',
+  },
+  uploadButtonText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 8,
+  },
+  imagePreview: {
+    padding: 10,
+    backgroundColor: '#e8f5e8',
+    borderRadius: 8,
+    marginBottom: 15,
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  imagePreviewText: {
+    fontSize: 12,
+    color: '#2d5a2d',
+    textAlign: 'center',
+  },
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  confirmModal: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 20,
+    width: '90%',
+    maxWidth: 400,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  confirmMessage: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  confirmCancel: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    padding: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  confirmCancelText: {
+    color: '#666',
+    fontWeight: 'bold',
+  },
+  confirmDelete: {
+    flex: 1,
+    backgroundColor: '#FF6B6B',
+    padding: 12,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  confirmDeleteText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
 });

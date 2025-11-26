@@ -1,31 +1,37 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
-import { Image, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
-import Sidebar from './Sidebar';
+import React, { useState, useEffect } from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import SuperAdminSidebar from './SuperAdminSidebar';
 import { useAuth } from '../contexts/AuthContext';
-import { useTenant } from '../contexts/TenantContext';
-import { useAdminProfile } from '../contexts/AdminProfileContext';
-import ProfileImageModal from './ProfileImageModal';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/config/firebaseConfig';
 
-interface AdminLayoutProps {
+interface SuperAdminLayoutProps {
   children: React.ReactNode;
 }
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
+export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   const router = useRouter();
   const { user } = useAuth();
-  const { userEmail } = useTenant();
-  const { 
-    profileImage, 
-    uploading, 
-    showImageModal, 
-    previewImage,
-    handleImageUpload, 
-    handleGalleryUpload, 
-    handleSaveImage, 
-    handleCancelUpload 
-  } = useAdminProfile();
+  const [superAdminData, setSuperAdminData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchSuperAdminData = async () => {
+      if (user?.email) {
+        try {
+          const superAdminDoc = await getDoc(doc(db, 'superadmins', user.email));
+          if (superAdminDoc.exists()) {
+            setSuperAdminData(superAdminDoc.data());
+          }
+        } catch (error) {
+          console.error('Error fetching superadmin data:', error);
+        }
+      }
+    };
+
+    fetchSuperAdminData();
+  }, [user]);
 
   const handleNavigation = async (route: string) => {
     try {
@@ -42,29 +48,20 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <View style={styles.container}>
-      {/* Admin Header */}
+      {/* SuperAdmin Header */}
       <View style={styles.adminHeader}>
         <Image source={require('../assets/pawns web logo v3.png')} style={styles.logo} />
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconButton} onPress={() => handleNavigation('/client/notifications')}>
+          <TouchableOpacity style={styles.iconButton} onPress={() => handleNavigation('/server/notifications')}>
             <Ionicons name="notifications" size={24} color="#800000" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.profileContainer} onPress={handleImageUpload}>
+          <TouchableOpacity style={styles.profileContainer}>
             <View style={styles.profileImage}>
-              {profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.profileImagePhoto} />
-              ) : (
-                <Ionicons name="person" size={20} color="#666" />
-              )}
-              {uploading && (
-                <View style={styles.uploadingOverlay}>
-                  <ActivityIndicator size="small" color="#800000" />
-                </View>
-              )}
+              <Ionicons name="person" size={20} color="#666" />
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.adminName}>{user?.email || userEmail || 'admin@clinic.com'}</Text>
-              <Text style={styles.adminRole}>Administrator</Text>
+              <Text style={styles.adminName}>{superAdminData?.name || user?.email || 'superadmin@system.com'}</Text>
+              <Text style={styles.adminRole}>Super Administrator</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -72,9 +69,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       
       {/* Main Layout Container */}
       <View style={styles.mainLayout}>
-        {/* Admin Sidebar */}
+        {/* SuperAdmin Sidebar */}
         <View style={styles.adminSidebar}>
-          <Sidebar />
+          <SuperAdminSidebar />
         </View>
         
         {/* Main Content */}
@@ -82,16 +79,6 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {children}
         </View>
       </View>
-      
-      <ProfileImageModal
-        visible={showImageModal}
-        previewImage={previewImage}
-        uploading={uploading}
-        onGalleryUpload={handleGalleryUpload}
-        onSaveImage={handleSaveImage}
-        onCancel={handleCancelUpload}
-        primaryColor="#800000"
-      />
     </View>
   );
 }
@@ -127,21 +114,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    width: 200,
-  },
-  searchInput: {
-    marginLeft: 8,
-    fontSize: 14,
-    flex: 1,
-    color: '#333',
-  },
   iconButton: {
     padding: 8,
     borderRadius: 6,
@@ -174,22 +146,6 @@ const styles = StyleSheet.create({
   adminRole: {
     fontSize: 12,
     color: '#666',
-  },
-  profileImagePhoto: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  uploadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   mainLayout: {
     flexDirection: 'row',

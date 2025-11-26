@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image, Modal, Animated, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
-import SuperAdminSidebar from '@/components/SuperAdminSidebar';
+import SuperAdminLayout from '../../components/SuperAdminLayout';
 import { collection, doc, setDoc, getDocs, onSnapshot, deleteDoc } from 'firebase/firestore';
 import { db } from '../../lib/config/firebaseConfig';
 import { Typography, Spacing, ButtonSizes, ModalSizes } from '@/constants/Typography';
@@ -60,49 +60,50 @@ export default function SubscriptionPeriodsScreen() {
   const [editingPeriod, setEditingPeriod] = useState(null);
 
   return (
-    <View style={styles.container}>
-      <SuperAdminSidebar />
-      <View style={styles.mainContent}>
+    <SuperAdminLayout>
+      <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerText}>Subscription Periods</Text>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={14} color="#800000" style={styles.searchIcon} />
-            <TextInput 
-              style={styles.searchInput}
-              placeholder="Search periods..."
-              placeholderTextColor="#bbb"
-              value={searchTerm}
-              onChangeText={setSearchTerm}
-            />
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.addButton} onPress={() => {
+              setShowAddDrawer(true);
+              Animated.timing(addDrawerAnimation, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: false,
+              }).start();
+            }}>
+              <Ionicons name="add" size={20} color="#fff" />
+            </TouchableOpacity>
+            
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search..."
+                placeholderTextColor="rgba(153, 153, 153, 0.8)"
+                value={searchTerm}
+                onChangeText={setSearchTerm}
+              />
+              <View style={styles.searchIconContainer}>
+                <Ionicons name="search" size={14} color="#fff" />
+              </View>
+            </View>
           </View>
         </View>
         
         <View style={styles.content}>
           <View style={styles.tableContainer}>
-            <View style={styles.tableTopRow}>
-              <View style={styles.headerRow}>
-                <Text style={styles.detailTitle}>Subscription Period Management</Text>
+            <View style={styles.table}>
+
+            
+              <View style={styles.tableHeader}>
+                <Text style={[styles.headerCell, styles.orderHeader]}>Order</Text>
+                <Text style={[styles.headerCell, styles.periodHeader]}>Period</Text>
+                <Text style={[styles.headerCell, styles.priceHeader]}>Price</Text>
+                <Text style={[styles.headerCell, styles.actionsHeader]}>Actions</Text>
               </View>
-              <TouchableOpacity style={styles.addPeriodButton} onPress={() => {
-                setShowAddDrawer(true);
-                Animated.timing(addDrawerAnimation, {
-                  toValue: 0,
-                  duration: 300,
-                  useNativeDriver: false,
-                }).start();
-              }}>
-                <Text style={styles.addPeriodButtonText}>+ Add New Period</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <View style={styles.tableHeader}>
-              <Text style={styles.headerCell}>Order</Text>
-              <Text style={styles.headerCell}>Period</Text>
-              <Text style={styles.headerCell}>Price</Text>
-              <Text style={styles.headerCellActions}>Actions</Text>
-            </View>
-            
-            <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={false}>
+              
+              <ScrollView style={styles.tableBody} showsVerticalScrollIndicator={true}>
               {(() => {
                 if (isLoading) {
                   return (
@@ -148,10 +149,11 @@ export default function SubscriptionPeriodsScreen() {
                 
                 return paginatedPeriods.map((period, index) => (
                   <View key={period.id} style={styles.tableRow}>
-                    <Text style={styles.cell}>{startIndex + index + 1}</Text>
-                    <Text style={styles.cell}>{period.period}</Text>
-                    <Text style={styles.cell}>{period.price}</Text>
+                    <Text style={[styles.cell, styles.orderCell]}>{startIndex + index + 1}</Text>
+                    <Text style={[styles.cell, styles.periodCell]}>{period.period}</Text>
+                    <Text style={[styles.cell, styles.priceCell]}>{period.price}</Text>
                     <View style={styles.actionsCell}>
+                      <View style={styles.actionButtons}>
                       <TouchableOpacity 
                         style={styles.editButton} 
                         onPress={() => {
@@ -199,13 +201,16 @@ export default function SubscriptionPeriodsScreen() {
                       >
                         <Text style={styles.deleteButtonText}>Delete</Text>
                       </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
                 ));
               })()}
-            </ScrollView>
-            
-            <View style={styles.paginationContainer}>
+              </ScrollView>
+            </View>
+
+            {/* Pagination */}
+            <View style={styles.pagination}>
               <View style={styles.paginationControls}>
                 <Text style={styles.paginationLabel}>Show:</Text>
                 <View style={styles.dropdownContainer}>
@@ -256,9 +261,8 @@ export default function SubscriptionPeriodsScreen() {
             </View>
           </View>
         </View>
-      </View>
-      
-      {showAddDrawer && (
+        
+        {showAddDrawer && (
         <Modal visible={true} transparent animationType="none">
           <View style={styles.drawerOverlay}>
             <Animated.View style={[styles.drawer, { left: addDrawerAnimation }]}>
@@ -277,7 +281,7 @@ export default function SubscriptionPeriodsScreen() {
                     setPeriodPrice('');
                   });
                 }}>
-                  <Ionicons name="close" size={16} color="#800000" />
+                  <Text style={styles.drawerCloseText}>×</Text>
                 </TouchableOpacity>
               </View>
               
@@ -415,57 +419,116 @@ export default function SubscriptionPeriodsScreen() {
           </View>
         </Modal>
       )}
-    </View>
+      </View>
+    </SuperAdminLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: 'row',
-  },
-  mainContent: {
-    flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   header: {
     paddingTop: 20,
     paddingBottom: 5,
     paddingHorizontal: 20,
-    marginTop: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
   headerText: {
-    fontSize: Typography.header,
+    fontSize: 30,
     fontWeight: 'bold',
     color: '#800000',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+  },
+  addButton: {
+    backgroundColor: '#7F1D1F',
+    borderRadius: 8,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#800000',
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(127, 29, 31, 0.3)',
+    borderRadius: 8,
+    paddingLeft: 10,
+    width: 265.798,
+    height: 32,
+    flexShrink: 0,
+    backgroundColor: 'rgba(250, 250, 250, 0.00)',
+    shadowColor: 'rgba(31, 61, 89, 0.04)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 20,
   },
-  searchIcon: {
-    marginRight: 6,
+  searchIconContainer: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#7F1D1F',
+    borderTopRightRadius: 6,
+    borderBottomRightRadius: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   searchInput: {
-    width: 200,
-    fontSize: Typography.fieldInput,
+    flex: 1,
+    fontSize: 15,
   },
   content: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   tableContainer: {
-    borderWidth: 2,
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 8,
+  },
+  table: {
     backgroundColor: '#fff',
+    flex: 1,
+    borderRadius: 12,
+  },
+  subHeader: {
+    flexDirection: 'row',
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  filterTabs: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  filterTab: {
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    alignItems: 'flex-start',
+    marginRight: 5,
+  },
+  filterTabText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#666',
+    textAlign: 'left',
   },
   tableTopRow: {
     backgroundColor: '#fff',
@@ -512,34 +575,71 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#f8f9fa',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingLeft: 70,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    alignItems: 'center',
   },
   tableBody: {
-    height: 250,
+    flex: 1,
+    backgroundColor: '#fff',
   },
   tableRow: {
     flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    paddingLeft: 70,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
     alignItems: 'center',
+    minHeight: 60,
+  },
+  rowContent: {
+    flexDirection: 'row',
+    flex: 1,
   },
   headerCell: {
-    flex: 1,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    fontSize: 14,
+    color: '#374151',
+    letterSpacing: 0.5,
+  },
+  orderHeader: {
+    flex: 0.5,
     textAlign: 'left',
-    fontSize: Typography.tableHeader,
-    color: '#333',
-    paddingRight: Spacing.medium,
+  },
+  periodHeader: {
+    flex: 1.5,
+    textAlign: 'left',
+  },
+  priceHeader: {
+    flex: 1,
+    textAlign: 'left',
+  },
+  actionsHeader: {
+    flex: 1.2,
+    textAlign: 'center',
   },
   cell: {
+    fontSize: 13,
+    color: '#6B7280',
+    paddingLeft: 0,
+  },
+  orderCell: {
+    flex: 0.5,
+    textAlign: 'left',
+  },
+  periodCell: {
+    flex: 1.5,
+    textAlign: 'left',
+  },
+  priceCell: {
     flex: 1,
     textAlign: 'left',
-    fontSize: Typography.tableData,
-    color: '#555',
-    paddingRight: Spacing.medium,
   },
   statusContainer: {
     flex: 1,
@@ -561,7 +661,7 @@ const styles = StyleSheet.create({
   activeText: {
     color: '#fff',
   },
-  paginationContainer: {
+  pagination: {
     backgroundColor: '#f8f9fa',
     borderTopWidth: 1,
     borderTopColor: '#ddd',
@@ -584,46 +684,54 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   dropdown: {
+    position: 'relative',
+    zIndex: 1001,
+  },
+  dropdownButton: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 2,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    minWidth: 35,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    backgroundColor: '#fafafa',
+    padding: 12,
   },
   dropdownText: {
     fontSize: 10,
-    marginRight: 2,
+    marginRight: 4,
   },
   dropdownArrow: {
-    fontSize: 8,
+    fontSize: 6,
     color: '#666',
-    fontWeight: 'bold',
   },
   dropdownMenu: {
     position: 'absolute',
-    top: 0,
-    left: 40,
+    top: '100%',
+    left: 0,
+    right: 0,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#ccc',
-    borderRadius: 2,
-    zIndex: 101,
-    minWidth: 35,
-    elevation: 5,
+    borderRadius: 4,
+    zIndex: 10000,
+    maxHeight: 200,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   dropdownOption: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
   dropdownOptionText: {
-    fontSize: Typography.dropdown,
+    fontSize: 12,
     textAlign: 'center',
+    color: '#333',
   },
   pageBtn: {
     backgroundColor: '#800000',
@@ -664,108 +772,105 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   drawerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    zIndex: 10000,
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   drawer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: ModalSizes.drawerWidth,
     backgroundColor: '#fff',
+    borderRadius: 8,
+    width: '40%',
     shadowColor: '#000',
-    shadowOffset: { width: 2, height: 0 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
-    shadowRadius: 10,
+    shadowRadius: 12,
     elevation: 10,
   },
   drawerHeader: {
+    padding: 15,
+    paddingLeft: 25,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-    backgroundColor: '#f8f9fa',
   },
   drawerTitle: {
-    fontSize: Typography.drawerTitle,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#800000',
   },
   drawerCloseButton: {
-    width: ButtonSizes.iconButton,
-    height: ButtonSizes.iconButton,
-    borderRadius: ButtonSizes.iconButton / 2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
   },
-
+  drawerCloseText: {
+    fontSize: 18,
+    color: '#666',
+    fontWeight: 'bold',
+  },
   drawerForm: {
     flex: 1,
     padding: 20,
   },
   drawerButtons: {
     flexDirection: 'row',
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#ddd',
-    backgroundColor: '#fff',
+    padding: 15,
     gap: 10,
   },
   fieldLabel: {
-    fontSize: Typography.fieldLabel,
-    fontWeight: 'bold',
+    fontSize: 14,
     color: '#333',
-    marginBottom: Spacing.small,
-    marginTop: Spacing.large,
-    textAlign: 'left',
+    marginTop: 8,
+    fontWeight: 'bold',
   },
   modalInput: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
-    marginBottom: 15,
-    fontSize: 12,
-    backgroundColor: '#fafafa',
+    marginTop: 6,
+    backgroundColor: '#fff',
+    fontSize: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   cancelButton: {
     backgroundColor: '#f5f5f5',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
     flex: 1,
-    marginRight: 10,
     borderWidth: 1,
     borderColor: '#ddd',
-    alignItems: 'center',
   },
   cancelButtonText: {
-    textAlign: 'center',
     color: '#666',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 14,
   },
   saveButton: {
-    backgroundColor: '#23C062',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 5,
-    flex: 1,
+    backgroundColor: '#7B2C2C',
+    padding: 14,
+    borderRadius: 8,
     alignItems: 'center',
+    flex: 1,
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 4,
   },
   saveButtonText: {
-    textAlign: 'center',
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 14,
   },
   unitToggleContainer: {
     flexDirection: 'row',
@@ -800,31 +905,42 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   actionsCell: {
-    width: 80,
+    flex: 1.2,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionButtons: {
     flexDirection: 'row',
-    gap: 5,
+    gap: 4,
   },
   editButton: {
-    backgroundColor: '#FFA500',
-    borderRadius: 4,
+    backgroundColor: '#007bff',
     paddingHorizontal: 6,
-    paddingVertical: 4,
+    paddingVertical: 3,
+    borderRadius: 3,
+    width: 80,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   editButtonText: {
     color: '#fff',
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   deleteButton: {
-    backgroundColor: '#FF6B6B',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: '#dc3545',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 3,
+    width: 80,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   deleteButtonText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
   },
 });
