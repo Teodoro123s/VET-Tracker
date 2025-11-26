@@ -18,6 +18,7 @@ import Sidebar from '@/components/Sidebar';
 import VetBottomMenu from '@/components/VetBottomMenu';
 import VetMobileHeader from '@/components/VetMobileHeader';
 import AdminAIChatbot from '@/components/AdminAIChatbot';
+import MobileWebLayout from '@/components/MobileWebLayout';
 // import ChatBot from '../components/ChatBot'; // Commented out - component not available
 
 
@@ -144,9 +145,10 @@ function AppContent() {
   };
   
   return (
-    <NavigationThemeProvider value={DefaultTheme}>
-      <View style={styles.container}>
-        <View style={styles.fullContent}>
+    <MobileWebLayout>
+      <NavigationThemeProvider value={DefaultTheme}>
+        <View style={styles.container}>
+          <View style={styles.fullContent}>
           {showMobileHeader && <VetMobileHeader {...getHeaderProps()} onBackPress={() => {
             if (pathname === '/veterinarian/vet-customers') {
               if (selectedMedicalRecord) {
@@ -208,9 +210,10 @@ function AppContent() {
         {/* AI Chatbot - Show on client routes */}
         {isClientRoute && <AdminAIChatbot />}
 
-      </View>
-      <StatusBar style="dark" translucent backgroundColor="transparent" />
-    </NavigationThemeProvider>
+        </View>
+        <StatusBar style="dark" translucent backgroundColor="transparent" />
+      </NavigationThemeProvider>
+    </MobileWebLayout>
   );
 }
 

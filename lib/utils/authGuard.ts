@@ -15,8 +15,11 @@ export function useAuthGuard() {
   useEffect(() => {
     if (loading) return;
 
-    // If not authenticated, always redirect to login
-    if (!user) {
+    // Get current pathname
+    const currentPath = window?.location?.pathname || '';
+    
+    // If not authenticated, redirect to login but allow direct access to login pages
+    if (!user && !currentPath.includes('/mobile-login') && !currentPath.includes('/admin-login')) {
       if (Platform.OS === 'web') {
         router.replace('/auth/admin-login');
       } else {

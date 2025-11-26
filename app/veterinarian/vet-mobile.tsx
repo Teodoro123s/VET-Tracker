@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Platform, Alert, TextInput, Dimensions } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
@@ -16,6 +16,7 @@ export default function VetMobile() {
   const navigate = (path: any) => router.push(path as any);
   const params = useLocalSearchParams();
   const { user } = useAuth();
+  const scrollViewRef = useRef<ScrollView>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -390,122 +391,44 @@ export default function VetMobile() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Welcome Section */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeText}>Welcome, {vetDetails.name}</Text>
-          <View style={styles.refreshButtonContainer}>
-            <TouchableOpacity 
-              style={[styles.refreshButton, refreshing && styles.refreshingButton]} 
-              onPress={handleRefresh}
-              disabled={refreshing}
-            >
-              <Text style={styles.refreshText}>
-                {refreshing ? 'Refreshing...' : 'Refresh Data'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.debugButton} 
-              onPress={() => {
-                console.log('🔍 Manual Debug Trigger');
-                console.log('Current Stats:', vetStats);
-                console.log('Weekly Data:', weeklyData);
-                console.log('Today Appointments List:', todayAppointmentsList);
-                Alert.alert(
-                  'Debug Info', 
-                  `Weekly: ${vetStats.weeklyAppointments}\nToday: ${vetStats.todayAppointments}\nCompleted: ${vetStats.completedToday}\nPending: ${vetStats.pendingRecords}\nUpcoming: ${vetStats.upcomingAppointments}\nPatients: ${vetStats.totalPatients}\n\nCheck console for details`
-                );
-              }}
-            >
-              <Text style={styles.debugText}>Debug</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Enhanced Stats Grid */}
-        <View style={styles.statsGrid}>
-          <TouchableOpacity style={styles.statCard} onPress={() => navigate('/veterinarian/vet-appointments')}>
-            <Ionicons name="calendar" size={28} color="#7B2C2C" />
-            <ThemedText style={styles.statValue}>{vetStats.todayAppointments}</ThemedText>
-            <ThemedText style={styles.statLabel}>Today's Appointments</ThemedText>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.statCard} onPress={() => navigate('/veterinarian/vet-appointments')}>
-            <Ionicons name="time" size={28} color="#f59e0b" />
-            <ThemedText style={styles.statValue}>{vetStats.upcomingAppointments}</ThemedText>
-            <ThemedText style={styles.statLabel}>Upcoming</ThemedText>
-          </TouchableOpacity>
-        </View>
-
-        {/* Additional Quick Stats */}
-        <View style={styles.statsGrid}>
-          <TouchableOpacity style={styles.statCard} onPress={() => navigate('/veterinarian/vet-customers')}>
-            <Ionicons name="people" size={28} color="#10b981" />
-            <ThemedText style={styles.statValue}>{vetStats.totalPatients}</ThemedText>
-            <ThemedText style={styles.statLabel}>Total Patients</ThemedText>
-          </TouchableOpacity>
-            <TouchableOpacity style={styles.statCard} onPress={() => navigate('/veterinarian/vet-appointments')}>
-            <Ionicons name="checkmark-circle" size={28} color="#3b82f6" />
-            <ThemedText style={styles.statValue}>{vetStats.completedToday}</ThemedText>
-            <ThemedText style={styles.statLabel}>Completed Today</ThemedText>
-          </TouchableOpacity>
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
-          <View style={styles.actionsGrid}>
-            <TouchableOpacity style={styles.actionCard} onPress={() => navigate('/veterinarian/add-appointment')}>
-              <Ionicons name="add-circle" size={36} color="#7B2C2C" />
-              <Text style={styles.actionText}>New Appointment</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => setShowAddCustomerModal(true)}>
-              <Ionicons name="person-add" size={36} color="#7B2C2C" />
-              <Text style={styles.actionText}>Add Customer</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => navigate('/veterinarian/vet-customers')}>
-              <Ionicons name="search" size={36} color="#7B2C2C" />
-              <Text style={styles.actionText}>Search Patient</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => navigate('/veterinarian/vet-calendar')}>
-              <Ionicons name="calendar" size={36} color="#7B2C2C" />
-              <Text style={styles.actionText}>Calendar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => navigate('/veterinarian/vet-appointments')}>
-              <Ionicons name="list" size={36} color="#7B2C2C" />
-              <Text style={styles.actionText}>View All Appointments</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Quick Stats Summary */}
         <View style={styles.quickStatsSection}>
-          <ThemedText style={styles.sectionTitle}>Weekly Summary</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { marginBottom: 12 }]}>Weekly Summary</ThemedText>
           <View style={styles.summaryCard}>
-            <View style={styles.summaryRow}>
+            <View style={[styles.summaryRow, styles.firstSummaryRow]}>
               <View style={styles.summaryItem}>
-                <Ionicons name="calendar-outline" size={24} color="#3b82f6" />
+                <View style={styles.iconContainer}>
+                  <Ionicons name="calendar-outline" size={20} color="#3b82f6" />
+                </View>
                 <View style={styles.summaryContent}>
                   <Text style={styles.summaryValue}>{vetStats.weeklyAppointments}</Text>
                   <Text style={styles.summaryLabel}>This Week</Text>
                 </View>
               </View>
               <View style={styles.summaryItem}>
-                <Ionicons name="checkmark-done" size={24} color="#10b981" />
+                <View style={styles.iconContainer}>
+                  <Ionicons name="checkmark-done" size={20} color="#10b981" />
+                </View>
                 <View style={styles.summaryContent}>
                   <Text style={styles.summaryValue}>{vetStats.completedToday}</Text>
                   <Text style={styles.summaryLabel}>Completed</Text>
                 </View>
               </View>
             </View>
-            <View style={styles.summaryRow}>
+            <View style={[styles.summaryRow, styles.lastSummaryRow]}>
               <View style={styles.summaryItem}>
-                <Ionicons name="hourglass-outline" size={24} color="#f59e0b" />
+                <View style={styles.iconContainer}>
+                  <Ionicons name="hourglass-outline" size={20} color="#f59e0b" />
+                </View>
                 <View style={styles.summaryContent}>
                   <Text style={styles.summaryValue}>{vetStats.pendingRecords}</Text>
                   <Text style={styles.summaryLabel}>Pending</Text>
                 </View>
               </View>
               <View style={styles.summaryItem}>
-                <Ionicons name="trending-up" size={24} color="#8b5cf6" />
+                <View style={styles.iconContainer}>
+                  <Ionicons name="trending-up" size={20} color="#8b5cf6" />
+                </View>
                 <View style={styles.summaryContent}>
                   <Text style={styles.summaryValue}>{vetStats.upcomingAppointments}</Text>
                   <Text style={styles.summaryLabel}>Upcoming</Text>
@@ -515,9 +438,81 @@ export default function VetMobile() {
           </View>
         </View>
 
+        {/* Enhanced Stats Grid */}
+        <ThemedText style={[styles.sectionTitle, { marginBottom: 12 }]}>Overview</ThemedText>
+        <View style={styles.statsContainer}>
+          <TouchableOpacity style={styles.statItem} onPress={() => navigate('/veterinarian/vet-appointments')}>
+            <Ionicons name="calendar" size={24} color="#7B2C2C" />
+            <Text style={styles.statNumber}>{vetStats.todayAppointments}</Text>
+            <Text style={styles.statText}>Today</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statItem} onPress={() => navigate('/veterinarian/vet-appointments')}>
+            <Ionicons name="time" size={24} color="#f59e0b" />
+            <Text style={styles.statNumber}>{vetStats.upcomingAppointments}</Text>
+            <Text style={styles.statText}>Upcoming</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statItem} onPress={() => navigate('/veterinarian/vet-customers')}>
+            <Ionicons name="people" size={24} color="#10b981" />
+            <Text style={styles.statNumber}>{vetStats.totalPatients}</Text>
+            <Text style={styles.statText}>Patients</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.statItem} onPress={() => navigate('/veterinarian/vet-appointments')}>
+            <Ionicons name="checkmark-circle" size={24} color="#3b82f6" />
+            <Text style={styles.statNumber}>{vetStats.completedToday}</Text>
+            <Text style={styles.statText}>Completed</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionTitle}>Quick Actions</ThemedText>
+            <View style={styles.scrollButtons}>
+              <TouchableOpacity onPress={() => scrollViewRef.current?.scrollTo({ x: 0, animated: true })} style={styles.scrollButton}>
+                <Ionicons name="chevron-back" size={20} color="#7B2C2C" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => scrollViewRef.current?.scrollTo({ x: 200, animated: true })}>
+                <Ionicons name="chevron-forward" size={20} color="#7B2C2C" />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <ScrollView ref={scrollViewRef} horizontal showsHorizontalScrollIndicator={false} style={styles.actionsScroll}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigate('/veterinarian/add-appointment')}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="add-circle" size={28} color="#7B2C2C" />
+              </View>
+              <Text style={styles.actionText}>New Appointment</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={() => setShowAddCustomerModal(true)}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="person-add" size={28} color="#7B2C2C" />
+              </View>
+              <Text style={styles.actionText}>Add Customer</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigate('/veterinarian/vet-customers')}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="search" size={28} color="#7B2C2C" />
+              </View>
+              <Text style={styles.actionText}>Search Patient</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigate('/veterinarian/vet-calendar')}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="calendar" size={28} color="#7B2C2C" />
+              </View>
+              <Text style={styles.actionText}>Calendar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={() => navigate('/veterinarian/vet-appointments')}>
+              <View style={styles.iconCircle}>
+                <Ionicons name="list" size={28} color="#7B2C2C" />
+              </View>
+              <Text style={styles.actionText}>View All Appointments</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+
         {/* Today's Appointments */}
         <View style={styles.recentActivity}>
-          <ThemedText style={styles.sectionTitle}>Today's Appointments</ThemedText>
+          <ThemedText style={[styles.sectionTitle, { marginBottom: 12 }]}>Today's Appointments</ThemedText>
           <View style={styles.activityCard}>
             {todayAppointmentsList.length > 0 ? (
               todayAppointmentsList.map((appointment, index) => {
@@ -564,7 +559,7 @@ export default function VetMobile() {
         {/* Upcoming Appointments */}
         {upcomingAppointmentsList.length > 0 && (
           <View style={styles.recentActivity}>
-            <ThemedText style={styles.sectionTitle}>Upcoming Appointments</ThemedText>
+            <ThemedText style={[styles.sectionTitle, { marginBottom: 12 }]}>Upcoming Appointments</ThemedText>
             <View style={styles.activityCard}>
               {upcomingAppointmentsList.map((appointment, index) => {
                 try {
@@ -850,6 +845,7 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 20,
+    fontFamily: 'Satoshi',
     color: Colors.text.primary,
     marginBottom: 5,
   },
@@ -862,76 +858,98 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.text.secondary,
   },
-  statsGrid: {
+  statsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    gap: 12,
+    justifyContent: 'space-around',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    paddingVertical: 20,
+    marginBottom: 32,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
   },
-  statCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
+  statItem: {
     alignItems: 'center',
-    width: '48%',
-    elevation: 3,
-    shadowColor: '#7B2C2C',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    marginBottom: 12,
+    flex: 1,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    fontFamily: 'sans-serif',
+    color: '#1f2937',
+    marginTop: 8,
+  },
+  statText: {
+    fontSize: 12,
+    fontFamily: 'sans-serif',
+    color: '#6b7280',
+    marginTop: 4,
   },
   statValue: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: 'bold',
+    fontFamily: 'sans-serif',
     color: '#7B2C2C',
     marginVertical: 8,
   },
   statLabel: {
     fontSize: 11,
+    fontFamily: 'sans-serif',
     color: '#6b7280',
     textAlign: 'center',
     fontWeight: '500',
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  scrollButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  scrollButton: {
+    marginRight: 8,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    fontFamily: 'sans-serif',
     color: '#7B2C2C',
-    marginBottom: 16,
   },
   quickActions: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
-  actionsGrid: {
+  actionsScroll: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 12,
   },
   actionCard: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 12,
     alignItems: 'center',
-    width: '30%',
-    marginBottom: 12,
-    elevation: 3,
-    shadowColor: '#7B2C2C',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    width: 80,
+    marginRight: 8,
+    padding: 4,
+  },
+  iconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   actionText: {
-    fontSize: 11,
+    fontSize: 9,
+    fontFamily: 'sans-serif',
     color: '#374151',
     marginTop: 8,
     textAlign: 'center',
-    fontWeight: '600',
+    fontWeight: 'normal',
   },
   modalOverlay: {
     flex: 1,
@@ -1056,16 +1074,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   activityCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
     padding: 16,
-    elevation: 2,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    borderWidth: 1,
-    borderColor: Colors.border.light,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    borderWidth: 0,
   },
   activityItem: {
     flexDirection: 'row',
@@ -1081,11 +1098,13 @@ const styles = StyleSheet.create({
   activityTitle: {
     fontSize: 14,
     fontWeight: '500',
+    fontFamily: 'sans-serif',
     color: Colors.text.primary,
     marginBottom: 2,
   },
   activityTime: {
     fontSize: 12,
+    fontFamily: 'sans-serif',
     color: Colors.text.secondary,
   },
   loadingContainer: {
@@ -1096,6 +1115,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
+    fontFamily: 'sans-serif',
     color: Colors.text.secondary,
   },
   logoutModalContent: {
@@ -1223,6 +1243,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Satoshi',
     textAlign: 'center',
   },
   debugButton: {
@@ -1236,45 +1257,64 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Satoshi',
     textAlign: 'center',
   },
   quickStatsSection: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
   summaryCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: 12,
-    padding: 16,
-    elevation: 2,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    borderWidth: 1,
-    borderColor: Colors.border.light,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 20,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    borderWidth: 0,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 24,
+  },
+  firstSummaryRow: {
+    marginTop: 10,
+  },
+  lastSummaryRow: {
+    marginBottom: 8,
   },
   summaryItem: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flex: 1,
     paddingHorizontal: 8,
   },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
   summaryContent: {
-    marginLeft: 12,
+    flex: 1,
+    marginTop: 5,
   },
   summaryValue: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.primary,
+    fontWeight: '700',
+    fontFamily: 'sans-serif',
+    color: '#1f2937',
   },
   summaryLabel: {
-    fontSize: 12,
-    color: Colors.text.secondary,
-    marginTop: 2,
+    fontSize: 13,
+    fontFamily: 'sans-serif',
+    color: '#6b7280',
+    marginTop: 4,
+    fontWeight: '500',
   },
 });

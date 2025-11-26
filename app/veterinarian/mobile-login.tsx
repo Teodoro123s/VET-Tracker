@@ -67,27 +67,26 @@ export default function MobileLogin() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.loginCard}>
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Image source={require('@/assets/mobile-logo.png')} style={styles.logo} />
-          </View>
-          <Text style={styles.subtitle}>Veterinary Management System</Text>
+      <View style={styles.content}>
+        <View style={styles.logoContainer}>
+          <Image source={require('@/assets/Pawn_Logo_v2.png')} style={styles.logo} />
         </View>
+        
+        <Text style={styles.title}>Veterinary Login</Text>
+        <Text style={styles.subtitle}>Welcome back! Please sign in to continue.</Text>
+
+        {errorMessage ? (
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        ) : null}
 
         <View style={styles.formContainer}>
-          <View style={styles.errorContainer}>
-            {errorMessage ? (
-              <Text style={styles.errorText}>{errorMessage}</Text>
-            ) : null}
-          </View>
-          
+          <Text style={styles.inputLabel}>Email</Text>
           <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={18} color="#7B2C2C" style={styles.inputIcon} />
+            <Ionicons name="mail-outline" size={18} color="#7F1D1F" style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Email address (e.g., clinic@gmail.com)"
-              placeholderTextColor={Colors.text.muted}
+              placeholder="Email address"
+              placeholderTextColor="#999"
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
@@ -99,12 +98,13 @@ export default function MobileLogin() {
             />
           </View>
 
+          <Text style={styles.inputLabel}>Password</Text>
           <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={18} color="#7B2C2C" style={styles.inputIcon} />
+            <Ionicons name="lock-closed-outline" size={18} color="#7F1D1F" style={styles.inputIcon} />
             <TextInput
               style={[styles.input, styles.passwordInput]}
               placeholder="Password"
-              placeholderTextColor={Colors.text.muted}
+              placeholderTextColor="#999"
               value={password}
               onChangeText={(text) => {
                 setPassword(text);
@@ -122,15 +122,21 @@ export default function MobileLogin() {
               <Ionicons 
                 name={showPassword ? "eye-off-outline" : "eye-outline"} 
                 size={18} 
-                color="#7B2C2C" 
+                color="#7F1D1F" 
               />
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.rememberRow} onPress={() => setRememberMe(!rememberMe)}>
-            <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]} />
-            <Text style={styles.rememberText}>{rememberMe ? 'Keep me signed in' : 'Sign me out on close'}</Text>
-          </TouchableOpacity>
+          <View style={styles.optionsRow}>
+            <TouchableOpacity style={styles.rememberRow} onPress={() => setRememberMe(!rememberMe)}>
+              <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]} />
+              <Text style={styles.rememberText}>Remember me</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity onPress={() => setShowForgotPassword(true)}>
+              <Text style={styles.forgotPasswordText}>Forgot password</Text>
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity 
             style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
@@ -141,13 +147,6 @@ export default function MobileLogin() {
             <Text style={styles.loginButtonText}>
               {loading ? 'Signing in...' : 'Sign In'}
             </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.forgotPassword} 
-            onPress={() => setShowForgotPassword(true)}
-          >
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -164,74 +163,76 @@ export default function MobileLogin() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5E6D3',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    backgroundColor: '#FAFAFF',
   },
-  loginCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 12,
-    padding: 40,
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: '#7B2C2C',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  header: {
+  content: {
+    flex: 1,
+    paddingHorizontal: 40,
+    paddingTop: 80,
     alignItems: 'center',
-    marginBottom: 16,
   },
   logoContainer: {
-    width: 120,
-    height: 120,
-    justifyContent: 'center',
+    marginBottom: 40,
     alignItems: 'center',
-    marginBottom: 8,
   },
   logo: {
-    width: 120,
-    height: 120,
+    width: 130,
+    height: 130,
     resizeMode: 'contain',
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#7B2C2C',
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    fontFamily: 'sans-serif',
+    color: '#7F1D1F',
+    marginBottom: 8,
     textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 15,
+    fontWeight: 'normal',
+    fontFamily: 'sans-serif',
+    color: '#7F1D1F',
+    opacity: 0.6,
+    textAlign: 'center',
+    marginBottom: 80,
+  },
+  errorText: {
+    color: '#ff0000',
+    fontSize: 14,
+    fontFamily: 'sans-serif',
+    textAlign: 'center',
+    marginBottom: 20,
+    backgroundColor: '#ffe6e6',
+    padding: 10,
+    borderRadius: 6,
+    width: '100%',
   },
   formContainer: {
     width: '100%',
+    maxWidth: 300,
   },
-  errorContainer: {
-    minHeight: 40,
-    marginBottom: 8,
-    justifyContent: 'center',
-  },
-  errorText: {
-    color: Colors.status.error,
+  inputLabel: {
     fontSize: 14,
-    textAlign: 'center',
-    backgroundColor: Colors.status.error + '20',
-    borderColor: Colors.status.error,
-    borderWidth: 1,
-    borderRadius: 6,
-    padding: 12,
+    fontFamily: 'sans-serif',
+    color: '#7F1D1F',
+    marginBottom: 8,
+    marginTop: 8,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f8f9fa',
     borderRadius: 8,
-    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#7F1D1F80',
+    marginBottom: 16,
     paddingHorizontal: 16,
-    shadowColor: '#7B2C2C',
+    shadowColor: '#7F1D1F',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
   inputIcon: {
     marginRight: 12,
@@ -240,7 +241,8 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     fontSize: 14,
-    color: Colors.text.primary,
+    fontFamily: 'sans-serif',
+    color: '#333',
   },
   passwordInput: {
     paddingRight: 40,
@@ -250,49 +252,54 @@ const styles = StyleSheet.create({
     right: 16,
     padding: 4,
   },
-  loginButton: {
-    backgroundColor: '#7B2C2C',
-    borderRadius: 8,
-    paddingVertical: 14,
+  optionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 8,
-  },
-  loginButtonDisabled: {
-    backgroundColor: '#5A1F1F',
-  },
-  loginButtonText: {
-    color: Colors.text.inverse,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  forgotPassword: {
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  forgotPasswordText: {
-    color: '#7B2C2C',
-    fontSize: 14,
-    fontWeight: '500',
+    marginBottom: 32,
   },
   rememberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 8,
   },
   checkbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
+    width: 16,
+    height: 16,
+    borderRadius: 2,
     borderWidth: 1,
     borderColor: '#ddd',
     marginRight: 8,
     backgroundColor: 'transparent',
   },
   checkboxChecked: {
-    backgroundColor: '#7B2C2C',
+    backgroundColor: '#7F1D1F',
+    borderColor: '#7F1D1F',
   },
   rememberText: {
-    color: '#7B2C2C',
     fontSize: 14,
+    fontFamily: 'sans-serif',
+    color: '#666',
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    fontFamily: 'sans-serif',
+    color: '#7F1D1F',
+    textDecorationLine: 'underline',
+  },
+  loginButton: {
+    backgroundColor: '#7F1D1F',
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+    width: '100%',
+  },
+  loginButtonDisabled: {
+    backgroundColor: '#999',
+  },
+  loginButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'sans-serif',
   },
 });

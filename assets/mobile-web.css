@@ -1,0 +1,72 @@
+/* Mobile-first responsive design for web */
+@media screen and (min-width: 768px) {
+  /* Desktop/tablet view - simulate mobile phone */
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  #root {
+    width: 375px !important;
+    max-width: 375px !important;
+    height: 812px !important;
+    max-height: 812px !important;
+    border-radius: 25px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    border: 8px solid #2c3e50;
+    position: relative;
+    background: white;
+  }
+
+  /* Add mobile phone notch simulation */
+  #root::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 150px;
+    height: 25px;
+    background: #2c3e50;
+    border-radius: 0 0 15px 15px;
+    z-index: 1000;
+  }
+
+  /* Ensure content fits within mobile frame */
+  #root > * {
+    height: 100%;
+    overflow: hidden;
+  }
+}
+
+/* Mobile view - use full screen */
+@media screen and (max-width: 767px) {
+  body {
+    margin: 0;
+    padding: 0;
+  }
+
+  #root {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+  }
+}
+
+/* Prevent horizontal scrolling */
+html, body {
+  overflow-x: hidden;
+}
+
+/* Ensure React Native Web styles work properly */
+* {
+  box-sizing: border-box;
+}

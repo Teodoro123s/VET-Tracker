@@ -589,31 +589,36 @@ export default function VetCustomers() {
         ) : selectedPet && !showMedicalView && !selectedMedicalRecord ? (
           <View style={styles.petDetailsView}>
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
-              <View style={{ paddingTop: 20, paddingBottom: 5, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#800020' }}>Pet Details</Text>
-              </View>
+
               <View style={{ padding: 20 }}>
-                <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(123, 44, 44, 0.1)', marginBottom: 20, elevation: 8, shadowColor: '#7B2C2C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}>
-                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#eee', paddingVertical: 8 }}>
-                    <Text style={{ flex: 1, fontWeight: 'bold', color: '#800020' }}>Field</Text>
-                    <Text style={{ flex: 2, fontWeight: 'bold', color: '#800020' }}>Value</Text>
+                <View style={styles.detailCard}>
+                  <View style={styles.detailProfileContainer}>
+                    <Ionicons name="paw" size={60} color="#7B2C2C" />
                   </View>
-                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
-                    <Text style={{ flex: 1, color: '#333' }}>Name</Text>
-                    <Text style={{ flex: 2, color: '#333' }}>{selectedPet.name || 'N/A'}</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
-                    <Text style={{ flex: 1, color: '#333' }}>Species</Text>
-                    <Text style={{ flex: 2, color: '#333' }}>{selectedPet.species || 'N/A'}</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
-                    <Text style={{ flex: 1, color: '#333' }}>Breed</Text>
-                    <Text style={{ flex: 2, color: '#333' }}>{selectedPet.breed || 'N/A'}</Text>
+                  <View style={styles.detailInfoContainer}>
+                    <View style={styles.detailFieldRow}>
+                      <Text style={styles.detailFieldTitle}>Name: </Text>
+                      <Text style={styles.detailName}>
+                        {selectedPet.name || 'N/A'}
+                      </Text>
+                    </View>
+                    <View style={styles.detailFieldRow}>
+                      <Text style={styles.detailFieldTitle}>Species: </Text>
+                      <Text style={styles.detailEmail}>
+                        {selectedPet.species || 'N/A'}
+                      </Text>
+                    </View>
+                    <View style={styles.detailFieldRow}>
+                      <Text style={styles.detailFieldTitle}>Breed: </Text>
+                      <Text style={styles.detailContact}>
+                        {selectedPet.breed || 'N/A'}
+                      </Text>
+                    </View>
                   </View>
                 </View>
 
                 {/* Medical Records Section */}
-                <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(123, 44, 44, 0.1)', marginBottom: 20, elevation: 8, shadowColor: '#7B2C2C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}>
+                <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.05)', marginBottom: 20, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3 }}>
                   <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#800020' }}>Medical Records</Text>
@@ -694,35 +699,42 @@ export default function VetCustomers() {
         ) : selectedCustomer && !showPetsView && !selectedPet ? (
           <View style={styles.customerDetailsView}>
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
-              <View style={{ paddingTop: 20, paddingBottom: 5, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#800020' }}>Customer Details</Text>
-              </View>
+
               <View style={{ padding: 20 }}>
-                <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(123, 44, 44, 0.1)', marginBottom: 20, elevation: 8, shadowColor: '#7B2C2C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}>
-                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#eee', paddingVertical: 8 }}>
-                    <Text style={{ flex: 1, fontWeight: 'bold', color: '#800020' }}>Field</Text>
-                    <Text style={{ flex: 2, fontWeight: 'bold', color: '#800020' }}>Value</Text>
+                <View style={styles.detailCard}>
+                  <View style={styles.detailProfileContainer}>
+                    <Ionicons name="person-circle" size={60} color="#7B2C2C" />
                   </View>
-                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
-                    <Text style={{ flex: 1, color: '#333' }}>Name</Text>
-                    <Text style={{ flex: 2, color: '#333' }}>{selectedCustomer?.name || `${selectedCustomer?.firstname || ''} ${selectedCustomer?.surname || ''}`.trim() || 'N/A'}</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
-                    <Text style={{ flex: 1, color: '#333' }}>Contact</Text>
-                    <Text style={{ flex: 2, color: '#333' }}>{selectedCustomer?.contact || 'N/A'}</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
-                    <Text style={{ flex: 1, color: '#333' }}>Email</Text>
-                    <Text style={{ flex: 2, color: '#333' }}>{selectedCustomer?.email || 'N/A'}</Text>
-                  </View>
-                  <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f0f0f0', paddingVertical: 8 }}>
-                    <Text style={{ flex: 1, color: '#333' }}>Address</Text>
-                    <Text style={{ flex: 2, color: '#333' }}>{selectedCustomer?.address || 'N/A'}</Text>
+                  <View style={styles.detailInfoContainer}>
+                    <View style={styles.detailFieldRow}>
+                      <Text style={styles.detailFieldTitle}>Name: </Text>
+                      <Text style={styles.detailName}>
+                        {selectedCustomer?.name || `${selectedCustomer?.firstname || ''} ${selectedCustomer?.surname || ''}`.trim() || 'Unknown Customer'}
+                      </Text>
+                    </View>
+                    <View style={styles.detailFieldRow}>
+                      <Text style={styles.detailFieldTitle}>Email: </Text>
+                      <Text style={styles.detailEmail}>
+                        {selectedCustomer?.email || 'No email provided'}
+                      </Text>
+                    </View>
+                    <View style={styles.detailFieldRow}>
+                      <Text style={styles.detailFieldTitle}>Number: </Text>
+                      <Text style={styles.detailContact}>
+                        {selectedCustomer?.contact || 'No contact provided'}
+                      </Text>
+                    </View>
+                    <View style={styles.detailFieldRow}>
+                      <Text style={styles.detailFieldTitle}>Address: </Text>
+                      <Text style={styles.detailAddress}>
+                        {selectedCustomer?.address || 'No address provided'}
+                      </Text>
+                    </View>
                   </View>
                 </View>
                 
                 {/* Pets Summary Section */}
-                <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(123, 44, 44, 0.1)', marginBottom: 20, elevation: 8, shadowColor: '#7B2C2C', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}>
+                <View style={{ backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.05)', marginBottom: 20, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3 }}>
                   <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Text style={{ fontSize: 18, fontWeight: 'bold', color: '#800020' }}>Pets ({customerPets.length})</Text>
@@ -838,9 +850,29 @@ export default function VetCustomers() {
                 style={styles.customerRow}
                 onPress={() => setSelectedCustomer(customer)}
               >
-                <Text style={styles.customerName}>
-                  {customer.name || `${customer.firstname || ''} ${customer.surname || ''}`.trim() || 'Unknown Customer'}
-                </Text>
+                <View style={styles.profileImageContainer}>
+                  <Ionicons name="person-circle" size={50} color="#7B2C2C" />
+                </View>
+                <View style={styles.customerInfo}>
+                  <View style={styles.customerField}>
+                    <Text style={styles.fieldTitle}>Name:</Text>
+                    <Text style={styles.customerName}>
+                      {customer.name || `${customer.firstname || ''} ${customer.surname || ''}`.trim() || 'Unknown Customer'}
+                    </Text>
+                  </View>
+                  <View style={styles.customerField}>
+                    <Text style={styles.fieldTitle}>Email:</Text>
+                    <Text style={styles.customerEmail}>
+                      {customer.email || 'No email provided'}
+                    </Text>
+                  </View>
+                  <View style={styles.customerField}>
+                    <Text style={styles.fieldTitle}>Pets:</Text>
+                    <Text style={styles.customerPets}>
+                      {customer.pets || 0}
+                    </Text>
+                  </View>
+                </View>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -865,14 +897,7 @@ export default function VetCustomers() {
         </TouchableOpacity>
       )}
       
-      {showMedicalView && selectedCustomer && selectedPet && (
-        <TouchableOpacity 
-          style={styles.addRecordButton}
-          onPress={() => setShowAddRecordModal(true)}
-        >
-          <Ionicons name="document-text" size={24} color="#fff" />
-        </TouchableOpacity>
-      )}
+
 
       <Modal
         visible={showAddModal}
@@ -1398,7 +1423,7 @@ export default function VetCustomers() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAFF',
   },
 
   title: {
@@ -1465,31 +1490,111 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAFF',
   },
   scrollableList: {
     flex: 1,
     paddingBottom: 100,
   },
   customerRow: {
-    backgroundColor: '#fff',
-    paddingVertical: 18,
-    paddingHorizontal: 20,
-    marginHorizontal: 16,
-    marginBottom: 8,
+    backgroundColor: '#FAFAFF',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    elevation: 3,
-    shadowColor: '#7B2C2C',
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    marginHorizontal: 10,
+    marginBottom: 10,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 16,
+  },
+  profileImageContainer: {
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customerInfo: {
+    flex: 1,
+  },
+  customerField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  fieldTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7B2C2C',
+    width: 50,
   },
   customerName: {
-    fontSize: 17,
-    color: '#374151',
+    fontSize: 14,
+    color: '#1C1C1E',
+    flex: 1,
+  },
+  customerEmail: {
+    fontSize: 14,
+    color: '#666',
+    flex: 1,
+  },
+  customerPets: {
+    fontSize: 14,
+    color: '#7B2C2C',
+    fontWeight: '500',
+    flex: 1,
+  },
+  detailCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+    marginBottom: 20,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  detailProfileContainer: {
+    marginRight: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailInfoContainer: {
+    flex: 1,
+  },
+  detailFieldRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  detailFieldTitle: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#7B2C2C',
+  },
+  detailName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+  },
+  detailContact: {
+    fontSize: 14,
+    color: '#666',
+  },
+  detailEmail: {
+    fontSize: 14,
+    color: '#666',
+  },
+  detailAddress: {
+    fontSize: 14,
+    color: '#666',
   },
   loadingContainer: {
     flex: 1,

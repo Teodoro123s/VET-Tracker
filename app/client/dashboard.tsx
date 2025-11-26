@@ -13,6 +13,27 @@ import { getAppointments, getCustomers, getMedicalForms, getPets, getVeterinaria
 
 const screenWidth = Dimensions.get('window').width;
 
+// Time constants
+const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+const MILLISECONDS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
+const MILLISECONDS_PER_MINUTE = 60 * 1000;
+
+// Helper function for parsing appointment dates
+const parseAppointmentDate = (appointmentDate: any): Date | null => {
+  try {
+    if (!appointmentDate) return null;
+    if (appointmentDate.seconds) {
+      return new Date(appointmentDate.seconds * 1000);
+    }
+    const date = new Date(appointmentDate);
+    return isNaN(date.getTime()) ? null : date;
+  } catch (error) {
+    console.error('Error parsing appointment date:', error);
+    return null;
+  }
+};
+
 export default function Dashboard() {
   const { userEmail } = useTenant();
   const { user } = useAuth();
@@ -37,8 +58,8 @@ export default function Dashboard() {
     totalAppointments: 0
   });
   const [loading, setLoading] = useState(true);
-  const [recentActivity, setRecentActivity] = useState([]);
-  const [todayAppointments, setTodayAppointments] = useState([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [todayAppointments, setTodayAppointments] = useState<any[]>([]);
 
   const handleNavigation = async (route: string | null) => {
     if (!route) return;
@@ -50,7 +71,7 @@ export default function Dashboard() {
       }
     } catch (error) {
       console.error(`Navigation error to ${route}:`, error);
-      alert('Failed to navigate. Please try again.');
+      Alert.alert('Navigation Error', 'Failed to navigate. Please try again.');
     }
   };
 
@@ -100,17 +121,8 @@ export default function Dashboard() {
 
       const today = new Date().toDateString();
       const todayAppointmentsCount = appointments.filter(apt => {
-        try {
-          let aptDate;
-          if (apt.appointmentDate?.seconds) {
-            aptDate = new Date(apt.appointmentDate.seconds * 1000);
-          } else {
-            aptDate = new Date(apt.appointmentDate);
-          }
-          return aptDate.toDateString() === today;
-        } catch {
-          return false;
-        }
+        const aptDate = parseAppointmentDate(apt.appointmentDate);
+        return aptDate ? aptDate.toDateString() === today : false;
       }).length;
 
       setStats({
@@ -124,17 +136,8 @@ export default function Dashboard() {
 
       // Get today's appointments with details
       const todayAppointmentDetails = appointments.filter(apt => {
-        try {
-          let aptDate;
-          if (apt.appointmentDate?.seconds) {
-            aptDate = new Date(apt.appointmentDate.seconds * 1000);
-          } else {
-            aptDate = new Date(apt.appointmentDate);
-          }
-          return aptDate.toDateString() === today;
-        } catch {
-          return false;
-        }
+        const aptDate = parseAppointmentDate(apt.appointmentDate);
+        return aptDate ? aptDate.toDateString() === today : false;
       }).slice(0, 5);
       setTodayAppointments(todayAppointmentDetails);
 
@@ -143,80 +146,107 @@ export default function Dashboard() {
 
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+      Alert.alert('Data Error', 'Failed to load dashboard data. Please refresh.');
     } finally {
       setLoading(false);
     }
   };
 
-  const generateRecentActivity = (customers, appointments, pets) => {
-    const activities = [];
-    const now = new Date();
+  const generateRecentActivity = (customers: any[], appointments: any[], pets: any[]) => {
+    try {
+      const activities = [];
+      const now = new Date();
 
-    // Recent appointments
-    const recentAppointments = appointments
-      .filter(apt => {
-        try {
-          const aptDate = apt.appointmentDate?.seconds 
-            ? new Date(apt.appointmentDate.seconds * 1000)
-            : new Date(apt.appointmentDate);
-          return (now.getTime() - aptDate.getTime()) < 24 * 60 * 60 * 1000 && aptDate.getTime() <= now.getTime();
-        } catch { return false; }
-      })
-      .slice(0, 2);
+      // Recent appointments
+      const recentAppointments = appointments
+        .filter(apt => {
+          const aptDate = parseAppointmentDate(apt.appointmentDate);
+          if (!aptDate) return false;
+          const timeDiff = now.getTime() - aptDate.getTime();
+          return timeDiff < MILLISECONDS_PER_DAY && timeDiff >= 0;
+        })
+        .slice(0, 2);
 
-    recentAppointments.forEach((apt, index) => {
-      activities.push({
-        id: `apt-${index}`,
-        type: 'appointment',
-        message: `Appointment: ${apt.petName || 'Pet'} with ${apt.veterinarian || 'Doctor'}`,
-        time: getTimeAgo(apt.appointmentDate?.seconds ? new Date(apt.appointmentDate.seconds * 1000) : new Date(apt.appointmentDate)),
-        icon: 'calendar'
+      recentAppointments.forEach((apt, index) => {
+        const aptDate = parseAppointmentDate(apt.appointmentDate);
+        if (aptDate) {
+          activities.push({
+            id: `apt-${index}`,
+            type: 'appointment',
+            message: `Appointment: ${apt.petName || 'Pet'} with ${apt.veterinarian || 'Doctor'}`,
+            time: getTimeAgo(aptDate),
+            icon: 'calendar'
+          });
+        }
       });
-    });
 
-    // Recent customers
-    const recentCustomers = customers
-      .filter(customer => {
+      // Recent customers
+      const recentCustomers = customers
+        .filter(customer => {
+          try {
+            const createdDate = customer.createdAt?.seconds 
+              ? new Date(customer.createdAt.seconds * 1000)
+              : new Date(customer.createdAt || customer.dateAdded);
+            if (isNaN(createdDate.getTime())) return false;
+            return (now.getTime() - createdDate.getTime()) < MILLISECONDS_PER_WEEK;
+          } catch (error) {
+            console.error('Error parsing customer creation date:', error);
+            return false;
+          }
+        })
+        .slice(0, 2);
+
+      recentCustomers.forEach((customer, index) => {
         try {
+          const firstName = customer.firstname || customer.firstName || customer.name || 'Customer';
+          const lastName = customer.lastname || customer.lastName || '';
+          const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+          
           const createdDate = customer.createdAt?.seconds 
             ? new Date(customer.createdAt.seconds * 1000)
             : new Date(customer.createdAt || customer.dateAdded);
-          return (now.getTime() - createdDate.getTime()) < 7 * 24 * 60 * 60 * 1000;
-        } catch { return false; }
-      })
-      .slice(0, 2);
-
-    recentCustomers.forEach((customer, index) => {
-      const firstName = customer.firstname || customer.firstName || customer.name || 'Customer';
-      const lastName = customer.lastname || customer.lastName || '';
-      const fullName = lastName ? `${firstName} ${lastName}` : firstName;
-      
-      activities.push({
-        id: `cust-${index}`,
-        type: 'customer',
-        message: `New customer: ${fullName}`,
-        time: getTimeAgo(customer.createdAt?.seconds ? new Date(customer.createdAt.seconds * 1000) : new Date(customer.createdAt || customer.dateAdded)),
-        icon: 'person-add'
+          
+          if (!isNaN(createdDate.getTime())) {
+            activities.push({
+              id: `cust-${index}`,
+              type: 'customer',
+              message: `New customer: ${fullName}`,
+              time: getTimeAgo(createdDate),
+              icon: 'person-add'
+            });
+          }
+        } catch (error) {
+          console.error('Error processing customer activity:', error);
+        }
       });
-    });
 
-    setRecentActivity(activities.slice(0, 4));
+      setRecentActivity(activities.slice(0, 4));
+    } catch (error) {
+      console.error('Error generating recent activity:', error);
+      setRecentActivity([]);
+    }
   };
 
-  const getTimeAgo = (date) => {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
+  const getTimeAgo = (date: Date) => {
+    try {
+      if (!date || isNaN(date.getTime())) return 'Unknown';
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / MILLISECONDS_PER_MINUTE);
+      const diffHours = Math.floor(diffMs / MILLISECONDS_PER_HOUR);
+      const diffDays = Math.floor(diffMs / MILLISECONDS_PER_DAY);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${diffDays}d ago`;
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      return `${diffDays}d ago`;
+    } catch (error) {
+      console.error('Error calculating time ago:', error);
+      return 'Unknown';
+    }
   };
 
-  const getActivityColor = (type) => {
+  const getActivityColor = (type: string) => {
     switch (type) {
       case 'appointment': return '#F59E0B';
       case 'customer': return '#3B82F6';
@@ -256,7 +286,7 @@ export default function Dashboard() {
               )}
             </View>
             <View style={styles.profileInfo}>
-              <Text style={styles.adminName}>{user?.email || userEmail || 'admin@clinic.com'}</Text>
+              <Text style={styles.adminName}>{(user?.email || userEmail || 'admin@clinic.com').toString().substring(0, 30)}</Text>
               <Text style={styles.adminRole}>Administrator</Text>
             </View>
             <Ionicons name="chevron-down" size={16} color="#666" />
@@ -362,10 +392,10 @@ export default function Dashboard() {
                   recentActivity.map((activity) => (
                     <View key={activity.id} style={styles.activityItem}>
                       <View style={[styles.activityIcon, { backgroundColor: getActivityColor(activity.type) }]}>
-                        <Ionicons name={activity.icon} size={16} color="#FFFFFF" />
+                        <Ionicons name={activity.icon as any} size={16} color="#FFFFFF" />
                       </View>
                       <View style={styles.activityContent}>
-                        <Text style={styles.activityMessage}>{activity.message}</Text>
+                        <Text style={styles.activityMessage}>{(activity.message || '').toString().substring(0, 100)}</Text>
                         <Text style={styles.activityTime}>{activity.time}</Text>
                       </View>
                     </View>
@@ -387,14 +417,22 @@ export default function Dashboard() {
               <ScrollView style={styles.appointmentsScrollView} showsVerticalScrollIndicator={false}>
                 {todayAppointments.length > 0 ? (
                   todayAppointments.map((appointment, index) => {
-                    const appointmentTime = appointment.appointmentDate?.seconds 
-                      ? new Date(appointment.appointmentDate.seconds * 1000)
-                      : new Date(appointment.appointmentDate);
-                    const timeString = appointmentTime.toLocaleTimeString('en-US', { 
-                      hour: 'numeric', 
-                      minute: '2-digit', 
-                      hour12: true 
-                    });
+                    let appointmentTime: Date;
+                    let timeString = 'Invalid time';
+                    
+                    try {
+                      appointmentTime = parseAppointmentDate(appointment.appointmentDate);
+                      
+                      if (appointmentTime) {
+                        timeString = appointmentTime.toLocaleTimeString('en-US', { 
+                          hour: 'numeric', 
+                          minute: '2-digit', 
+                          hour12: true 
+                        });
+                      }
+                    } catch (error) {
+                      console.error('Error parsing appointment time:', error);
+                    }
                     
                     return (
                       <View key={index} style={styles.appointmentItem}>
@@ -403,10 +441,10 @@ export default function Dashboard() {
                         </View>
                         <View style={styles.appointmentDetails}>
                           <Text style={styles.appointmentPatient}>
-                            {appointment.petName || 'Pet'} - {appointment.reason || 'Appointment'}
+                            {(appointment.petName || 'Pet').toString().substring(0, 50)} - {(appointment.reason || 'Appointment').toString().substring(0, 30)}
                           </Text>
                           <Text style={styles.appointmentOwner}>
-                            {appointment.customerName || 'Customer'}
+                            {(appointment.customerName || 'Customer').toString().substring(0, 40)}
                           </Text>
                         </View>
                       </View>
@@ -459,10 +497,9 @@ export default function Dashboard() {
         visible={showImageModal}
         previewImage={previewImage}
         uploading={uploading}
-        onGalleryUpload={handleGalleryUpload}
-        onSaveImage={handleSaveImage}
-        onCancel={handleCancelUpload}
-        primaryColor="#800000"
+        onGalleryPress={handleGalleryUpload}
+        onSave={handleSaveImage}
+        onClose={handleCancelUpload}
       />
     </View>
   );

@@ -1,61 +1,78 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/Colors';
 
 interface ProfileImageModalProps {
   visible: boolean;
+  onClose: () => void;
+  onGalleryPress: () => void;
+  onSave: () => void;
   previewImage: string | null;
   uploading: boolean;
-  onGalleryUpload: () => void;
-  onSaveImage: () => void;
-  onCancel: () => void;
-  primaryColor?: string;
 }
 
 export default function ProfileImageModal({
   visible,
+  onClose,
+  onGalleryPress,
+  onSave,
   previewImage,
-  uploading,
-  onGalleryUpload,
-  onSaveImage,
-  onCancel,
-  primaryColor = '#800000'
+  uploading
 }: ProfileImageModalProps) {
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={onClose}
+    >
       <View style={styles.modalOverlay}>
-        <View style={styles.imageModal}>
-          <Text style={styles.modalTitle}>Update Profile Picture</Text>
-          <View style={styles.imagePreview}>
-            {previewImage ? (
-              <Image source={{ uri: previewImage }} style={styles.previewImage} />
-            ) : (
-              <View style={styles.placeholderImage}>
-                <Ionicons name="person" size={40} color="#666" />
-              </View>
-            )}
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Update Profile Image</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
           </View>
-          {!previewImage ? (
-            <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.uploadButton, { backgroundColor: primaryColor }]} onPress={onGalleryUpload}>
-                <Ionicons name="cloud-upload" size={20} color="#fff" />
-                <Text style={styles.uploadButtonText}>Upload</Text>
-              </TouchableOpacity>
+
+          {previewImage ? (
+            <View style={styles.previewContainer}>
+              <Image source={{ uri: previewImage }} style={styles.previewImage} />
+              <View style={styles.previewActions}>
+                <TouchableOpacity 
+                  style={styles.changeButton}
+                  onPress={onGalleryPress}
+                  disabled={uploading}
+                >
+                  <Ionicons name="images" size={20} color={Colors.primary} />
+                  <Text style={styles.changeButtonText}>Change Image</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.saveButton, uploading && styles.disabledButton]}
+                  onPress={onSave}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <>
+                      <Ionicons name="checkmark" size={20} color="white" />
+                      <Text style={styles.saveButtonText}>Save</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           ) : (
-            <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.saveButton, { backgroundColor: primaryColor }]} onPress={onSaveImage} disabled={uploading}>
-                {uploading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.saveButtonText}>Save</Text>
-                )}
+            <View style={styles.uploadContainer}>
+              <TouchableOpacity 
+                style={styles.uploadButton}
+                onPress={onGalleryPress}
+              >
+                <Ionicons name="images" size={48} color={Colors.primary} />
+                <Text style={styles.uploadText}>Select from Gallery</Text>
+                <Text style={styles.uploadSubtext}>Choose a photo from your device</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -68,86 +85,100 @@ export default function ProfileImageModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  imageModal: {
-    backgroundColor: '#fff',
+  modalContent: {
+    backgroundColor: 'white',
     borderRadius: 12,
-    padding: 24,
-    width: 320,
-    alignItems: 'center',
+    padding: 12,
+    marginHorizontal: 12,
+    width: '95%',
+    maxWidth: 300,
   },
-  imagePreview: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
-    overflow: 'hidden',
-  },
-  previewImage: {
-    width: 100,
-    height: 100,
-  },
-  placeholderImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#e9ecef',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 20,
   },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
+  closeButton: {
+    padding: 4,
   },
-  saveButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    flex: 1,
+  uploadContainer: {
     alignItems: 'center',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  cancelButton: {
-    backgroundColor: '#f8f9fa',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    flex: 1,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: '#666',
-    fontSize: 16,
+    paddingVertical: 20,
   },
   uploadButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    alignItems: 'center',
+    padding: 12,
+    borderWidth: 2,
+    borderColor: Colors.primary,
+    borderStyle: 'dashed',
     borderRadius: 8,
+    width: '100%',
+  },
+  uploadText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.primary,
+    marginTop: 8,
+  },
+  uploadSubtext: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  previewContainer: {
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginBottom: 12,
+  },
+  previewActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  changeButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderRadius: 8,
     gap: 8,
-    flex: 1,
   },
-  uploadButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  changeButtonText: {
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  saveButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: Colors.primary,
+    borderRadius: 8,
+    gap: 8,
+  },
+  saveButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });

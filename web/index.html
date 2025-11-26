@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=375, height=812, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>VET Tracker - Mobile View</title>
+  <link rel="stylesheet" href="./mobile-web.css" />
+  <style>
+    /* Inline critical CSS for immediate mobile simulation */
+    @media screen and (min-width: 768px) {
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        margin: 0;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+
+      #root {
+        width: 375px !important;
+        max-width: 375px !important;
+        height: 812px !important;
+        max-height: 812px !important;
+        border-radius: 25px;
+        overflow: hidden;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        border: 8px solid #2c3e50;
+        position: relative;
+        background: white;
+      }
+
+      #root::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 150px;
+        height: 25px;
+        background: #2c3e50;
+        border-radius: 0 0 15px 15px;
+        z-index: 1000;
+      }
+    }
+
+    @media screen and (max-width: 767px) {
+      #root {
+        width: 100vw !important;
+        height: 100vh !important;
+      }
+    }
+
+    html, body {
+      overflow-x: hidden;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+</body>
+</html>

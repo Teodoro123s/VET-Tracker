@@ -1,11 +1,9 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { updateAppointment, deleteAppointment } from '../../lib/services/firebaseService';
 import { useAuth } from '../../contexts/AuthContext';
-import { Colors } from '../../constants/Colors';
-import AdminLayout from '../../components/AdminLayout';
 
 export default function AppointmentDetails() {
   const router = useRouter();
@@ -13,7 +11,6 @@ export default function AppointmentDetails() {
   const params = useLocalSearchParams();
   
   const [appointment, setAppointment] = useState(null);
-  const [showDropdown, setShowDropdown] = useState(false);
 
 
   useEffect(() => {
@@ -132,177 +129,126 @@ export default function AppointmentDetails() {
   const { date, time } = formatDateTime(appointment);
 
   return (
-    <AdminLayout>
-      <View style={styles.container}>
+    <View style={styles.container}>
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.detailTable}>
-          <View style={styles.detailTableHeader}>
-            <Text style={styles.detailHeaderCell}>Field</Text>
-            <Text style={styles.detailHeaderCell}>Value</Text>
-            {appointment.status !== 'Completed' && (
-              <View style={styles.headerActions}>
-                <TouchableOpacity style={styles.menuButton} onPress={() => setShowDropdown(!showDropdown)}>
-                  <Ionicons name="ellipsis-vertical" size={20} color="#7B2C2C" />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-          <View style={styles.detailTableRow}>
-            <Text style={styles.detailCell}>Customer</Text>
-            <Text style={styles.detailCell}>{appointment.customerName || 'N/A'}</Text>
-          </View>
-          <View style={styles.detailTableRow}>
-            <Text style={styles.detailCell}>Pet</Text>
-            <Text style={styles.detailCell}>{appointment.petName || 'N/A'}</Text>
-          </View>
-          <View style={styles.detailTableRow}>
-            <Text style={styles.detailCell}>Date</Text>
-            <Text style={styles.detailCell}>{date}</Text>
-          </View>
-          <View style={styles.detailTableRow}>
-            <Text style={styles.detailCell}>Time</Text>
-            <Text style={styles.detailCell}>{time}</Text>
-          </View>
-          <View style={styles.detailTableRow}>
-            <Text style={styles.detailCell}>Reason</Text>
-            <Text style={styles.detailCell}>{appointment.reason || appointment.service || 'N/A'}</Text>
-          </View>
-          <View style={styles.detailTableRow}>
-            <Text style={styles.detailCell}>Veterinarian</Text>
-            <Text style={styles.detailCell}>{appointment.veterinarian || 'Not assigned'}</Text>
-          </View>
-          <View style={styles.detailTableRow}>
-            <Text style={styles.detailCell}>Notes</Text>
-            <Text style={styles.detailCell}>{appointment.notes || 'No notes'}</Text>
-          </View>
-          <View style={styles.detailTableRow}>
-            <Text style={styles.detailCell}>Status</Text>
-            <Text style={[styles.detailCell, { color: getStatusColor(appointment.status), fontWeight: 'bold' }]}>{appointment.status}</Text>
+        <View style={styles.fieldContainer}>
+          <Text style={styles.fieldLabel}>Customer</Text>
+          <View style={styles.fieldBox}>
+            <Text style={styles.fieldValue}>{appointment.customerName || 'N/A'}</Text>
           </View>
         </View>
-      </ScrollView>
-      {showDropdown && (
-        <Modal transparent={true} visible={showDropdown} onRequestClose={() => setShowDropdown(false)}>
-          <TouchableOpacity style={styles.modalOverlay} onPress={() => setShowDropdown(false)}>
-            <View style={styles.dropdown}>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => { handleMarkDone(); setShowDropdown(false); }}>
-                <Text style={styles.dropdownText}>Done</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => { handleAddRecord(); setShowDropdown(false); }}>
-                <Text style={styles.dropdownText}>Add Record</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => { handleDelete(); setShowDropdown(false); }}>
-                <Text style={styles.dropdownText}>Delete</Text>
-              </TouchableOpacity>
+        
+        <View style={styles.fieldContainer}>
+          <Text style={styles.fieldLabel}>Pet</Text>
+          <View style={styles.fieldBox}>
+            <Text style={styles.fieldValue}>{appointment.petName || 'N/A'}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.fieldContainer}>
+          <Text style={styles.fieldLabel}>Date</Text>
+          <View style={styles.fieldBox}>
+            <Text style={styles.fieldValue}>{date}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.fieldContainer}>
+          <Text style={styles.fieldLabel}>Time</Text>
+          <View style={styles.fieldBox}>
+            <Text style={styles.fieldValue}>{time}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.fieldContainer}>
+          <Text style={styles.fieldLabel}>Veterinarian</Text>
+          <View style={styles.fieldBox}>
+            <Text style={styles.fieldValue}>{appointment.veterinarian || 'Not assigned'}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.fieldContainer}>
+          <Text style={styles.fieldLabel}>Reason</Text>
+          <View style={styles.fieldBox}>
+            <Text style={styles.fieldValue}>{appointment.reason || appointment.service || 'N/A'}</Text>
+          </View>
+        </View>
+        
+        {appointment.notes && (
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Notes</Text>
+            <View style={styles.fieldBox}>
+              <Text style={styles.fieldValue}>{appointment.notes}</Text>
             </View>
-          </TouchableOpacity>
-        </Modal>
-      )}
-
-
-      </View>
-    </AdminLayout>
+          </View>
+        )}
+        
+        <View style={styles.fieldContainer}>
+          <Text style={styles.fieldLabel}>Status</Text>
+          <View style={styles.fieldBox}>
+            <Text style={[styles.fieldValue, { color: getStatusColor(appointment.status), fontWeight: '600' }]}>{appointment.status}</Text>
+          </View>
+        </View>
+        
+        {appointment.status !== 'Completed' && (
+          <View style={styles.actionButtons}>
+            <TouchableOpacity style={styles.doneButton} onPress={handleMarkDone}>
+              <Text style={styles.buttonText}>Mark as Done</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#FAFAFF',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  backButton: {
-    marginRight: 15,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.primary,
-  },
+
   content: {
     flex: 1,
     padding: 20,
+    paddingTop: 20,
   },
-  detailTable: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(123, 44, 44, 0.1)',
+  fieldContainer: {
     marginBottom: 20,
-    elevation: 8,
-    shadowColor: '#7B2C2C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
   },
-  detailTableHeader: {
-    flexDirection: 'row',
-    backgroundColor: '#f8f9fa',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+  fieldLabel: {
+    fontSize: 16,
+    color: '#7B2C2C',
+    fontWeight: '600',
+    marginBottom: 8,
+    fontFamily: 'sans-serif',
+  },
+  fieldBox: {
+    backgroundColor: '#F2F2F7',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  fieldValue: {
+    fontSize: 15,
+    color: '#7B2C2C',
+    fontFamily: 'sans-serif',
+  },
+  actionButtons: {
+    gap: 12,
+  },
+  doneButton: {
+    backgroundColor: '#28a745',
+    paddingVertical: 14,
+    borderRadius: 8,
     alignItems: 'center',
   },
-  detailTableRow: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  detailHeaderCell: {
-    flex: 1,
-    fontWeight: 'bold',
-    fontSize: 14,
-    color: '#7B2C2C',
-  },
-  detailCell: {
-    flex: 1,
-    fontSize: 12,
-    color: '#7B2C2C',
-  },
-  headerActions: {
-    position: 'relative',
-  },
-  menuButton: {
-    padding: 8,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    justifyContent: 'flex-start',
-    alignItems: 'flex-end',
-    paddingTop: 95,
-    paddingRight: 20,
-  },
-  dropdown: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(123, 44, 44, 0.1)',
-    shadowColor: '#7B2C2C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  dropdownItem: {
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  dropdownText: {
-    fontSize: 14,
-    color: '#7B2C2C',
-  },
 
-
+  buttonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'sans-serif',
+  },
 });

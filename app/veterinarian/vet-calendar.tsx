@@ -178,65 +178,25 @@ export default function VetCalendarScreen() {
   
   return (
     <View style={styles.container}>
-      <View style={styles.filterHeader}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-          {['All', 'Pending', 'Due', 'Done'].map((status) => {
-            const count = (() => {
-              // Appointments are already filtered for this veterinarian
-              const vetAppts = appointments;
-              
-              if (status === 'All') return vetAppts.length;
-              
-              const now = new Date();
-              return vetAppts.filter(apt => {
-                // Check if already completed
-                if (apt.status === 'Completed' || apt.status === 'completed') {
-                  return status === 'Done';
-                }
-                
-                // For cancelled appointments
-                if (apt.status === 'cancelled') {
-                  return status === 'Done'; // Count cancelled as done
-                }
-                
-                // Calculate current status based on time
-                let appointmentTime;
-                if (apt.appointmentDate?.seconds) {
-                  appointmentTime = new Date(apt.appointmentDate.seconds * 1000);
-                } else {
-                  appointmentTime = new Date(apt.appointmentDate || apt.dateTime);
-                }
-                
-                if (isNaN(appointmentTime.getTime())) {
-                  return status === 'Pending'; // Default to pending if date is invalid
-                }
-                
-                const timeDiff = appointmentTime.getTime() - now.getTime();
-                const hoursDiff = timeDiff / (1000 * 60 * 60);
-                
-                if (hoursDiff <= 0) {
-                  return status === 'Due'; // Past appointments
-                } else {
-                  return status === 'Pending'; // Future appointments
-                }
-              }).length;
-            })();
-            
-            return (
-              <TouchableOpacity
-                key={status}
-                style={[styles.filterButton, statusFilter === status && styles.filterButtonActive]}
-                onPress={() => setStatusFilter(status)}
-              >
-                <Text style={[styles.filterText, statusFilter === status && styles.filterTextActive]}>
-                  {status} ({count})
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+      <View style={styles.filterContainer}>
+        <View style={styles.filterRow}>
+          {['All', 'Pending', 'Due', 'Done'].map((status) => (
+            <TouchableOpacity
+              key={status}
+              style={statusFilter === status ? styles.activeFilterButton : styles.inactiveFilterButton}
+              onPress={() => setStatusFilter(status)}
+            >
+              <Text style={statusFilter === status ? styles.activeFilterText : styles.inactiveFilterText}>
+                {status}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
       <View style={styles.content}>
+        <View style={styles.calendarHeader}>
+          <Text style={styles.totalCount}>Total: {appointments.length}</Text>
+        </View>
         <View style={styles.calendarContainer}>
             <View style={styles.calendarHeader}>
               <TouchableOpacity style={styles.navButton} onPress={() => navigateMonth(-1)}>
@@ -409,7 +369,9 @@ export default function VetCalendarScreen() {
 
         
         {selectedDate && (
-          <Animated.View style={[styles.scheduleContainer, { transform: [{ translateY: slideAnim }] }]}>
+          <>
+            <View style={styles.scheduleOverlay} />
+            <Animated.View style={[styles.scheduleContainer, { transform: [{ translateY: slideAnim }] }]}>
             <View style={styles.scheduleHeader}>
               <Text style={styles.scheduleTitle}>
                 Schedule for {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][selectedDate.month]} {selectedDate.day}, {selectedDate.year}
@@ -565,27 +527,37 @@ export default function VetCalendarScreen() {
                         />
                       </View>
                       <View style={styles.mobileAppointmentContent}>
-                        <Text style={styles.mobilePatientName}>{apt.customerName || apt.name}</Text>
-                        <Text style={styles.mobilePetInfo}>{apt.petName}</Text>
-                        <Text style={styles.mobileAppointmentTime}>
-                          {(() => {
-                            let aptDate;
-                            if (apt.appointmentDate?.seconds) {
-                              aptDate = new Date(apt.appointmentDate.seconds * 1000);
-                            } else {
-                              aptDate = new Date(apt.appointmentDate || apt.dateTime);
+                        <View style={styles.mobileDataRow}>
+                          <Text style={styles.mobileDataLabel}>Name:</Text>
+                          <Text style={styles.mobilePatientName}>{apt.customerName || apt.name}</Text>
+                        </View>
+                        <View style={styles.mobileDataRow}>
+                          <Text style={styles.mobileDataLabel}>Pet:</Text>
+                          <Text style={styles.mobilePetInfo}>{apt.petName}</Text>
+                        </View>
+                        <View style={styles.mobileDataRow}>
+                          <Text style={styles.mobileDataLabel}>Date:</Text>
+                          <Text style={styles.mobileAppointmentTime}>
+                            {(() => {
+                              let aptDate;
+                              if (apt.appointmentDate?.seconds) {
+                                aptDate = new Date(apt.appointmentDate.seconds * 1000);
+                              } else {
+                                aptDate = new Date(apt.appointmentDate || apt.dateTime);
+                              }
+                              return aptDate.toLocaleDateString() + ' ' + aptDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                            })()
                             }
-                            return aptDate.toLocaleDateString() + ' ' + aptDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                          })()
-                          }
-                        </Text>
+                          </Text>
+                        </View>
                       </View>
                     </TouchableOpacity>
                   );
                 });
               })()}
             </ScrollView>
-          </Animated.View>
+            </Animated.View>
+          </>
         )}
     </View>
   );
@@ -603,40 +575,67 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
-  filterHeader: {
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+  calendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: 10,
+    paddingRight: 5,
   },
-  filterScroll: {
-    flexGrow: 0,
-  },
-  filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 12,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-  },
-  filterButtonActive: {
-    backgroundColor: '#7B2C2C',
-  },
-  filterText: {
+  totalCount: {
     fontSize: 14,
-    color: '#666',
     fontWeight: '500',
+    color: '#8E8E93',
+    fontFamily: 'sans-serif',
+    textAlign: 'right',
+    position: 'absolute',
+    right: 0,
   },
-  filterTextActive: {
-    color: '#fff',
+  filterContainer: {
+    backgroundColor: '#ffffff',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  filterRow: {
+    flexDirection: 'row',
+  },
+  activeFilterButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    marginRight: 16,
+    borderRadius: 20,
+    backgroundColor: '#7B2C2C',
+    shadowColor: '#7B2C2C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  inactiveFilterButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    marginRight: 16,
+  },
+  activeFilterText: {
+    fontSize: 14,
+    color: '#ffffff',
+    fontWeight: '600',
+    fontFamily: 'sans-serif',
+  },
+  inactiveFilterText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    fontWeight: '500',
+    fontFamily: 'sans-serif',
   },
   calendarContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
     height: 500,
   },
   calendarHeader: {
@@ -647,14 +646,16 @@ const styles = StyleSheet.create({
   },
   navButton: {
     backgroundColor: '#7B2C2C',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: 12,
+    width: 42,
+    height: 42,
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#7B2C2C',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 3,
   },
   navButtonText: {
     color: '#ffffff',
@@ -668,10 +669,10 @@ const styles = StyleSheet.create({
   },
   weekHeader: {
     flexDirection: 'row',
-    marginBottom: 10,
-    backgroundColor: '#f8f9fa',
-    paddingVertical: 8,
-    borderRadius: 5,
+    marginBottom: 12,
+    backgroundColor: '#F2F2F7',
+    paddingVertical: 10,
+    borderRadius: 8,
   },
   weekDay: {
     flex: 1,
@@ -686,12 +687,12 @@ const styles = StyleSheet.create({
   },
   dayBox: {
     width: '14.28%',
-    height: 50,
+    height: 52,
     borderWidth: 0.5,
-    borderColor: '#ddd',
+    borderColor: '#E5E5EA',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     position: 'relative',
   },
   dayWithAppt: {
@@ -738,11 +739,11 @@ const styles = StyleSheet.create({
   legend: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 15,
-    marginBottom: 15,
-    paddingVertical: 8,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 5,
+    gap: 20,
+    marginBottom: 16,
+    paddingVertical: 10,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 8,
   },
   legendItem: {
     flexDirection: 'row',
@@ -851,6 +852,15 @@ const styles = StyleSheet.create({
     color: '#2196F3',
     fontWeight: 'bold',
   },
+  scheduleOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    zIndex: 40,
+  },
   scheduleContainer: {
     position: 'absolute',
     left: 20,
@@ -908,19 +918,19 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   mobileAppointmentCard: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    backgroundColor: '#FAFAFF',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(123, 44, 44, 0.1)',
-    marginBottom: 4,
-    elevation: 8,
-    shadowColor: '#7B2C2C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: 12,
+    padding: 16,
   },
   statusIcon: {
     width: 40,
@@ -934,6 +944,10 @@ const styles = StyleSheet.create({
     marginRight: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(123, 44, 44, 0.08)',
   },
   statusIconText: {
     fontSize: 16,
@@ -945,6 +959,19 @@ const styles = StyleSheet.create({
   mobileAppointmentContent: {
     flex: 1,
   },
+  mobileDataRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  mobileDataLabel: {
+    fontSize: 13,
+    color: '#8E8E93',
+    fontWeight: '500',
+    minWidth: 45,
+    marginRight: 8,
+    fontFamily: 'sans-serif',
+  },
   patientName: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -954,12 +981,11 @@ const styles = StyleSheet.create({
     // web-only properties removed for React Native
   },
   mobilePatientName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 2,
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginBottom: 4,
+    fontFamily: 'sans-serif',
   },
   petInfo: {
     fontSize: 15,
@@ -969,9 +995,9 @@ const styles = StyleSheet.create({
   },
   mobilePetInfo: {
     fontSize: 15,
-    color: '#666',
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+    color: '#48484A',
+    fontWeight: '500',
+    fontFamily: 'sans-serif',
   },
   appointmentHeader: {
     flexDirection: 'row',
@@ -987,11 +1013,11 @@ const styles = StyleSheet.create({
     // web-only properties removed for React Native
   },
   mobileAppointmentTime: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 6,
+    fontWeight: '400',
+    fontFamily: 'sans-serif',
   },
   appointmentName: {
     fontSize: 14,

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { deleteAppointment, getVeterinarianAppointments, updateAppointment } from '../../lib/services/firebaseService';
 
@@ -16,6 +16,7 @@ export default function VetAppointments() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showDateFilters, setShowDateFilters] = useState(false);
 
   useEffect(() => {
     if (user?.email) {
@@ -302,43 +303,68 @@ export default function VetAppointments() {
     <View style={styles.container}>
 
 
-      <View style={styles.filterHeader}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
+      <View style={styles.filterContainer}>
+        <View style={styles.filterRow}>
           {['All', 'Pending', 'Due', 'Done'].map((filter) => (
             <TouchableOpacity
               key={filter}
-              style={[styles.filterButton, selectedFilter === filter && styles.filterButtonActive]}
+              style={selectedFilter === filter ? styles.activeFilterButton : styles.inactiveFilterButton}
               onPress={() => setSelectedFilter(filter)}
             >
-              <Text style={[styles.filterText, selectedFilter === filter && styles.filterTextActive]}>
+              <Text style={selectedFilter === filter ? styles.activeFilterText : styles.inactiveFilterText}>
                 {filter}
               </Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
-      </View>
-
-      <View style={styles.dateFilterHeader}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-          {['All', 'Today', 'This Week', 'Next Week', 'Later'].map((filter) => (
-            <TouchableOpacity
-              key={filter}
-              style={[styles.dateFilterButton, selectedDateFilter === filter && styles.dateFilterButtonActive]}
-              onPress={() => setSelectedDateFilter(filter)}
-            >
-              <Text style={[styles.dateFilterText, selectedDateFilter === filter && styles.dateFilterTextActive]}>
-                {filter}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        </View>
+        
+        <View style={styles.searchRow}>
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color="#8E8E93" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search"
+              placeholderTextColor="#8E8E93"
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+            />
+          </View>
+          <TouchableOpacity 
+            style={styles.filterIconButton}
+            onPress={() => setShowDateFilters(!showDateFilters)}
+          >
+            <Ionicons name="options" size={20} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
+        
+        {showDateFilters && (
+          <View style={styles.dateFilterDropdown}>
+            {['All', 'Today', 'This Week', 'Next Week', 'Later'].map((filter) => (
+              <TouchableOpacity
+                key={filter}
+                style={styles.dateFilterOption}
+                onPress={() => {
+                  setSelectedDateFilter(filter);
+                  setShowDateFilters(false);
+                }}
+              >
+                <Text style={[styles.dateFilterOptionText, selectedDateFilter === filter && styles.dateFilterOptionTextActive]}>
+                  {filter}
+                </Text>
+                {selectedDateFilter === filter && (
+                  <Ionicons name="checkmark" size={16} color="#7B2C2C" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </View>
 
       {/* Appointments List */}
       <ScrollView 
         style={styles.appointmentsList} 
         contentContainerStyle={styles.appointmentsListContent}
-        showsVerticalScrollIndicator={true}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -375,11 +401,20 @@ export default function VetAppointments() {
                 />
               </View>
               <View style={styles.appointmentContent}>
-                <Text style={styles.patientName}>{appointment.customerName}</Text>
-                <Text style={styles.petInfo}>{appointment.petName}</Text>
-                <Text style={styles.appointmentTime}>
-                  {appointment.createdAt ? new Date(appointment.createdAt.seconds * 1000 || appointment.createdAt).toLocaleDateString() + ' ' + new Date(appointment.createdAt.seconds * 1000 || appointment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Created: N/A'}
-                </Text>
+                <View style={styles.dataRow}>
+                  <Text style={styles.dataLabel}>Name:</Text>
+                  <Text style={styles.patientName}>{appointment.customerName}</Text>
+                </View>
+                <View style={styles.dataRow}>
+                  <Text style={styles.dataLabel}>Pet:</Text>
+                  <Text style={styles.petInfo}>{appointment.petName}</Text>
+                </View>
+                <View style={styles.dataRow}>
+                  <Text style={styles.dataLabel}>Date:</Text>
+                  <Text style={styles.appointmentTime}>
+                    {appointment.createdAt ? new Date(appointment.createdAt.seconds * 1000 || appointment.createdAt).toLocaleDateString() + ' ' + new Date(appointment.createdAt.seconds * 1000 || appointment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'N/A'}
+                  </Text>
+                </View>
               </View>
 
 
@@ -402,7 +437,7 @@ export default function VetAppointments() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f7fa',
+    backgroundColor: '#FAFAFF',
     paddingBottom: 0,
     marginBottom: -34,
   },
@@ -410,102 +445,128 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    margin: 10,
+    backgroundColor: '#F2F2F7',
+    flex: 1,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    marginRight: 12,
   },
   searchIcon: {
-    width: 20,
-    height: 20,
-    marginRight: 10,
-    tintColor: '#666',
+    marginRight: 8,
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: '#1C1C1E',
+    fontFamily: 'sans-serif',
   },
-  filterHeader: {
-    backgroundColor: '#fff',
+  filterIconButton: {
+    width: 42,
+    height: 42,
+    backgroundColor: '#7B2C2C',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dateFilterDropdown: {
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    marginTop: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  dateFilterOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#F2F2F7',
   },
-  filterScroll: {
-    flexGrow: 0,
-  },
-  filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 12,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-  },
-  filterButtonActive: {
-    backgroundColor: '#7B2C2C',
-  },
-  filterText: {
+  dateFilterOptionText: {
     fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
+    color: '#1C1C1E',
+    fontFamily: 'sans-serif',
   },
-  filterTextActive: {
-    color: '#fff',
+  dateFilterOptionTextActive: {
+    color: '#7B2C2C',
+    fontWeight: '600',
   },
-  dateFilterHeader: {
-    backgroundColor: '#f8f9fa',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+  titleContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FAFAFF',
   },
-  dateFilterButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
-    borderRadius: 15,
-    backgroundColor: '#e9ecef',
+  appointmentsTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    fontFamily: 'sans-serif',
   },
-  dateFilterButtonActive: {
+  filterContainer: {
+    backgroundColor: '#ffffff',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  activeFilterButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    marginRight: 16,
+    borderRadius: 20,
     backgroundColor: '#7B2C2C',
   },
-  dateFilterText: {
-    fontSize: 12,
-    color: '#7B2C2C',
-    fontWeight: '500',
+  inactiveFilterButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    marginRight: 16,
   },
-  dateFilterTextActive: {
-    color: '#fff',
+  activeFilterText: {
+    fontSize: 14,
+    color: '#ffffff',
+    fontWeight: '600',
+    fontFamily: 'sans-serif',
+  },
+  inactiveFilterText: {
+    fontSize: 14,
+    color: '#8E8E93',
+    fontWeight: '500',
+    fontFamily: 'sans-serif',
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   appointmentsList: {
     flex: 1,
-    padding: 16,
+    paddingHorizontal: 10,
+    paddingTop: 12,
   },
   appointmentsListContent: {
     paddingBottom: 100,
   },
   appointmentCard: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    backgroundColor: '#FAFAFF',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(123, 44, 44, 0.1)',
-    marginBottom: 4,
-    elevation: 8,
-    shadowColor: '#7B2C2C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: 12,
+    padding: 16,
   },
   appointmentHeader: {
     flexDirection: 'row',
@@ -517,48 +578,53 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   appointmentTime: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+    fontSize: 13,
+    color: '#48484A',
+    fontWeight: '400',
+    flex: 1,
+    fontFamily: 'sans-serif',
   },
   appointmentDate: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 1,
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 2,
+    fontWeight: '400',
   },
   statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statusText: {
-    fontSize: 9,
-    fontWeight: 'bold',
+    fontSize: 10,
+    fontWeight: '600',
     color: '#ffffff',
   },
   appointmentInfo: {
-    marginBottom: 4,
+    marginBottom: 6,
   },
   patientName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 2,
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    flex: 1,
+    fontFamily: 'sans-serif',
   },
   petInfo: {
     fontSize: 15,
-    color: '#666',
-    overflow: 'hidden',
-    // web-only properties removed for React Native
+    color: '#48484A',
+    fontWeight: '500',
+    flex: 1,
+    fontFamily: 'sans-serif',
   },
   statusIcon: {
     marginRight: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(123, 44, 44, 0.08)',
   },
   statusIconText: {
     fontSize: 16,
@@ -566,6 +632,19 @@ const styles = StyleSheet.create({
   },
   appointmentContent: {
     flex: 1,
+  },
+  dataRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  dataLabel: {
+    fontSize: 13,
+    color: '#8E8E93',
+    fontWeight: '500',
+    minWidth: 45,
+    marginRight: 8,
+    fontFamily: 'sans-serif',
   },
   appointmentActions: {
     flexDirection: 'row',
@@ -620,27 +699,28 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
+    paddingVertical: 80,
   },
   emptyText: {
-    fontSize: 18,
-    color: '#666',
-    fontStyle: 'italic',
+    fontSize: 17,
+    color: '#8E8E93',
+    fontWeight: '500',
+    fontFamily: 'sans-serif',
   },
   addButton: {
     position: 'absolute',
-    bottom: 60,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    bottom: 80,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#7B2C2C',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 6,
     shadowColor: '#7B2C2C',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
   },
 });

@@ -18,6 +18,13 @@ module.exports = {
     assetBundlePatterns: [
       "**/*"
     ],
+    fonts: [
+      "./assets/fonts/Satoshi-Regular.otf",
+      "./assets/fonts/Satoshi-Medium.otf",
+      "./assets/fonts/Satoshi-Bold.otf",
+      "./assets/fonts/Satoshi-Light.otf",
+      "./assets/fonts/Satoshi-Black.otf"
+    ],
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.vetclinic.staff",
@@ -33,7 +40,15 @@ module.exports = {
     web: {
       bundler: "metro",
       output: "static",
-      favicon: "./assets/favicon.png"
+      favicon: "./assets/favicon.png",
+      viewport: {
+        width: 375,
+        height: 812,
+        initialScale: 1.0,
+        minimumScale: 1.0,
+        maximumScale: 1.0,
+        userScalable: false
+      }
     },
     plugins: [
       "expo-router"

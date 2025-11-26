@@ -91,9 +91,7 @@ export default function VetMedicalRecordDetailScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Medical Record Details</Text>
-      </View>
+
       
       <View style={styles.content}>
         <View style={styles.tableContainer}>
@@ -236,18 +234,18 @@ const styles = StyleSheet.create({
   headerCell: {
     flex: 1,
     fontWeight: 'bold',
-    fontSize: 15,
+    fontSize: 14,
     color: '#7B2C2C',
   },
   cell: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 12,
     color: '#374151',
     fontWeight: '600',
   },
   valueCell: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 12,
     color: '#6B7280',
   },
   tableBody: {
@@ -297,7 +295,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#7B2C2C',
     marginBottom: 16,

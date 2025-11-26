@@ -1,0 +1,78 @@
+/* Mobile simulation only for veterinarian routes */
+body[data-vet-route="true"] {
+  @media screen and (min-width: 768px) {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-height: 100vh !important;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    box-sizing: border-box !important;
+  }
+}
+
+body[data-vet-route="true"] #root {
+  @media screen and (min-width: 768px) {
+    width: 375px !important;
+    max-width: 375px !important;
+    height: 812px !important;
+    max-height: 812px !important;
+    border-radius: 25px !important;
+    overflow: hidden !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3) !important;
+    border: 8px solid #2c3e50 !important;
+    position: relative !important;
+    background: white !important;
+  }
+}
+
+body[data-vet-route="true"] #root::before {
+  @media screen and (min-width: 768px) {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 150px !important;
+    height: 25px !important;
+    background: #2c3e50 !important;
+    border-radius: 0 0 15px 15px !important;
+    z-index: 1000 !important;
+  }
+}
+
+/* Mobile view - use full screen */
+@media screen and (max-width: 767px) {
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  #root, #__next {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Prevent horizontal scrolling and ensure proper box-sizing */
+* {
+  box-sizing: border-box !important;
+}
+
+html, body {
+  overflow-x: hidden !important;
+}
+
+/* React Native Web compatibility */
+#root, #__next {
+  display: flex !important;
+  flex-direction: column !important;
+}
